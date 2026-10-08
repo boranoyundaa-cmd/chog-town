@@ -122,7 +122,7 @@ function card(onClose) {
   return c;
 }
 
-// ---- Venues: what each license tier gives and where you stand. Venues themselves are not built yet (the button says so).
+// ---- Venues: what each license tier gives and where you stand; holders manage their own venue here (venue.js).
 function venuesCard(onClose) {
   const c = el('div', 'card hit venues'), holder = isHolder() && !!WALLET.license(licenseIds()).tier, L = WALLET.license(holder ? licenseIds() : []), cur = holder ? L.tier : 0, S = WALLET.tierStats();
   c.innerHTML = `<button class="x" aria-label="Close">×</button><h2>Venues</h2><div class="sub">Your license decides what kind of place you can run</div>
@@ -130,11 +130,13 @@ function venuesCard(onClose) {
     <div class="ladder">${[...L.tiers].reverse().map(v => `<div class="rung ${v.tier === cur ? 'cur' : v.tier < cur ? '' : 'lock'}" style="--tc:${TIER_COL[v.tier]}"><div class="rk">${v.tier}</div>
       <div><b>${TIER_NAME[v.tier]}</b><small>${v.min} point${v.min > 1 ? 's' : ''}: ${tierReq(v)}</small><small class="pk">${TIER_SIZE[v.tier]}</small></div>
       <div class="rs">${S.total ? `${S.dist[v.tier]} of ${S.total.toLocaleString('en-US')}<br>wallets` : ''}<i>${v.tier === cur ? '★' : v.tier < cur ? '✓' : icon('lock', 18)}</i></div></div>`).join('')}</div>
-    <div class="note">${S.asOf ? 'Wallet counts: snapshot of ' + new Date(S.asOf * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '. ' : ''}Venues open soon.</div><div class="actions"></div>`;
+    <div class="note">${S.asOf ? 'Wallet counts: snapshot of ' + new Date(S.asOf * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '. ' : ''}</div><div class="actions"></div>`;
   c.querySelector('.x').onclick = onClose;
   const act = c.querySelector('.actions');
-  if (holder) { const b = el('button', 'btn', 'Open my ' + TIER_NAME[cur] + ' · soon'); b.disabled = true; act.appendChild(b); }
-  else {
+  if (holder && typeof VENUE !== 'undefined') {
+    c.insertBefore(VENUE.section(), c.querySelector('.note'));
+    if (!VENUE.info && !VENUE.busy && !VENUE.tried && WALLET.account) { VENUE.tried = true; setTimeout(() => VENUE.refresh(), 0); }
+  } else if (!holder) {
     if (!WALLET.account) { const b = el('button', 'btn', 'Connect wallet'); b.onclick = connectFlow; act.appendChild(b); }
     const a = el('a', 'btn ghost', 'Get a Chog'); a.href = 'https://opensea.io/collection/chog-genesis'; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a);
   }

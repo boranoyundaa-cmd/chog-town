@@ -12,16 +12,17 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
   const colOf = cat => CAT_COL[cat] ?? 0x9a8ab8, hexOf = c => '#' + new THREE.Color(c).getHexString();
   const pal = () => SPACE.THEMES.studio.pal;
   const slotOf = no => no % 100;
-  function doorOf(no) {                                                                // where a venue's door is and where you stand in front of it
+  function doorOf(no, span = 1) {                                                      // where a venue's door is (the middle of its slots) and where you stand in front of it
     const s = slotOf(no);
-    if (s <= 4) { const x = -FLC + STRIP + SLOT * (s - 0.5); return { wall: 'z', u: x, stand: { x, z: -FLC + 1.45, ry: 0 } }; }
-    const z = -FLC + STRIP + SLOT * (s - 4.5); return { wall: 'x', u: z, stand: { x: -FLC + 1.45, z, ry: Math.PI / 2 } };
+    if (s <= 4) { const x = -FLC + STRIP + SLOT * (s - 1 + span / 2); return { wall: 'z', u: x, stand: { x, z: -FLC + 1.45, ry: 0 } }; }
+    const z = -FLC + STRIP + SLOT * (s - 5 + span / 2); return { wall: 'x', u: z, stand: { x: -FLC + 1.45, z, ry: Math.PI / 2 } };
   }
   HOTEL.doorOf = doorOf;
 
   // ------------------------------------------------------------------ scene state (rebuilt on every floor change)
   let G = null, walk = [], rects = [], spots = [], plates = [], anims = [], lights = [], halos = [], npc = null, npcPlate = null, saved = null, mapRects = [], mapDoors = [];
   const venuesOn = f => ((HOTEL.info && HOTEL.info.venues) || []).filter(v => v.floor === f).sort((a, b) => a.no - b.no);
+  const listed = () => ((HOTEL.info && HOTEL.info.venues) || []).filter(v => v.state !== 'closed' || v.id === HOTEL.mineId);                   // the directory lists open rooms (and yours), closed doors only show in the corridor
 
   function blocked(x, z, r) {
     let ok = false; for (const w of walk) if (x > w[0] && x < w[1] && z > w[2] && z < w[3]) { ok = true; break; }
@@ -76,11 +77,11 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
     const p = { v, cv, n: -1, tex: null };
     p.draw = () => {
       const c = cv.getContext('2d'); c.clearRect(0, 0, 512, 192);
-      c.fillStyle = '#2b1d44'; c.strokeStyle = hexOf(colOf(v.cat)); c.lineWidth = 8; c.beginPath(); c.roundRect ? c.roundRect(6, 6, 500, 180, 26) : c.rect(6, 6, 500, 180); c.fill(); c.stroke();
+      const shut = v.state === 'closed'; c.fillStyle = '#2b1d44'; c.strokeStyle = shut ? '#7a6a98' : hexOf(colOf(v.cat)); c.lineWidth = 8; c.beginPath(); c.roundRect ? c.roundRect(6, 6, 500, 180, 26) : c.rect(6, 6, 500, 180); c.fill(); c.stroke();
       c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = hexOf(colOf(v.cat)); c.font = '700 64px "Fredoka", sans-serif'; c.fillText('#' + v.no, 30, 62);
       c.fillStyle = '#ffffff'; let px = 44; c.font = `700 ${px}px "Fredoka", sans-serif`; while (c.measureText(v.name).width > 300 && px > 22) { px -= 3; c.font = `700 ${px}px "Fredoka", sans-serif`; }
       c.textAlign = 'right'; c.fillText(v.name, 482, 62);
-      const n = HOTEL.counts[v.id] || 0; c.textAlign = 'left'; c.font = '700 36px "Fredoka", sans-serif'; c.fillStyle = n ? '#7ad89a' : '#a898c8'; c.fillText(n ? '● ' + n + ' inside' : '○ empty', 30, 140);
+      const n = HOTEL.counts[v.id] || 0; c.textAlign = 'left'; c.font = '700 36px "Fredoka", sans-serif'; c.fillStyle = shut ? '#ff7a8a' : n ? '#7ad89a' : '#a898c8'; c.fillText(shut ? '✕ CLOSED' : n ? '● ' + n + ' inside' : '○ empty', 30, 140);
       c.textAlign = 'right'; c.fillStyle = '#c8b8e8'; c.font = '600 30px "Fredoka", sans-serif'; c.fillText(v.cat, 482, 140);
       p.n = n; if (p.tex) p.tex.needsUpdate = true;
     };
@@ -131,9 +132,10 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
     spots = [{ x: -6.0, z: -6.1, r: 1.4, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-6.0, 2.9, -FLC + 0.5] }];
     const list = venuesOn(f);
     for (const v of list) {
-      const d = doorOf(v.no); door(g, o, d.wall, d.u, colOf(v.cat), v.no); plateFor(g, o, d.wall, d.u, v);
-      spots.push({ x: d.stand.x, z: d.stand.z, r: 1.2, label: 'Enter ' + v.name, run: () => HOTEL.enterVenue(v), at: d.wall === 'z' ? [d.u, 2.45, -FLC + 0.4] : [-FLC + 0.4, 2.45, d.u], v });
-      mapDoors.push({ x: d.wall === 'z' ? d.u : -FLC, z: d.wall === 'z' ? -FLC : d.u, col: hexOf(colOf(v.cat)) });
+      const d = doorOf(v.no, v.span); door(g, o, d.wall, d.u, v.state === 'closed' ? 0x5a4a78 : colOf(v.cat), v.no); plateFor(g, o, d.wall, d.u, v);
+      const own = HOTEL.mineId === v.id;
+      spots.push({ x: d.stand.x, z: d.stand.z, r: 1.2, label: v.state === 'closed' ? (own ? 'Enter your venue (closed)' : 'Closed') : 'Enter ' + v.name, run: () => (v.state === 'closed' && !own ? toast(v.name === 'Opening soon' ? 'This room is not open yet.' : v.name + ' is closed right now.') : HOTEL.enterVenue(v)), at: d.wall === 'z' ? [d.u, 2.45, -FLC + 0.4] : [-FLC + 0.4, 2.45, d.u], v });
+      mapDoors.push({ x: d.wall === 'z' ? d.u : -FLC, z: d.wall === 'z' ? -FLC : d.u, col: v.state === 'closed' ? '#7a6a98' : hexOf(colOf(v.cat)) });
     }
     // lights: a pendant every few metres, over each arm
     for (const [x, z] of [[-6.0, -6.0], [-2.9, -6.0], [0.1, -6.0], [3.1, -6.0], [6.1, -6.0], [-6.0, -2.9], [-6.0, 0.1], [-6.0, 3.1], [-6.0, 6.1]]) piece(g, 'pendantLamp', x, z);
@@ -172,7 +174,14 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
   HOTEL.enterFromTown = async function () {
     if (HOTEL.busy || ROOM.busy || ROOM.active || HOTEL.active) return;
     if (NET.status !== 'online' || !NET.hotel) { toast('The Hotel needs the town server, which is not reachable right now.'); return; }
+    if (typeof VENUE !== 'undefined' && !VENUE.info) VENUE.refresh();                         // so the owner's own door says "your venue"
     HOTEL.busy = true; try { await fade(async () => { if (!await loadInfo()) { toast('The Hotel did not answer. Try again.'); return; } await show(0); }); } finally { HOTEL.busy = false; }
+  };
+  // town -> the floor of one venue, in front of its door (the owner's "Go to my venue")
+  HOTEL.gotoVenue = async function (v) {
+    if (HOTEL.busy || ROOM.busy || ROOM.active || HOTEL.active) return;
+    if (NET.status !== 'online' || !NET.hotel) { toast('The Hotel needs the town server, which is not reachable right now.'); return; }
+    HOTEL.busy = true; try { await fade(async () => { if (!await loadInfo()) { toast('The Hotel did not answer. Try again.'); return; } await show(v.floor, doorOf(v.no, v.span).stand); }); } finally { HOTEL.busy = false; }
   };
   // anywhere in the hotel -> the street
   HOTEL.leave = async function () {
@@ -185,18 +194,18 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
     const sc = sun.shadow.camera; if (saved) { Object.assign(sc, { left: saved.shadow.l, right: saved.shadow.r, top: saved.shadow.t, bottom: saved.shadow.b, far: saved.shadow.f }); sc.updateProjectionMatrix(); GAME.zoomT = saved.zoom; if (!keep) saved = null; }
     GAME.room = null; GAME.camFixed = null; GAME.regrid(); HOTEL.refreshUI();
   };
-  HOTEL.goFloor = async function (f, door) {                                           // the elevator, or "Go to room": the door's number puts you right in front of it
+  HOTEL.goFloor = async function (f, door) {                                           // the elevator, or "Go to room": the venue puts you right in front of its door
     if (HOTEL.busy || !HOTEL.active || f === HOTEL.floor && !door) return; HOTEL.busy = true; HOTEL.panel = null; HOTEL.refreshUI();
-    try { await fade(async () => { await loadInfo(); const d = door ? doorOf(door) : null; if (!await show(f, d ? d.stand : null)) toast('The elevator did not move. Try again.'); }); } finally { HOTEL.busy = false; }
+    try { await fade(async () => { await loadInfo(); const d = door ? doorOf(door.no, door.span) : null; if (!await show(f, d ? d.stand : null)) toast('The elevator did not move. Try again.'); }); } finally { HOTEL.busy = false; }
   };
-  HOTEL.goTo = v => HOTEL.goFloor(v.floor, v.no);
+  HOTEL.goTo = v => HOTEL.goFloor(v.floor, v);
   HOTEL.enterVenue = async function (v) {
     if (HOTEL.busy || ROOM.busy || !HOTEL.active) return; HOTEL.busy = true;
     try { await fade(async () => { if (!await ROOM.enterVenue(v)) toast('That room is not open right now.'); }); } finally { HOTEL.busy = false; }
   };
   HOTEL.returnFromVenue = async function (v) {
     if (HOTEL.busy) return; HOTEL.busy = true;
-    try { await fade(async () => { ROOM.exitVenueScene(); await loadInfo(); if (await show(v.floor, doorOf(v.no).stand)) HOTEL.away = false; else { ROOM.showTown(true); DAY.resume(); saved = null; HOTEL.away = false; } }); } finally { HOTEL.busy = false; }
+    try { await fade(async () => { ROOM.exitVenueScene(); await loadInfo(); if (await show(v.floor, doorOf(v.no, v.span).stand)) HOTEL.away = false; else { ROOM.showTown(true); DAY.resume(); saved = null; HOTEL.away = false; } }); } finally { HOTEL.busy = false; }
   };
   HOTEL.resync = function () { if (!HOTEL.active) return; const me = GAME.me; NET.enter({ space: 'hotel', floor: HOTEL.floor, x: me.position.x, z: me.position.z, ry: me.rotation.y }); };
 
@@ -247,23 +256,23 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
     row.appendChild(btn('', here ? 'Walk to it' : 'Go to room', () => HOTEL.goTo(v), 'Takes you to the door, not inside')); return row;
   }
   function dirPanel() {
-    const p = el('div', 'rp hp card hit'), h = el('div', 'rp-head'), t = el('b'); t.textContent = 'Directory'; h.appendChild(t); const sm = el('small'); sm.textContent = ((HOTEL.info && HOTEL.info.venues.length) || 0) + ' rooms'; h.appendChild(sm); p.appendChild(h);
+    const p = el('div', 'rp hp card hit'), h = el('div', 'rp-head'), t = el('b'); t.textContent = 'Directory'; h.appendChild(t); const sm = el('small'); sm.textContent = listed().length + ' rooms'; h.appendChild(sm); p.appendChild(h);
     const inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = 'Search by name, number or kind'; inp.value = HOTEL.q; inp.maxLength = 40;
     inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { inp.blur(); HOTEL.closePanel(); } }; inp.oninput = () => { HOTEL.q = inp.value; HOTEL.refreshList(); }; p.appendChild(inp);
-    const cats = ['All', ...new Set(((HOTEL.info && HOTEL.info.venues) || []).map(v => v.cat))], chips = el('div', 'rp-cats');
+    const cats = ['All', ...new Set(listed().map(v => v.cat))], chips = el('div', 'rp-cats');
     for (const c of cats) { const b = el('button', HOTEL.cat === c ? 'on' : ''); b.textContent = c; b.onclick = () => { HOTEL.cat = c; HOTEL.refreshUI(); }; chips.appendChild(b); } p.appendChild(chips);
-    p.appendChild(el('div', 'hp-list')); p.appendChild(el('div', 'rp-note', 'Rooms made by Chog Town. Holder venues will join them.')); setTimeout(() => HOTEL.refreshList(), 0); return p;
+    p.appendChild(el('div', 'hp-list')); p.appendChild(el('div', 'rp-note', 'Rooms made by Chog Town and by Chog holders. A closed door is only shown in the corridor.')); setTimeout(() => HOTEL.refreshList(), 0); return p;
   }
   HOTEL.refreshList = function () {
     const list = HOTEL.ui && HOTEL.ui.querySelector('.hp-list'); if (!list) return; list.innerHTML = '';
-    const q = HOTEL.q.trim().toLowerCase().replace(/^#/, ''), vs = ((HOTEL.info && HOTEL.info.venues) || []).filter(v => (HOTEL.cat === 'All' || v.cat === HOTEL.cat) && (!q || (v.name + ' ' + v.desc + ' ' + v.no + ' ' + v.cat).toLowerCase().includes(q))).sort((a, b) => a.no - b.no);
+    const q = HOTEL.q.trim().toLowerCase().replace(/^#/, ''), vs = listed().filter(v => (HOTEL.cat === 'All' || v.cat === HOTEL.cat) && (!q || (v.name + ' ' + v.desc + ' ' + v.no + ' ' + v.cat).toLowerCase().includes(q))).sort((a, b) => a.no - b.no);
     for (const v of vs) list.appendChild(venueRow(v)); if (!vs.length) list.appendChild(el('div', 'rp-note', HOTEL.info ? 'Nothing matches.' : 'Loading the directory…'));
   };
   function liftPanel() {
     const p = el('div', 'rp hp lift card hit'), h = el('div', 'rp-head'), t = el('b'); t.textContent = 'Elevator'; h.appendChild(t); p.appendChild(h);
     const body = el('div', 'hp-list'), n = (HOTEL.info && HOTEL.info.floors) || 0;
     for (let f = n; f >= 0; f--) {
-      const vs = venuesOn(f), inside = vs.reduce((s, v) => s + (HOTEL.counts[v.id] || 0), 0), b = el('button', 'hf' + (f === HOTEL.floor ? ' here' : '')); b.disabled = f === HOTEL.floor;
+      const vs = venuesOn(f).filter(v => v.state !== 'closed'), inside = vs.reduce((s, v) => s + (HOTEL.counts[v.id] || 0), 0), b = el('button', 'hf' + (f === HOTEL.floor ? ' here' : '')); b.disabled = f === HOTEL.floor;
       b.innerHTML = '<b>' + (f === 0 ? 'G' : f) + '</b><span></span>'; b.querySelector('span').textContent = f === 0 ? 'Lobby · reception · street' : 'Floor ' + f + ' · ' + vs.length + ' rooms' + (inside ? ' · ' + inside + ' inside' : '');
       b.onclick = () => HOTEL.goFloor(f); body.appendChild(b);
     }

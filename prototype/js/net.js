@@ -150,6 +150,8 @@ const NET = {
       case 'entered': NET.space = m.space; NET.lastSent = null; clearAll(); for (const p of m.players) upsert(p); refreshChat(); if (typeof render === 'function') render(); break;
       case 'roomdoc': if (ROOM.onDoc) ROOM.onDoc(m.doc); break;
       case 'hotel': if (typeof HOTEL !== 'undefined') HOTEL.onInfo(m); break;
+      case 'venueinfo': if (typeof VENUE !== 'undefined') VENUE.onInfo(m); break;
+      case 'venuemine': if (typeof VENUE !== 'undefined') VENUE.onMine(m.mine); break;
       case 'counts': if (typeof HOTEL !== 'undefined') HOTEL.setCounts(m.c); break;
       case 'roomfail': toast(m.reason || 'That did not work.'); break;
       case 'invited': {

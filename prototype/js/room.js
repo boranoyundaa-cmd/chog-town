@@ -21,7 +21,8 @@ const ROOM = {
   const TINTS = ['#7a3ac8', '#ff7aa8', '#6fbdb0', '#ffc23a', '#e8553a', '#3a8ad8', '#4aa84a', '#f4f0e8', '#2b2140'];
   const save$ = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
   const load$ = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
-  const draftKey = () => 'chog_room_' + ((ROOM.owner || (WALLET.account || 'guest')) + '').toLowerCase();
+  const draftKey = () => (ROOM.kind === 'venue' ? 'chog_venue_' : 'chog_room_') + ((ROOM.owner || (WALLET.account || 'guest')) + '').toLowerCase();
+  const limitNow = () => (ROOM.kind === 'venue' && ROOM.venue && ROOM.venue.limit) || LIMIT;                        // pieces: the free room, or the venue's tier budget (the server enforces the same number)
 
   // ------------------------------------------------------------------ the town door
   const doorMark = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.56, 4), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -43,6 +44,7 @@ const ROOM = {
     GAME.room = { blocked: (x, z, r) => roomBlocked(x, z, r) }; ROOM.active = true; GAME.path = []; GAME.keys = {};
     GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.zoomT = 13.5;
   }
+  const fitZoom = () => { const [w, d] = dims(); GAME.zoomT = Math.min(GAME.zoomMax, 13.5 * Math.max(1, (w + d) / 16)); };      // a bigger floor needs a wider view
   ROOM.showTown = on => { for (const o of CITY_NODES) o.visible = on; doorMark.visible = on; };            // the hotel hides and shows the street the same way a room does
   function leaveScene(keepTown) {                                                          // keepTown: going from a venue back to the hotel, the street stays hidden
     SPACE.unload(); if (!keepTown) { ROOM.showTown(true); DAY.resume(); }
@@ -85,18 +87,24 @@ const ROOM = {
     try {
       const r = await NET.enter(Object.assign({ space: 'venue', id: v.id }, SPAWN_AT)); if (!r || r.t !== 'entered') return false;
       if (typeof HOTEL !== 'undefined') { HOTEL.hideScene(true); HOTEL.away = true; }
-      ROOM.setup(r.doc, { kind: 'venue', owner: null, ownerName: null, mine: false, savedAt: null, draft: false, venue: r.venue || v, spawn: SPAWN_AT }); return true;
+      const ven = r.venue || v, [vw, vd] = ven.size || [9, 7], spawn = { x: vw / 2 - 1.6, z: -vd / 2 + 1.2, ry: 0 };          // just inside the door, whatever the size
+      let doc = r.doc, draft = false;
+      if (r.mine) {                                                                              // the owner: unsaved changes win, a new venue starts from the starter room
+        const dr = load$('chog_venue_' + (r.owner || '')); if (dr && dr.doc) { doc = dr.doc; draft = true; toast('Your unsaved changes are back.'); }
+        if (!doc) doc = SPACE.starterRoom();
+      }
+      ROOM.setup(doc, { kind: 'venue', owner: r.owner || null, ownerName: null, mine: !!r.mine, savedAt: r.doc ? Date.now() : null, draft, venue: ven, spawn }); return true;
     } finally { ROOM.busy = false; ROOM.refreshUI(); }
   };
   ROOM.exitVenueScene = function () { setEdit(false); ROOM.venue = null; leaveScene(true); ROOM.refreshUI(); if (typeof render === 'function') render(); };
   ROOM.setup = function (doc, info) {
     if (!Array.isArray(doc.pieces)) doc.pieces = [];
-    doc.pieces = doc.pieces.filter(it => SPACE.PIECES[it.p]).slice(0, info.kind === 'venue' ? 80 : LIMIT);
+    SPACE.size = (info.venue && info.venue.size) || [9, 7]; doc.pieces = doc.pieces.filter(it => SPACE.PIECES[it.p]).slice(0, (info.venue && info.venue.limit) || LIMIT);
     Object.assign(ROOM, info, { doc, dirty: !!info.draft, held: null, hover: null, mode: 'walk' });
     if (!ROOM.active) enterScene();
     GAME.editMode = false; GAME.dragUI = false; dropGhost();
     SPACE.build(doc); const sc = sun.shadow.camera; sc.updateProjectionMatrix();
-    placeMe(info.spawn || SPAWN); rebuildNav(); document.body.classList.add('inroom');
+    fitZoom(); placeMe(info.spawn || SPAWN); rebuildNav(); document.body.classList.add('inroom');
     ROOM.refreshUI(); if (typeof render === 'function') render();
   };
   ROOM.leave = function () {
@@ -112,7 +120,7 @@ const ROOM = {
     if (ROOM.venue) { NET.enter(Object.assign({ space: 'venue', id: ROOM.venue.id }, pos)); return; }
     NET.enter(Object.assign({ space: ROOM.kind === 'solo' || !ROOM.owner ? 'solo' : 'room', who: ROOM.owner }, pos));
   };
-  ROOM.onDoc = function (doc) { if (!ROOM.active || ROOM.mine) return; ROOM.doc = doc; SPACE.build(doc); rebuildNav(); toast('The owner changed the Home.'); };       // the owner saved while we are visiting
+  ROOM.onDoc = function (doc) { if (!ROOM.active || ROOM.mine) return; ROOM.doc = doc; SPACE.build(doc); rebuildNav(); toast(ROOM.kind === 'venue' ? 'The owner changed the room.' : 'The owner changed the Home.'); };       // the owner saved while we are visiting
   ROOM.editing = () => ROOM.active && ROOM.mode === 'edit';
   ROOM.title = () => (ROOM.kind === 'venue' ? (ROOM.venue && ROOM.venue.name) || 'Hotel room' : ROOM.kind === 'visit' ? (ROOM.doc && ROOM.doc.name ? ROOM.doc.name : 'A Home') : ROOM.doc && ROOM.doc.name ? ROOM.doc.name : 'My Home');
   ROOM.hint = () => (ROOM.mode === 'edit'
@@ -226,7 +234,7 @@ const ROOM = {
   function rotateHeld() {
     const h = ROOM.held; if (!h || isWall(defOf(h.it))) return; h.it.ry = ((h.it.ry || 0) + 90) % 360; if (ghost) ghost.g.rotation.y = rad(h.it.ry);
   }
-  ROOM.hold = p => { if (!ROOM.editing() || (ROOM.doc.pieces.length >= LIMIT)) { if (ROOM.doc && ROOM.doc.pieces.length >= LIMIT) toast('This room is full (' + LIMIT + ' pieces).'); return; } cancelHeld(); const d = SPACE.PIECES[p], t = d.parts.find(x => x.edit && x.t === 'text'); hold(Object.assign({ p, x: 0, z: 0, ry: 0 }, t ? { txt: t.txt } : {})); };
+  ROOM.hold = p => { if (!ROOM.editing() || (ROOM.doc.pieces.length >= limitNow())) { if (ROOM.doc && ROOM.doc.pieces.length >= limitNow()) toast('This room is full (' + limitNow() + ' pieces).'); return; } cancelHeld(); const d = SPACE.PIECES[p], t = d.parts.find(x => x.edit && x.t === 'text'); hold(Object.assign({ p, x: 0, z: 0, ry: 0 }, t ? { txt: t.txt } : {})); };
   ROOM.rotate = rotateHeld; ROOM.drop = deleteHeld; ROOM.cancel = cancelHeld;
   ROOM.retint = c => { const h = ROOM.held; if (!h) return; if (c) h.it.c = c; else delete h.it.c; setGhost(h.it); ROOM.refreshUI(); if (typeof render === 'function') render(); };
   ROOM.retext = t => { const h = ROOM.held; if (!h) return; h.it.txt = t.slice(0, 24); setGhost(h.it); };
@@ -305,15 +313,18 @@ const ROOM = {
     ROOM.busy = true; ROOM.refreshUI();
     try {
       if (!await NET.authenticate()) { toast('Signing in with your wallet did not work.'); return; }
-      NET.send({ t: 'roomprep', doc: ROOM.doc }); const prep = await NET.waitFor(['roomprep', 'roomfail'], 8000);
-      if (!prep || prep.t !== 'roomprep') { if (!prep) toast('The server did not answer.'); return; }
-      toast('Sign the message in your wallet to save the Home (free, no transaction).');
+      const ven = ROOM.kind === 'venue', pt = ven ? 'venueprep' : 'roomprep';
+      NET.send({ t: pt, doc: ROOM.doc }); const prep = await NET.waitFor([pt, 'roomfail'], 8000);
+      if (!prep || prep.t !== pt) { if (!prep) toast('The server did not answer.'); return; }
+      toast('Sign the message in your wallet to save the ' + (ven ? 'venue' : 'Home') + ' (free, no transaction).');
       let sig; try { sig = await WALLET.provider.request({ method: 'personal_sign', params: [hexOf(prep.message), WALLET.account] }); } catch (e) { toast(e && e.code === 4001 ? 'Not saved: you declined the signature.' : 'Could not sign.'); return; }
-      NET.send({ t: 'roomsave', doc: ROOM.doc, ts: prep.ts, sig }); const r = await NET.waitFor(['roomsaved', 'roomfail'], 8000);
-      if (r && r.t === 'roomsaved') {
+      const st = ven ? 'venuesave' : 'roomsave', sd = ven ? 'venuesaved' : 'roomsaved';
+      NET.send({ t: st, doc: ROOM.doc, ts: prep.ts, sig }); const r = await NET.waitFor([sd, 'roomfail'], 8000);
+      if (r && r.t === sd && ven) { ROOM.dirty = false; ROOM.savedAt = r.at; save$(draftKey(), null); if (typeof VENUE !== 'undefined') VENUE.onMine(r.mine); toast(r.mine && r.mine.state === 'open' ? 'Venue saved. Visitors see the new look.' : 'Venue saved. Press Open venue when you are ready.'); }
+      else if (r && r.t === sd) {
         ROOM.dirty = false; ROOM.savedAt = r.at; ROOM.owner = WALLET.account.toLowerCase(); save$(draftKey(), null); toast('Home saved. Invite friends from the top bar.');
         if (ROOM.kind === 'solo') { ROOM.kind = 'mine'; const me = GAME.me; NET.enter({ space: 'room', who: 'me', x: me.position.x, z: me.position.z, ry: me.rotation.y }); }      // now others can come in
-      } else if (!r) toast('The server did not answer. Try Save again.');
+      } else if (r && r.t === 'roomfail') { /* net.js already showed why */ } else if (!r) toast('The server did not answer. Try Save again.');
     } finally { ROOM.busy = false; ROOM.refreshUI(); if (typeof render === 'function') render(); }
   };
   ROOM.invite = async function (renew) {                                                    // copy the share link (renew = the old link stops working)
@@ -332,12 +343,13 @@ const ROOM = {
   const btn = (cls, txt, fn, title) => { const b = el('button', 'btn hit ' + cls, ''); b.textContent = txt; b.onclick = fn; if (title) b.title = title; return b; };
   function topBar() {
     const bar = el('div', 'roombar hit'), name = el('div', 'rn'); const t = el('b'); t.textContent = ROOM.title(); name.appendChild(t);
-    const s = el('small'); s.textContent = ROOM.kind === 'venue' ? 'Room ' + ROOM.venue.no + ' · Floor ' + ROOM.venue.floor + ' · ' + (ROOM.venue.by || 'Chog Hotel') : ROOM.kind === 'visit' ? 'Visiting ' + (ROOM.ownerName || shortAddr(ROOM.owner || '0x0000000000')) : ROOM.mine ? (ROOM.kind === 'solo' ? 'Not saved to the server' : ROOM.dirty ? 'Unsaved changes' : ROOM.savedAt ? 'Saved' : 'New Home') : '';
+    const s = el('small'); s.textContent = ROOM.kind === 'venue' && ROOM.mine ? 'Your venue · Room ' + ROOM.venue.no + ' · ' + (ROOM.dirty ? 'Unsaved changes' : (typeof VENUE !== 'undefined' && VENUE.mine && VENUE.mine.state === 'open' ? 'Open' : 'Closed to visitors')) : ROOM.kind === 'venue' ? 'Room ' + ROOM.venue.no + ' · Floor ' + ROOM.venue.floor + ' · ' + (ROOM.venue.by || 'Chog Hotel') : ROOM.kind === 'visit' ? 'Visiting ' + (ROOM.ownerName || shortAddr(ROOM.owner || '0x0000000000')) : ROOM.mine ? (ROOM.kind === 'solo' ? 'Not saved to the server' : ROOM.dirty ? 'Unsaved changes' : ROOM.savedAt ? 'Saved' : 'New Home') : '';
     name.appendChild(s); bar.appendChild(name);
     if (ROOM.mine) {
       bar.appendChild(btn(ROOM.mode === 'edit' ? '' : 'ghost', ROOM.mode === 'edit' ? 'Done' : 'Decorate (B)', () => setEdit(ROOM.mode !== 'edit')));
       const sv = btn(ROOM.dirty || !ROOM.savedAt ? '' : 'ghost', ROOM.busy ? 'Saving…' : 'Save', () => ROOM.save(), 'Sign with your wallet to store the room on the server'); sv.disabled = ROOM.busy; bar.appendChild(sv);
-      bar.appendChild(btn('ghost', 'Invite link', () => ROOM.invite(), 'Copy a link that lets people in for a week')); bar.appendChild(btn('ghost', 'Reset link', () => ROOM.invite(true), 'Make a new link; the old one stops working'));
+      if (ROOM.kind === 'venue') { if (typeof VENUE !== 'undefined') { const open = VENUE.mine && VENUE.mine.state === 'open'; bar.appendChild(btn(open ? 'ghost' : '', open ? 'Close venue' : 'Open venue', () => VENUE.toggleOpen(), open ? 'Visitors can no longer come in' : 'Let visitors in (the room must be saved)')); } }
+      else { bar.appendChild(btn('ghost', 'Invite link', () => ROOM.invite(), 'Copy a link that lets people in for a week')); bar.appendChild(btn('ghost', 'Reset link', () => ROOM.invite(true), 'Make a new link; the old one stops working')); }
     }
     bar.appendChild(btn('ghost', 'Leave', () => ROOM.leave())); return bar;
   }
@@ -362,7 +374,7 @@ const ROOM = {
 
   function panel() {
     const p = el('div', 'rp card hit'), h = el('div', 'rp-head'), t = el('b'); t.textContent = 'Decorate'; h.appendChild(t);
-    const n = el('small'); n.textContent = ROOM.doc.pieces.length + ' / ' + LIMIT + ' pieces'; h.appendChild(n); p.appendChild(h);
+    const n = el('small'); n.textContent = ROOM.doc.pieces.length + ' / ' + limitNow() + ' pieces'; h.appendChild(n); p.appendChild(h);
     if (ROOM.held) p.appendChild(holdBox());
     const tabs = el('div', 'rp-tabs'); for (const [id, lb] of [['pieces', 'Pieces'], ['look', 'Room look']]) { const b = el('button', ROOM.tab === id ? 'on' : ''); b.textContent = lb; b.onclick = () => { ROOM.tab = id; ROOM.refreshUI(); }; tabs.appendChild(b); } p.appendChild(tabs);
     const body = el('div', 'rp-body'); body.appendChild(ROOM.tab === 'pieces' ? piecesTab() : lookTab()); p.appendChild(body); return p;
@@ -387,7 +399,7 @@ const ROOM = {
   }
   function lookTab() {
     const w = el('div'), doc = ROOM.doc, sect = t => { const h = el('h4'); h.textContent = t; w.appendChild(h); };
-    sect('Name'); const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 32; nm.value = doc.name || ''; nm.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') nm.blur(); }; nm.onchange = () => { doc.name = nm.value.trim() || 'My Home'; touch(); ROOM.refreshUI(); }; w.appendChild(nm);
+    if (ROOM.kind !== 'venue') sect('Name'); const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 32; nm.value = doc.name || ''; nm.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') nm.blur(); }; nm.onchange = () => { doc.name = nm.value.trim() || 'My Home'; touch(); ROOM.refreshUI(); }; if (ROOM.kind !== 'venue') w.appendChild(nm);
     sect('Theme'); const th = el('div', 'rp-opts'); for (const k of Object.keys(SPACE.THEMES)) { const b = el('button', doc.theme === k ? 'on' : ''); b.textContent = SPACE.THEMES[k].name; b.onclick = look(() => { doc.theme = k; }); th.appendChild(b); } w.appendChild(th);
     sect('Window view'); const am = el('div', 'rp-opts'); for (const k of ['', ...Object.keys(SPACE.VIEWS)]) { const b = el('button', (doc.view || '') === k ? 'on' : ''); b.textContent = k ? SPACE.VIEWS[k].name : 'Real time'; b.onclick = look(() => { if (k) doc.view = k; else delete doc.view; }); am.appendChild(b); } w.appendChild(am);
     const lt = el('div', 'rp-note'); lt.textContent = 'The view is only what you see through the windows. The room is lit by the lights you place.'; w.appendChild(lt);
