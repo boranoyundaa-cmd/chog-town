@@ -73,6 +73,18 @@ function chogEyes(face, o) {
   return blink;
 }
 
+// the coin held in the mouth: BTC orange with a white B, Mon indigo with the white rounded-square mark
+const COIN_TEX = {};
+function coinTexture(kind) {
+  if (COIN_TEX[kind]) return COIN_TEX[kind];
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d'), mon = kind === 'mon';
+  const gr = g.createRadialGradient(46, 42, 6, 64, 64, 64); gr.addColorStop(0, mon ? '#8a72e8' : '#ffb347'); gr.addColorStop(1, mon ? '#4a34a8' : '#e07a14'); g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  g.strokeStyle = mon ? '#2e2070' : '#b85a0c'; g.lineWidth = 7; g.beginPath(); g.arc(64, 64, 55, 0, Math.PI * 2); g.stroke(); g.strokeStyle = mon ? '#b8a8ff' : '#ffd890'; g.lineWidth = 3; g.beginPath(); g.arc(64, 64, 47, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = g.strokeStyle = '#ffffff';
+  if (mon) { g.lineWidth = 9; g.lineJoin = 'round'; g.beginPath(); g.moveTo(44, 48); g.lineTo(84, 48); g.lineTo(98, 64); g.lineTo(84, 80); g.lineTo(44, 80); g.lineTo(30, 64); g.closePath(); g.stroke(); }
+  else { g.font = '700 74px "Fredoka", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('₿', 64, 68); }
+  const t = new THREE.CanvasTexture(cv); t.center.set(0.5, 0.5); t.rotation = Math.PI / 2; return COIN_TEX[kind] = t;
+}
 // ---- mouth
 function chogMouth(face, o) {
   const m = o.mouth, X = 0.015, ink = 0x2a1230;
@@ -81,13 +93,21 @@ function chogMouth(face, o) {
     case 'sad': face.add(arcDecal(0.06, 0.009, ink, X, -0.15, 0.036, true, 0.5)); break;
     case 'flat': face.add(decal(new THREE.PlaneGeometry(0.11, 0.014), ink, X, -0.125, 0.036)); break;
     case 'worried': case 'wavy': { for (let i = 0; i < 4; i++) { const l = decal(new THREE.PlaneGeometry(0.045, 0.013), ink, X - 0.07 + i * 0.047, -0.125 + (i % 2 ? 0.012 : -0.012), 0.036); l.rotation.z = i % 2 ? -0.5 : 0.5; face.add(l); } if (m === 'worried') face.add(decal(new THREE.CircleGeometry(0.02, 8), TEAR, 0.19, 0.1, 0.04)); break; }
-    case 'drool': smile(); face.add(decal(new THREE.PlaneGeometry(0.035, 0.16), TEAR, 0.075, -0.2, 0.04)); face.add(decal(new THREE.CircleGeometry(0.022, 8), TEAR, 0.075, -0.28, 0.04)); break;
+    case 'drool': {                                                   // an open mouth (dark inside, pink tongue) with a stream of drool from its lower edge
+      face.add(decal(new THREE.CircleGeometry(1, 18), ink, X, -0.15, 0.036, 0.07, 0.062)); face.add(decal(new THREE.CircleGeometry(1, 18), 0x6a2a2a, X, -0.15, 0.038, 0.058, 0.05)); face.add(decal(new THREE.CircleGeometry(1, 14), 0xf0708f, X, -0.168, 0.04, 0.042, 0.026));
+      face.add(decal(new THREE.PlaneGeometry(0.03, 0.2), TEAR, X - 0.025, -0.28, 0.042)); face.add(decal(new THREE.CircleGeometry(0.018, 8), TEAR, X - 0.025, -0.385, 0.042)); break; }
+    case 'wo': face.add(decal(new THREE.CircleGeometry(1, 16), ink, X + 0.015, -0.135, 0.036, 0.03, 0.043)); face.add(decal(new THREE.CircleGeometry(1, 8), 0xffffff, X + 0.006, -0.12, 0.04, 0.008, 0.011)); break;
     case 'bubble': { smile(-0.13, 0.05); const b = cm(new THREE.SphereGeometry(0.075, 8, 6), 0xff7ab8, X, -0.115, 0.08); b.userData.noOutline = true; face.add(b); break; }
     case 'puke': { smile(-0.125, 0.05); ['#e83a3a', '#f08a30', '#f4d83a', '#4ac85a', '#3a8ae8', '#8a4ad8'].forEach((c, i) => face.add(decal(new THREE.PlaneGeometry(0.035, 0.3), parseInt(c.slice(1), 16), -0.0 + (i - 2.5) * 0.034, -0.27, 0.05))); break; }
     case 'gold': face.add(decal(new THREE.PlaneGeometry(0.17, 0.05), 0xffffff, X, -0.125, 0.036)); face.add(arcDecal(0.085, 0.012, ink, X, -0.1, 0.038, false, 0.6)); face.add(decal(new THREE.PlaneGeometry(0.03, 0.036), 0xf0c040, 0.05, -0.135, 0.041)); break;
     case 'grit': face.add(decal(new THREE.PlaneGeometry(0.15, 0.075), 0x2a1230, X, -0.125, 0.036)); face.add(decal(new THREE.PlaneGeometry(0.13, 0.055), 0xffffff, X, -0.125, 0.038)); for (const x of [-0.04, 0, 0.04]) face.add(decal(new THREE.PlaneGeometry(0.008, 0.055), ink, X + x, -0.125, 0.04)); break;
     case 'lipbite': smile(-0.12, 0.06); face.add(decal(new THREE.PlaneGeometry(0.1, 0.02), 0xffffff, X, -0.118, 0.038)); face.add(decal(new THREE.PlaneGeometry(0.02, 0.05), 0xe86a8a, 0.06, -0.14, 0.04)); break;
-    case 'coin': { const c = cm(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 12), o.mouthColor ?? 0xf0a030, X, -0.12, 0.07); c.rotation.x = Math.PI / 2; c.userData.noOutline = true; face.add(c); face.add(decal(new THREE.CircleGeometry(0.045, 10), 0xffffff, X, -0.12, 0.086)); break; }
+    case 'coin': {                                                    // the art: a wide grin of white teeth and a big coin held at its lower left, over the chin
+      const grin = new THREE.Shape(); grin.moveTo(X - 0.04, -0.095); grin.lineTo(X + 0.17, -0.07); grin.lineTo(X + 0.17, -0.108); for (let i = 0; i < 6; i++) grin.lineTo(X + 0.17 - (i + 0.5) * 0.035, -0.13 - (i % 2 ? 0 : 0.01)), grin.lineTo(X + 0.17 - (i + 1) * 0.035, -0.118); grin.lineTo(X - 0.04, -0.095);
+      for (const [dx, dy] of [[-0.007, 0], [0.007, 0], [0, -0.007], [0, 0.007], [0.005, 0.005], [-0.005, -0.005]]) { const ol = decal(new THREE.ShapeGeometry(grin), ink, dx, dy, 0.036); face.add(ol); } face.add(decal(new THREE.ShapeGeometry(grin), 0xf6f6f2, 0, 0, 0.038));
+      for (const x of [-0.02, 0.02, 0.06, 0.1]) face.add(decal(new THREE.PlaneGeometry(0.006, 0.04), 0xb8b8c0, X + x, -0.098, 0.04));
+      const tex = coinTexture(o.coinKind || 'btc'), edge = tmat(new THREE.Color(o.coinKind === 'mon' ? 0x3a2a80 : 0xb86a10).multiplyScalar(EXPO).getHex(), { em: 0.2 }), fm = new THREE.MeshToonMaterial({ map: tex, gradientMap: toonGrad4, color: 0x9a9aa0, emissive: 0x201810 });
+      const c = new THREE.Mesh(new THREE.CylinderGeometry(0.088, 0.088, 0.026, 22), [edge, fm, fm]); c.rotation.x = Math.PI / 2; const cg = new THREE.Group(); cg.position.set(X - 0.05, -0.205, 0.075); c.userData.noOutline = true; cg.rotation.z = -0.25; cg.add(c); face.add(cg); break; }
     case 'clown': face.add(arcDecal(0.135, 0.03, 0xd8202a, X, -0.085, 0.037, false, 0.62)); face.add(arcDecal(0.12, 0.012, 0x7a1018, X, -0.115, 0.039, false, 0.55)); break;
     case 'oval': face.add(decal(new THREE.CircleGeometry(1, 16), 0x6a3a28, X, -0.15, 0.036, 0.05, 0.085)); face.add(decal(new THREE.CircleGeometry(1, 16), 0x3a1a14, X, -0.16, 0.038, 0.036, 0.065)); break;
     case 'zomb': face.add(decal(new THREE.PlaneGeometry(0.27, 0.13), 0x3a1020, X, -0.14, 0.036)); for (let i = -3; i <= 3; i++) { const t = decal(new THREE.CircleGeometry(0.03, 3), 0xf4f4e0, X + i * 0.037, -0.09, 0.04); t.rotation.z = Math.PI / 2 * 3 + Math.PI / 2; face.add(t); const u = decal(new THREE.CircleGeometry(0.026, 3), 0xf4f4e0, X + i * 0.037 + 0.018, -0.2, 0.04); u.rotation.z = Math.PI / 2; face.add(u); }

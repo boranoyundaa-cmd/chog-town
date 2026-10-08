@@ -118,9 +118,9 @@ function eyeOptionsOld(name) {
   return { eyeStyle: 'round' };
 }
 
-const MOUTHS = { 'btc coin': { mouth: 'coin', mouthColor: 0xf0a030 }, 'mon coin': { mouth: 'coin', mouthColor: 0x8a4ad8 }, bubblegum: { mouth: 'bubble' }, 'clown mouth': { mouth: 'clown' },
+const MOUTHS = { 'btc coin': { mouth: 'coin', coinKind: 'btc' }, 'mon coin': { mouth: 'coin', coinKind: 'mon' }, bubblegum: { mouth: 'bubble' }, 'clown mouth': { mouth: 'clown' },
   drooling: { mouth: 'drool' }, flat: { mouth: 'flat' }, 'gold tooth': { mouth: 'gold' }, grit: { mouth: 'grit' }, 'lip bite': { mouth: 'lipbite' }, 'rainbow puke': { mouth: 'puke' },
-  sad: { mouth: 'sad' }, smile: { mouth: 'smile' }, 'normal smile': { mouth: 'smile' }, worried: { mouth: 'worried' }, wo: { mouth: 'wavy' } };
+  sad: { mouth: 'sad' }, smile: { mouth: 'smile' }, 'normal smile': { mouth: 'smile' }, worried: { mouth: 'worried' }, wo: { mouth: 'wo' } };
 
 // ---- Aura (value "Clean" means no aura)
 function auraOptions(name) { return Object.assign(auraOptionsOld(name), { auraName: name }); }

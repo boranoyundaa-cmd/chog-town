@@ -38,6 +38,14 @@ function faceGradient(stops) {
   const geo = new THREE.ShapeGeometry(FACE_SHAPE()), uv = geo.attributes.uv, p = geo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.5, 1 - (p.getY(i) + 0.245) / 0.47);
   const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.9 })); m.position.z = 0.032; m.userData.noOutline = true; return m;
 }
+// the hair's bangs inside an open hood or helmet: a rounded cap of hair colour following the opening, zigzag lower edge, so it reads as sitting behind the hood's rim
+function hairFringe(c) {
+  const sh = new THREE.Shape(), cx = 0, cy = -0.03, rx = 0.26, ry = 0.27, a0 = 0.56;
+  for (let i = 0; i <= 14; i++) { const a = Math.PI - a0 - (Math.PI - 2 * a0) * (1 - i / 14), x = cx + rx * Math.cos(a), y = cy + ry * Math.sin(a); i ? sh.lineTo(x, y) : sh.moveTo(x, y); }
+  const tips = [-0.2, -0.1, 0, 0.1, 0.2], valleys = [-0.15, -0.05, 0.05, 0.15];
+  sh.lineTo(-0.22, 0.13); tips.forEach((x, i) => { sh.lineTo(x, 0.12 + (i % 2) * 0.012); if (i < 4) sh.lineTo(valleys[i], 0.19); }); sh.lineTo(0.22, 0.13);
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: c })); m.position.z = 0.043; m.userData.noOutline = true; return m;
+}
 function orientBlade(mesh, d) {
   const Y = d.clone().normalize(); const Z = new THREE.Vector3(0, 0.25, 1); Z.addScaledVector(Y, -Z.dot(Y));
   if (Z.lengthSq() < 1e-3) Z.set(0, 1, 0); Z.normalize();
@@ -71,6 +79,7 @@ const scarfTex = paint(32, 16, (g, w, h) => { for (let y = 0; y < h; y += 4) for
 function chog(o = {}) {
   const hairC = o.hair || 0x5b35b0, suitC = o.suit || 0x5a32b0, trim = o.trim || 0xffd060;
   const MAG = o.hands || 0xd43d7c, MAGD = o.hands ? new THREE.Color(o.hands).multiplyScalar(0.72).getHex() : 0x9a2a68, CREAM = o.faceC || 0xfdf3cc;
+  const FACEL = new THREE.Color(CREAM).multiplyScalar(0.7).getHex();             // the lit plate: built at EXPO so it reads as the art's cream (decals on it, like eyelids, are unlit and keep CREAM)
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
   const hatLook = o.hatName && typeof HAT_LOOK !== 'undefined' && HAT_LOOK[o.hatName];                 // chog_hats.js: every Head value has its own hat
   const hasHat = (!!o.head && o.head !== 'none' && !['headset', 'clownnose', 'thirdeye', 'thorn', 'wig'].includes(o.head)) || (!!hatLook && typeof HAT_COVERS !== 'undefined' && HAT_COVERS.has(o.hatName));
@@ -128,7 +137,7 @@ function chog(o = {}) {
   const hairG = new THREE.Group(); head.add(hairG);
   const mass = cm(new THREE.IcosahedronGeometry(0.44, 1), hairC, 0, 0.06, -0.12); mass.scale.set(1.08, 0.95, 0.98); hairG.add(mass);
   if (o.faceGrad && !o.bald) mass.material = new THREE.MeshToonMaterial({ map: skullRainbow(o.faceGrad), gradientMap: toonGrad4, emissive: 0x303030 });                 // a Multi Colored radioactive head is rainbow all over
-  if (o.bald) { hairG.remove(mass); const cr = cm(new THREE.SphereGeometry(0.43, 14, 10), CREAM, 0, 0.07, -0.06); cr.scale.set(1.12, 1.0, 1.0); hairG.add(cr); if (o.faceGrad) cr.material = new THREE.MeshToonMaterial({ map: skullRainbow(o.faceGrad), gradientMap: toonGrad4, emissive: 0x303030 }); }                // a skull: a bare round head, no hair
+  if (o.bald) { hairG.remove(mass); const cr = cm(new THREE.SphereGeometry(0.43, 14, 10), FACEL, 0, 0.07, -0.06); cr.scale.set(1.12, 1.0, 1.0); hairG.add(cr); if (o.faceGrad) cr.material = new THREE.MeshToonMaterial({ map: skullRainbow(o.faceGrad), gradientMap: toonGrad4, emissive: 0x303030 }); }                // a skull: a bare round head, no hair
   const hc = new THREE.Color(hairC), hsl = {}; hc.getHSL(hsl);
   const shadeC = k => new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(0.85, Math.max(0.1, hsl.l * k))).getHex();
   const top = hasHat ? 0.55 : 1;
@@ -156,12 +165,10 @@ function chog(o = {}) {
     orientBlade(b, new THREE.Vector3(dxh, 0.4, dzh * 0.8 - 0.25)); hairG.add(b);
   }
   const face = new THREE.Group(); face.position.set(0, -0.02, 0.35); head.add(face);
-  { const fm = cm(FACE_GEO, o.bald ? new THREE.Color(CREAM).multiplyScalar(0.84).getHex() : CREAM); fm.receiveShadow = false; if (o.bald) fm.userData.noOutline = true; face.add(fm); }          // a bald skull's face plate has no ink line of its own: it sits in the round skull          // the face never sits in the hair's shadow
+  { const fm = cm(FACE_GEO, o.bald ? new THREE.Color(FACEL).multiplyScalar(0.84).getHex() : FACEL); fm.receiveShadow = false; if (o.bald) fm.userData.noOutline = true; face.add(fm); }          // a bald skull's face plate has no ink line of its own: it sits in the round skull          // the face never sits in the hair's shadow
   if (o.faceGrad) face.add(faceGradient(o.faceGrad));
   const hl = shadeC(0.95);
-  if (!o.bald) { const lid = cm(new THREE.BoxGeometry(0.62, 0.05, 0.2), shadeC(0.95), 0, 0.235, -0.03); lid.userData.noOutline = true; face.add(lid); }
-  if (!o.bald) face.add(decal(new THREE.PlaneGeometry(0.62, 0.075), hl, 0, 0.215, 0.04));
-  if (!o.bald) for (let i = 0; i < 6; i++) { const t = decal(new THREE.CircleGeometry(0.065, 3), hl, -0.2 + i * 0.08, 0.17, 0.041); t.rotation.z = Math.PI / 2 * 3 + (i % 2 ? 0.1 : -0.1); t.scale.set(1, 0.9 + (i % 3) * 0.18, 1); face.add(t); }
+  if ((o.fringe || (bl && bl.fringe)) && !hasHat && !o.bald) face.add(hairFringe(hl));          // bangs only where headwear leaves the forehead open (hoods, helmet, toad suits); under a cap the art shows none
   let eyes = [];
   if (o.eyeStyle) eyes = chogEyes(face, o);
   else for (const sx of [-1, 1]) {
@@ -177,6 +184,7 @@ function chog(o = {}) {
   if (o.head === 'clownnose') { const cn = cm(new THREE.SphereGeometry(0.1, 12, 9), 0xe8202a, 0, -0.06, 0.1); cn.userData.noOutline = true; face.add(cn); face.add(decal(new THREE.CircleGeometry(0.026, 8), 0xffffff, -0.035, -0.02, 0.196, 1, 0.7)); }
   if (o.head === 'thirdeye') { face.add(decal(new THREE.CircleGeometry(1, 16), 0x1a1030, 0, 0.115, 0.045, 0.1, 0.056)); face.add(decal(new THREE.CircleGeometry(1, 16), 0xffffff, 0, 0.115, 0.047, 0.088, 0.046)); face.add(decal(new THREE.CircleGeometry(0.026, 10), 0x1a1030, 0, 0.115, 0.049)); face.add(decal(new THREE.CircleGeometry(0.009, 6), 0xffffff, -0.01, 0.125, 0.05)); }
   CM_K = EXPO;
+  if (bl && bl.fringe && !hatLook) { /* fringe is added below the face block; see o.fringe */ }
   if (bl) bodyBuild({ root, body, head, hairG, face, arms, legs, o, hasHat }, bl, o.bodyName);
   if (hatLook) hatLook(head, o);
   else if (o.head === 'straw') {

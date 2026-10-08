@@ -54,7 +54,13 @@ const EYE_LOOK = {
   'Blue Smirk': b => { b.arc(-EYE_X, EYE_Y + 0.0, 0.065, false, 0x1a4a9a, 0.016); b.glossy(EYE_X, EYE_Y, 0.07, 0.09, 0x2a5ae0); b.brow(EYE_X, 0.15, 0.14, -0.15, 0x1a4a9a); },
   'BTC Glass': b => b.pair(sx => { b.oval(sx * EYE_X, EYE_Y, 0.115, 0.115, 0xf0a030); b.ring(sx * EYE_X, EYE_Y, 0.1, 0.012, 0xc87818); const l = new THREE.Mesh(new THREE.PlaneGeometry(0.15, 0.15), new THREE.MeshBasicMaterial({ map: letterTex('B', '#ffffff', '#f0a030'), transparent: true })); l.position.set(sx * EYE_X, EYE_Y, 0.052); l.userData.noOutline = true; b.face.add(l); }),
   'Chog Viper': b => b.visor([0x30c8f0, 0x2a8af0, 0x1a4ad8], 0.64, 0.19, 0.03, 0xf4f8ff),
-  'Classic VR': b => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.22, 0.07), tmat(0x22222c, { em: 0.2 })); m.position.set(0, 0.03, 0.07); face_add(b, m); b.line(0, 0.03, 0.54, 0.16, 0, 0x14141c); for (const x of [-0.14, 0.0, 0.14]) b.line(x, 0.03, 0.025, 0.2, 0.55, 0xf4f4f4); },
+  'Classic VR': b => {                                                                    // wide black goggles in a light frame, three white slanted glints (the slab's front is at z = 0.105)
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.22, 0.07), tmat(0x22222c, { em: 0.2 })); m.position.set(0, 0.03, 0.07); face_add(b, m);
+    const on = (g, c, x, y, z, rot = 0) => { const d = decal(g, c, x, y, z); d.rotation.z = rot; b.face.add(d); return d; };
+    on(roundRectGeo(0.67, 0.245, 0.07), 0x9a9aa6, 0, 0.03, 0.1075); on(roundRectGeo(0.6, 0.18, 0.055), 0x15151d, 0, 0.03, 0.109);
+    for (const [x, w] of [[-0.15, 0.05], [-0.04, 0.035], [0.07, 0.05]]) { const g = new THREE.Shape(); g.moveTo(-w / 2 - 0.05, -0.085); g.lineTo(w / 2 - 0.05, -0.085); g.lineTo(w / 2 + 0.05, 0.085); g.lineTo(-w / 2 + 0.05, 0.085); g.closePath(); on(new THREE.ShapeGeometry(g), 0xeeeef4, x, 0.03, 0.1105); }
+    on(new THREE.PlaneGeometry(0.58, 0.012), 0x5a5a66, 0, 0.105, 0.1105);
+  },
   'Closed Eye Crying': b => b.pair(sx => { b.arc(sx * EYE_X, EYE_Y + 0.045, 0.06, false, INKC, 0.016); b.tears(sx); }),
   'Clown Eye': b => b.pair(sx => { b.glossy(sx * EYE_X, EYE_Y, 0.06, 0.085); b.tri(sx * (EYE_X + 0.075), EYE_Y + 0.07, 0.05, sx * 0.5, sx < 0 ? 0xd82230 : 0x2a50d0); b.brow(sx * EYE_X, 0.15, 0.14, sx * -0.3); }),
   'Clown Eye Mix': b => b.pair(sx => { b.glossy(sx * EYE_X, EYE_Y, 0.06, 0.085); b.tri(sx * (EYE_X - 0.07), EYE_Y + 0.06, 0.05, 3.14 + sx * 0.5, sx < 0 ? 0xd82230 : 0x2a50d0); b.brow(sx * EYE_X, 0.15, 0.14, sx * 0.25); }),
@@ -76,7 +82,12 @@ const EYE_LOOK = {
   'Mixed Retard': b => { b.sclera(-EYE_X, EYE_Y, 0.1, 0.1, 0x6a2a8a, 0.02, 0.0, 0.5, 0x5a1a7a); b.sclera(EYE_X + 0.01, EYE_Y, 0.065, 0.075, 0x6a2a8a, -0.01, 0, 0.55, 0x5a1a7a); },
   'Mixed Round Eye': b => b.pair(sx => { b.oval(sx * EYE_X, EYE_Y, 0.108, 0.115, 0x6a2a8a); b.oval(sx * EYE_X, EYE_Y, 0.093, 0.1, 0xffffff); }),
   'Mixed Side Eye': b => { b.arc(-EYE_X, EYE_Y, 0.06, false, 0x5a1a7a, 0.016); b.glossy(EYE_X, EYE_Y - 0.01, 0.065, 0.06, 0x6a2a9a); b.lid(EYE_X, EYE_Y + 0.05, 0.2, 0.06); b.line(EYE_X, EYE_Y + 0.024, 0.19, 0.02, 0.05, 0x5a1a7a); },
-  'Modern VR': b => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.22, 0.07), tmat(0x14141c, { em: 0.2 })); m.position.set(0, 0.03, 0.07); face_add(b, m); b.ring(0, 0.03, 0.1, 0.012, 0x30c8ff, 0.6); b.line(0, 0.1, 0.5, 0.012, 0, 0x30c8ff); b.line(0, -0.04, 0.5, 0.012, 0, 0x30c8ff); b.arc(-0.12, 0.05, 0.07, true, 0xffffff, 0.012); },
+  'Modern VR': b => {                                                                     // black glossy visor with a cyan neon rim and a curved glint
+    const m = new THREE.Mesh(new THREE.BoxGeometry(0.64, 0.22, 0.07), tmat(0x101016, { em: 0.2 })); m.position.set(0, 0.03, 0.07); face_add(b, m);
+    const on = (g, c, x, y, z, rot = 0) => { const d = decal(g, c, x, y, z); d.rotation.z = rot; b.face.add(d); return d; };
+    on(roundRectGeo(0.67, 0.245, 0.09), 0x30c8ff, 0, 0.03, 0.1075); on(roundRectGeo(0.64, 0.215, 0.08), 0x0a0a10, 0, 0.03, 0.109);
+    const g = decal(new THREE.TorusGeometry(0.075, 0.012, 4, 16, Math.PI * 0.9), 0xffffff, -0.1, 0.045, 0.1105); g.rotation.z = Math.PI * 0.55; b.face.add(g); on(new THREE.CircleGeometry(0.012, 8), 0xffffff, -0.17, 0.0, 0.1105);
+  },
   MOG: b => b.visor([0xe83a2a, 0xf4a020, 0xf0e040, 0x40d8b0, 0x2a8ae8], 0.64, 0.18),
   Normal: b => b.pair(sx => { b.oval(sx * EYE_X, EYE_Y, 0.082, 0.1, INKC); b.oval(sx * EYE_X - 0.02, EYE_Y + 0.035, 0.022, 0.026, 0xffffff); }),
   'Normal Eye': b => { b.glossy(-EYE_X, EYE_Y, 0.065, 0.09); b.glossy(EYE_X, EYE_Y, 0.065, 0.09); b.brow(-EYE_X, 0.14, 0.15, -0.12); b.brow(EYE_X, 0.15, 0.15, 0.25); },
@@ -102,6 +113,7 @@ const EYE_LOOK = {
   Worried: b => b.pair(sx => { b.glossy(sx * EYE_X, EYE_Y, 0.065, 0.088); b.brow(sx * EYE_X, 0.15, 0.17, sx * -0.4, INKC, 0.026); if (sx > 0) b.line(0.22, 0.08, 0.02, 0.05, 0, 0xa8d8f0); }),
   XD: b => b.pair(sx => { b.line(sx * EYE_X - sx * 0.01, EYE_Y + 0.025, 0.1, 0.03, -sx * 0.45, INKC); b.line(sx * EYE_X - sx * 0.01, EYE_Y - 0.025, 0.1, 0.03, sx * 0.45, INKC); }),
 };
+function roundRectGeo(w, h, r) { const s = new THREE.Shape(), x = -w / 2, y = -h / 2; s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r); s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h); s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r); s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return new THREE.ShapeGeometry(s); }
 function face_add(b, m) { m.userData.noOutline = true; b.face && b.face.add(m); }
 function eyeLook(face, o) {                                                              // build the eyes of o.eyeName; returns the meshes that blink
   const b = eyeBuilder(face, o); b.face = face;
