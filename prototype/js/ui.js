@@ -69,7 +69,7 @@ async function chooseChog(id, demo = false) {
 }
 const curTraits = () => (UI.sel && traitsFor(UI.sel)) || DEFAULT_TRAITS;
 const isHolder = () => !!UI.sel;
-const playerName = () => (isHolder() ? 'Chog #' + UI.sel : (typeof NET !== 'undefined' && NET.status === 'online' && NET.name) || 'Guest Chog');
+const playerName = () => (typeof NET !== 'undefined' && NET.authed && NET.username ? NET.username : isHolder() ? 'Chog #' + UI.sel : (typeof NET !== 'undefined' && NET.status === 'online' && NET.name) || 'Guest Chog');
 GAME.nameFn = () => playerName();
 const playerSub = () => (isHolder() ? (UI.demo ? 'Demo preview' : curTraits().Tier || 'Chog') : 'Free to play');
 // the venue license counts every Chog of the connected wallet (not only the selected one); a demo preview counts just that one token
@@ -87,6 +87,15 @@ function licenseCard() {
 }
 function toast(msg) { const t = document.getElementById('toast'); if (!t) return; t.textContent = msg; t.style.opacity = 1; clearTimeout(UI.toastT); UI.toastT = setTimeout(() => t.style.opacity = 0, 3600); }
 
+// ---- username: one unique name per wallet, claimed by signing; venue guest lists use it
+function usernameRow() {
+  const r = el('div', 'unrow'), cur = NET.authed ? NET.username : null;
+  const i = document.createElement('input'); i.type = 'text'; i.maxLength = 16; i.placeholder = cur ? 'Change username' : 'Choose a username'; i.value = UI.nameDraft || ''; i.oninput = () => { UI.nameDraft = i.value; };
+  i.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') b.click(); if (e.key === 'Escape') i.blur(); };
+  const b = el('button', 'btn ghost', cur ? 'Change' : 'Claim'); b.onclick = async () => { if (await NET.claimName(i.value)) UI.nameDraft = ''; render(); };
+  r.appendChild(el('small', '', cur ? 'Username: ' + cur : 'Pick a name others can find you by (free)')); const row = el('div', 'unin'); row.appendChild(i); row.appendChild(b); r.appendChild(row); return r;
+}
+
 // ---- the My Chog card (same structure for every concept, each stylesheet dresses it)
 function card(onClose) {
   const tr = curTraits(), o = chogOptionsFromTraits(tr), holder = isHolder();
@@ -96,6 +105,7 @@ function card(onClose) {
   if (onClose) hero.querySelector('.x').onclick = onClose;
   c.appendChild(hero);
   c.appendChild(el('h2', '', playerName()));
+  if (WALLET.account && typeof NET !== 'undefined' && NET.status === 'online') c.appendChild(usernameRow());
   c.appendChild(el('div', 'sub', holder ? (UI.demo ? 'Demo preview of a holder Chog' : 'Your Genesis Chog') : 'Free default Chog. Hold a Chog NFT to play as your own.'));
   if (holder) { const chips = el('div', 'chips'); for (const k of ['Skin', 'Body', 'Head', 'Eyes', 'Mouth', 'Aura', 'Accessory']) if (tr[k]) chips.appendChild(el('span', 'chip', `<b>${k}</b>${tr[k]}`)); c.appendChild(chips); }
   const perk = (ok, txt, soon) => `<div class="perk ${ok ? '' : 'off'}"><i>${ok ? '✓' : '🔒'}</i><span>${txt}${soon ? ' <small>(soon)</small>' : ''}</span></div>`;

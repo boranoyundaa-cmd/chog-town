@@ -7,7 +7,7 @@
 ```bash
 cd server && npm install      # once
 node index.js                 # ws://localhost:8767, GET /health for counters
-npm test                      # 62 checks (chat, identity, rooms, invitations, hotel) against a mock chain, no network needed except the RPC stand-in
+npm test                      # 62 + 35 checks (chat, identity, rooms, invitations, hotel; then holder venues, license, facades, usernames, guest lists) against a mock chain, no network needed except the RPC stand-in
 ```
 
 Env: `PORT`, `RPC_URL`, `NFT_ADDR`, `ALLOWED_ORIGINS` (comma list; empty = any, dev only), `MAX_PLAYERS`, `MAX_PER_IP`, `DATA_DIR` (reports and `rooms/`; default `server/data`), `ROOM_PREP_MS` / `ROOM_SAVE_MS` (min time between room signatures / saves). The page connects to `ws://<host>:8767`; override with `?server=ws://...`. Preview config `town-server` is in `.claude/launch.json`.
@@ -35,6 +35,16 @@ Every player is in exactly one **space**: `city` (the town, default on connect),
 Saving: `roomprep` returns the cleaned document's hash message and a timestamp, the wallet signs it, `roomsave` is stored only if the signature recovers to the signed-in wallet, matches the cleaned document and is under 2 minutes old. The document is rebuilt from `room_catalog.json` (pieces, themes, window views, patterns; **generated from the game data: `node tools/build_room_catalog.js` after any catalog change**), budget 40 pieces, text cleaned. A save is broadcast to the visitors inside as `roomdoc`. Frames are limited to 2 KB, except `roomprep` and `roomsave` (16 KB).
 
 **Persistence (live since 2026-10-08).** Rooms live in `DATA_DIR/rooms/`; on Fly that is the 1 GB volume `chog_data` mounted at `/data` (about $0.15 a month, daily snapshots kept 5 days; one machine only, a volume belongs to one machine). The volume is mounted root-owned, so the Dockerfile starts as root, `chown`s `/data` and drops to `node` with `su-exec`. A live check (sign in, save, read back) passed; look at the files with `flyctl ssh console -a chog-town-ws -C "ls /data/rooms"`. Deploy the **server before the site**: a new site on an old server still works, rooms then stay local.
+
+## Holder venues, usernames (built 2026-10-09)
+
+- **License** (`license.js`, data `license_data.json` built by `python tools/build_license_data.py` after `build_tokens.py` or `fetch_owners.py`): the server reads `balanceOf` and `ownerOf` on chain (the owner snapshot only says which tokens to check first; a stale snapshot triggers one batched scan of the collection), adds the points per token from the collection's `Tier` trait and gives the tier. Cached 10 minutes per wallet; a fresh read is made when the owner activates.
+- **Venues** (`hotel.js`): seed venues from `seed_venues.json` plus one record per holder wallet in `DATA_DIR/venue_meta/<wallet>.json` (tier, door number = floor x 100 + first slot, span, name, kind, description, state `closed`/`open`, rule `public`/`holders`/`list`, guest and ban lists of usernames). The signed room and the facade are documents in `DATA_DIR/venue_docs/` and `DATA_DIR/facade_docs/` (same store as Homes, `rooms.js`, but the signed message says "venue" or "facade", so a Home signature cannot be replayed as a venue). Tier templates (placeholders): 1 = 9x7 m, 60 pieces, facade 1 door wide / 12 pieces; 2 = 11x8, 90, 2 / 24; 3 = 13x9, 130, 3 / 40; 4 = 15x11, 180, 3 / 60. A venue starts **closed** and cannot be opened before its room is saved. Doors take the first free run of slots in one arm of a floor; numbers never change.
+- **Entry** (`hotel.entry`, checked on every `enter {space:'venue'}`): the owner always; closed = refused; banned name = refused; `holders` = the player must appear as their own Chog; `list` = the player's username must be on the list. Closing a venue sends visitors back to its floor.
+- **Facade**: a document in a strip `3 x span` m wide and 1.4 m deep; a last rule drops pieces in front of or over the door and wall pieces on the side wall. Sent per floor (`hotelfloor {floor}` -> `facades {floor, items}`) and pushed to the floor when the owner saves.
+- **Usernames** (`users.js`): `usernameprep {name}` / `usernamesave {name, ts, sig}`; 3 to 16 characters, starts with a letter, unique ignoring case, reserved and look-alike names refused, one change per 7 days. The username is shown on plates and in chat instead of "Chog #N" or "Guest-NNNN".
+- Messages: `venueinfo`, `venuemake`, `venueset`, `venueprep`, `venuesave`, `facadeprep`, `facadesave`, `usernameprep`, `usernamesave` (client to server); `venueinfo`, `venuemine`, `venueprep`, `venuesaved`, `facadeprep`, `facadesaved`, `facades`, `username` (server to client). Details in the header comment of `server/index.js`.
+- Not built: re-checking the tier later (a venue keeps its tier; freezing when holdings fall is a rule to add), tier upgrade of an existing venue, anti-rental holding period.
 
 ## Identity
 

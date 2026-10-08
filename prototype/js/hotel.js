@@ -20,7 +20,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   HOTEL.doorOf = doorOf;
 
   // ------------------------------------------------------------------ scene state (rebuilt on every floor change)
-  let G = null, walk = [], rects = [], spots = [], plates = [], anims = [], lights = [], halos = [], npc = null, npcPlate = null, saved = null, mapRects = [], mapDoors = [];
+  let G = null, walk = [], rects = [], spots = [], plates = [], anims = [], lights = [], halos = [], npc = null, npcPlate = null, guards = [], saved = null, mapRects = [], mapDoors = [];
   const venuesOn = f => ((HOTEL.info && HOTEL.info.venues) || []).filter(v => v.floor === f).sort((a, b) => a.no - b.no);
   const listed = () => ((HOTEL.info && HOTEL.info.venues) || []).filter(v => v.state !== 'closed' || v.id === HOTEL.mineId);                   // the directory lists open rooms (and yours), closed doors only show in the corridor
 
@@ -115,6 +115,17 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
       if (!wallP && !flat) { const q = Math.round(w.ry / 90) % 2 !== 0; block(w.x, w.z, (q ? def.fp[1] : def.fp[0]) / 2, (q ? def.fp[0] : def.fp[1]) / 2); }
     }
   }
+  // the guard stands beside a door whose owner set an entry rule; the server enforces it, the guard says why you were turned away
+  const GUARD_LINES = { holders: 'Chog holders only. Play as your own Chog to come in.', list: 'Guest list only. Is your name on it?' };
+  function buildGuard(g, o, v) {
+    const d = doorOf(v.no, v.span), side = 1.2, c = chog({ hair: 0x3a3550, outfit: 'jacket', trim: 0xff3aa8, head: 'cap', capC: 0x1a1030, scale: CHOG_SCALE * 1.02 });
+    if (d.wall === 'z') { c.position.set(d.stand.x + side, 0, d.stand.z); c.rotation.y = 0; } else { c.position.set(d.stand.x, 0, d.stand.z + side); c.rotation.y = Math.PI / 2; }
+    c.userData.netName = v.rule === 'holders' ? 'Holders only' : 'Guest list'; c.userData.onClick = () => toast(GUARD_LINES[v.rule] || 'Welcome.'); c.userData.t0 = Math.random() * 6;
+    g.add(c); guards.push({ c, v, plate: PLATES.add(c, 'Guard') });
+  }
+  HOTEL.guardSays = reason => {                                                          // a refusal at a door: show it as the guard's own line
+    const gd = guards.find(x => x.v.id === HOTEL.lastDoor); if (!gd || !HOTEL.active) return false; PLATES.say(gd.plate, reason); return true;
+  };
   HOTEL.onFacades = m => {                                                              // the server sent the facades of a floor (stepping onto it, or an owner saved one)
     const same = JSON.stringify(HOTEL.facadeBy[m.floor] || null) === JSON.stringify(m.items || []); HOTEL.facadeBy[m.floor] = m.items || [];
     if (!same && HOTEL.active && HOTEL.floor === m.floor && !HOTEL.busy && G) HOTEL.rebuildHere();
@@ -167,6 +178,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
       mapDoors.push({ x: d.wall === 'z' ? d.u : -FLC, z: d.wall === 'z' ? -FLC : d.u, col: v.state === 'closed' ? '#7a6a98' : hexOf(colOf(v.cat)) });
     }
     for (const it of HOTEL.facadeBy[f] || []) buildFacade(g, o, it);
+    for (const v of list) if (v.state === 'open' && v.rule && v.rule !== 'public') buildGuard(g, o, v);
     // lights: a pendant every few metres, over each arm
     for (const [x, z] of [[-6.0, -6.0], [-2.9, -6.0], [0.1, -6.0], [3.1, -6.0], [6.1, -6.0], [-6.0, -2.9], [-6.0, 0.1], [-6.0, 3.1], [-6.0, 6.1]]) piece(g, 'pendantLamp', x, z);
     G = g; return { spawn: { x: -6.0, z: -5.4, ry: 0 } };
@@ -176,6 +188,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     if (G) { world.remove(G); G.traverse(o => { if (o.geometry && !o.userData.shared) o.geometry.dispose(); }); }
     for (const h of halos) { const i = noNormalPass.indexOf(h); if (i >= 0) noNormalPass.splice(i, 1); }
     if (npcPlate) { PLATES.remove(npcPlate); npcPlate = null; }
+    for (const gd of guards) PLATES.remove(gd.plate); guards = [];
     G = null; walk = []; rects = []; spots = []; plates.length = 0; anims.length = 0; lights.length = 0; halos.length = 0; npc = null; mapRects = []; mapDoors = [];
     SPACE.clearSky(); SPACE.refreshHidden();
   }
@@ -238,7 +251,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   HOTEL.goTo = v => HOTEL.goFloor(v.floor, v);
   HOTEL.enterVenue = async function (v) {
     if (HOTEL.busy || ROOM.busy || !HOTEL.active) return; HOTEL.busy = true;
-    try { await fade(async () => { if (!await ROOM.enterVenue(v)) toast('That room is not open right now.'); }); } finally { HOTEL.busy = false; }
+    HOTEL.lastDoor = v.id; try { await fade(async () => { await ROOM.enterVenue(v); }); } finally { HOTEL.busy = false; }
   };
   HOTEL.returnFromVenue = async function (v) {
     if (HOTEL.busy) return; HOTEL.busy = true;
@@ -260,6 +273,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   animated.push((t) => {
     if (!HOTEL.active || !GAME.me) { if (prompt.style.display !== 'none') prompt.style.display = 'none'; return; }
     for (const f of anims) f(t);
+    for (const gd of guards) { const u = gd.c.userData, b = Math.sin(t * 2 + u.t0) * 0.015; if (u.legs) { u.body.position.y = b; u.head.position.y = 1.0 + b * 1.4; u.legs.forEach(l => l.rotation.x = 0); u.arms[0].rotation.x = Math.sin(t * 2 + u.t0) * 0.05; u.arms[1].rotation.x = 0; u.eyes.forEach(e => e.scale.y = (e.userData.by || 0.095) * (Math.sin(t * 0.9 + u.t0 * 5) > 0.985 ? 0.12 : 1)); } }
     if (npc && npc.userData.legs) { const u = npc.userData, b = Math.sin(t * 2) * 0.015; u.body.position.y = b; u.head.position.y = 1.0 + b * 1.4; u.legs.forEach(l => l.rotation.x = 0); u.arms[1].rotation.z = Math.sin(t * 0.5) > 0.93 ? 2.7 + Math.sin(t * 9) * 0.35 : 0.1; u.arms[0].rotation.x = Math.sin(t * 2) * 0.05; const blink = Math.sin(t * 0.9) > 0.985 ? 0.12 : 1; u.eyes.forEach(e => e.scale.y = (e.userData.by || 0.095) * blink); }
     const me = GAME.me.position; near = null; let best = 1e9;
     for (const s of spots) { const d = Math.hypot(me.x - s.x, me.z - s.z); if (d < s.r && d < best) { best = d; near = s; } }
@@ -289,7 +303,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const row = el('div', 'hv'), no = el('div', 'no'), tx = el('div', 'tx'), n = HOTEL.counts[v.id] || 0, here = HOTEL.active && v.floor === HOTEL.floor;
     no.innerHTML = '#' + v.no + '<small>Floor ' + v.floor + '</small>'; row.appendChild(no);
     tx.innerHTML = '<b></b><span></span><i></i>'; tx.querySelector('b').textContent = v.name; tx.querySelector('span').textContent = v.desc;
-    const tag = tx.querySelector('i'); tag.textContent = v.cat + (n ? ' · ' + n + ' inside' : ''); tag.style.setProperty('--cc', hexOf(colOf(v.cat))); row.appendChild(tx);
+    const tag = tx.querySelector('i'); tag.textContent = v.cat + (v.rule === 'holders' ? ' · Holders only' : v.rule === 'list' ? ' · Guest list' : '') + (n ? ' · ' + n + ' inside' : ''); tag.style.setProperty('--cc', hexOf(colOf(v.cat))); row.appendChild(tx);
     row.appendChild(btn('', here ? 'Walk to it' : 'Go to room', () => HOTEL.goTo(v), 'Takes you to the door, not inside')); return row;
   }
   function dirPanel() {
@@ -334,5 +348,5 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   // the screen fade used by every change of place
   HOTEL.fadeEl = document.createElement('div'); HOTEL.fadeEl.id = 'hfade'; document.body.appendChild(HOTEL.fadeEl);
   // a click on a hotel NPC (the receptionist) is handled by the game's click code through userData.onClick; players keep working as before
-  const prevRoots = GAME.extraRoots; GAME.extraRoots = () => prevRoots().concat(HOTEL.active && npc ? [npc] : []);
+  const prevRoots = GAME.extraRoots; GAME.extraRoots = () => prevRoots().concat(HOTEL.active && npc ? [npc] : [], HOTEL.active ? guards.map(x => x.c) : []);
 })();

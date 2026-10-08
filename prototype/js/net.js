@@ -5,7 +5,7 @@
 // Loaded after ui.js and plates.js.
 const NET = {
   ws: null, status: 'connecting', id: null, name: '', maxChat: 140, remotes: new Map(), log: [], draft: '', retry: 0,
-  muted: new Set(), invites: [], authed: false, authBusy: null, lastSent: null, card: null, space: 'city', rooms: false, hotel: false,
+  username: null, muted: new Set(), invites: [], authed: false, authBusy: null, lastSent: null, card: null, space: 'city', rooms: false, hotel: false,
 };
 (function () {
   const QSV = new URLSearchParams(location.search);
@@ -119,7 +119,16 @@ const NET = {
   NET.acceptInvite = owner => { NET.dismissInvite(owner); if (ROOM.visit) ROOM.visit(owner); };
   NET.send = send;
   NET.waitFor = waitFor;
-  NET.logout = function () { NET.authed = false; NET.want = null; send({ t: 'logout' }); };
+  NET.logout = function () { NET.authed = false; NET.username = null; NET.want = null; send({ t: 'logout' }); };
+  // claim a unique username: the wallet signs a readable message (free, no transaction); venue guest lists use these names
+  NET.claimName = async function (name) {
+    name = String(name || '').trim(); if (!name) return false;
+    if (!await NET.authenticate()) { toast('Sign in with your wallet first.'); return false; }
+    send({ t: 'usernameprep', name }); const prep = await waitFor(['usernameprep', 'roomfail'], 8000); if (!prep || prep.t !== 'usernameprep') { if (!prep) toast('The server did not answer.'); return false; }
+    toast('Sign the message in your wallet to take this name (free, no transaction).');
+    let sig; try { sig = await WALLET.provider.request({ method: 'personal_sign', params: [hexOf(prep.message), WALLET.account] }); } catch (e) { toast(e && e.code === 4001 ? 'Not saved: you declined the signature.' : 'Could not sign.'); return false; }
+    send({ t: 'usernamesave', name, ts: prep.ts, sig }); const r = await waitFor(['username', 'roomfail'], 8000); return !!r && r.t === 'username';
+  };
 
   // ---- chat and moderation
   NET.say = function (text) {
@@ -154,7 +163,7 @@ const NET = {
       case 'venueinfo': if (typeof VENUE !== 'undefined') VENUE.onInfo(m); break;
       case 'venuemine': if (typeof VENUE !== 'undefined') VENUE.onMine(m.mine); break;
       case 'counts': if (typeof HOTEL !== 'undefined') HOTEL.setCounts(m.c); break;
-      case 'roomfail': toast(m.reason || 'That did not work.'); break;
+      case 'roomfail': if (typeof HOTEL !== 'undefined' && HOTEL.guardSays && HOTEL.guardSays(m.reason)) break; toast(m.reason || 'That did not work.'); break;
       case 'invited': {
         const from = [...NET.remotes.values()].find(r => r.name === m.from);
         if (from && NET.isMuted(from)) break;
@@ -165,7 +174,8 @@ const NET = {
       case 'appear': if (m.p.id === NET.id) { NET.name = m.p.name; if (typeof render === 'function') render(); } else upsert(m.p); break;
       case 'state': for (const [id, x, z, ry, mv] of m.p) { const r = NET.remotes.get(id); if (r) { r.tx = x; r.tz = z; r.tr = ry; r.mv = !!mv; } } break;
       case 'snap': if (GAME.me) { GAME.me.position.set(m.x, 0, m.z); GAME.path = []; } break;
-      case 'authed': NET.authed = true; break;
+      case 'authed': NET.authed = true; NET.username = m.username || null; if (typeof render === 'function') render(); break;
+      case 'username': NET.username = m.name; if (typeof toast === 'function') toast('Your username is ' + m.name + '.'); if (typeof render === 'function') render(); break;
       case 'authfail': NET.authed = false; break;
       case 'sys': addLog('sys', m.text); break;
       case 'chat': {

@@ -5,7 +5,7 @@
 const VENUE = { info: null, mine: null, busy: false, tried: false, draft: { name: '', cat: 'Lounge', desc: '' }, err: '' };
 (function () {
   const CATS = ['Club', 'Café', 'Arcade', 'Gallery', 'Lounge', 'Spooky', 'Workshop', 'Other'];
-  const RULES = [['public', 'Anyone'], ['holders', 'Chog holders only']];
+  const RULES = [['public', 'Anyone'], ['holders', 'Chog holders only'], ['list', 'Guest list']];
   const redraw = () => { if (typeof render === 'function') render(); };
   VENUE.onMine = m => { VENUE.mine = m || null; if (typeof HOTEL !== 'undefined') HOTEL.mineId = m ? m.id : null; if (typeof ROOM !== 'undefined' && ROOM.refreshUI) ROOM.refreshUI(); redraw(); };
   VENUE.onInfo = m => { VENUE.info = { tier: m.tier, points: m.points, tokens: m.tokens, templates: m.templates }; VENUE.onMine(m.mine); };
@@ -58,7 +58,14 @@ const VENUE = { info: null, mine: null, busy: false, tried: false, draft: { name
       const row = el('div', 'actions');
       const go = el('button', 'btn', 'Go to my venue'); go.onclick = () => VENUE.goToDoor(); row.appendChild(go);
       const tg = el('button', 'btn ' + (open ? 'ghost' : ''), open ? 'Close venue' : 'Open venue'); tg.disabled = VENUE.busy || (!open && !m.hasDoc); tg.title = !open && !m.hasDoc ? 'Decorate and save the room first' : ''; tg.onclick = () => VENUE.toggleOpen(); row.appendChild(tg); box.appendChild(row);
-      const rs = document.createElement('select'); for (const [k, lb] of RULES) rs.appendChild(new Option(lb, k)); rs.value = m.rule === 'holders' ? 'holders' : 'public'; rs.onchange = () => VENUE.set({ rule: rs.value }); box.appendChild(field('Who may enter', rs));
+      const rs = document.createElement('select'); for (const [k, lb] of RULES) rs.appendChild(new Option(lb, k)); rs.value = m.rule || 'public'; rs.onchange = () => VENUE.set({ rule: rs.value }); box.appendChild(field('Who may enter', rs));
+      if (VENUE.draft.lists !== m.id) Object.assign(VENUE.draft, { guests: (m.guests || []).join(', '), bans: (m.bans || []).join(', '), lists: m.id });
+      const ta = (key, ph) => { const t = document.createElement('textarea'); t.rows = 2; t.maxLength = 700; t.placeholder = ph; t.value = VENUE.draft[key] || ''; t.oninput = () => { VENUE.draft[key] = t.value; }; t.onkeydown = e => e.stopPropagation(); return t; };
+      const names = s => String(s || '').split(/[\s,;]+/).filter(Boolean);
+      if (m.rule === 'list') box.appendChild(field('Guest list', ta('guests', 'usernames, separated by commas')));
+      box.appendChild(field('Banned', ta('bans', 'usernames the guard turns away')));
+      const sl = el('button', 'btn ghost', 'Save lists'); sl.onclick = () => VENUE.set({ guests: names(VENUE.draft.guests), bans: names(VENUE.draft.bans) }).then(r => r && r.t === 'venuemine' && toast('Lists saved.')); box.appendChild(sl);
+      box.appendChild(el('p', 'vnote', 'Lists use usernames, not wallet addresses. Players claim a username in My Chog. A player without a wallet has none, so a guest list keeps them out.'));
       if (!VENUE.draft.loaded || VENUE.draft.id !== m.id) Object.assign(VENUE.draft, { name: m.name, cat: m.cat, desc: m.desc, loaded: true, id: m.id });
       box.appendChild(field('Name', input('name', 32))); box.appendChild(field('Kind', catSel())); box.appendChild(field('Description', input('desc', 120)));
       const sv = el('button', 'btn ghost', 'Save details'); sv.onclick = () => VENUE.set({ name: VENUE.draft.name, cat: VENUE.draft.cat, desc: VENUE.draft.desc }).then(r => r && r.t === 'venuemine' && toast('Details saved.')); box.appendChild(sv);
