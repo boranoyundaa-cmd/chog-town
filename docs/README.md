@@ -6,6 +6,7 @@
 | Project | [hackathon.md](project/hackathon.md) | Chogathon rules, prizes, judging criteria |
 | Game | [design.md](game/design.md) | Venue-based social sandbox, NFT license tiers, economy rules, architecture |
 | Game | [core-loop-research.md](game/core-loop-research.md) | Why web3 games and MMOs fail, what worked, candidate core loops |
+| Game | [world.md](game/world.md) | World structure: town, Home, Hotel (venues), NPCs, light rule, mini-games |
 | Game | [spaces.md](game/spaces.md) | Rooms and venues as documents: themes, pieces, render styles, creator freedom, budgets |
 | Art | [art-direction.md](art/art-direction.md) | World style, UI style (Storybook), Chog design rules, scale rules |
 | Engineering | [prototype.md](engineering/prototype.md) | Running, file map, render pipeline, game feel, data tools, pitfalls |

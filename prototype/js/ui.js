@@ -16,7 +16,8 @@ function tierReq(v) {                                                           
 }
 const hex = c => '#' + c.toString(16).padStart(6, '0');
 const shortAddr = a => a.slice(0, 6) + '…' + a.slice(-4);
-const inRoom = () => typeof ROOM !== 'undefined' && ROOM.active;                      // room.js loads after this file
+const inRoom = () => typeof ROOM !== 'undefined' && ROOM.active;
+const inHotel = () => typeof HOTEL !== 'undefined' && HOTEL.active;                         // hotel.js loads after this file                      // room.js loads after this file
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
 
 // ---- menu: id, label, key, icon (inline SVG so the look does not depend on the OS emoji font)
@@ -178,12 +179,14 @@ function walletButton(cls = 'btn') {
 
 // ---- location + minimap (rotated to match the isometric view: screen up = world -x -z)
 function locationName() {
+  if (inHotel()) return HOTEL.title() + ' · ' + HOTEL.where();
   if (inRoom()) return ROOM.title();
   const p = GAME.me ? GAME.me.position : { x: 0, z: 0 };
   for (const b of CITY.buildings) if (Math.abs(p.x - b.x) < b.w / 2 + 1.3 && Math.abs(p.z - b.z) < b.d / 2 + 1.3) return b.name;
   if (Math.hypot(p.x, p.z) < 3) return 'Chog Crossing'; if (Math.abs(p.x) < CITY.road + 0.1 || Math.abs(p.z) < CITY.road + 0.1) return 'Chog Avenue'; return 'Downtown Chog';
 }
 function drawMinimap(cv) {
+  if (inHotel()) return HOTEL.drawMap(cv);
   if (inRoom()) return ROOM.drawMap(cv);
   const S = cv.width, g = cv.getContext('2d'), k = S / (HALF * 2.83 + 4), R = Math.SQRT1_2, N = UI.skin === 'neon', RW = CITY.road;
   const P = (x, z) => [S / 2 + (x - z) * R * k, S / 2 + (x + z) * R * k];
@@ -204,7 +207,7 @@ function minimap(size) { const cv = el('canvas', 'minimap'); cv.width = cv.heigh
 setInterval(() => { for (const cv of document.querySelectorAll('canvas.minimap')) drawMinimap(cv); for (const n of document.querySelectorAll('.locname')) n.textContent = locationName(); }, 120);
 
 // ---- small shared HUD pieces
-const hint = () => el('div', 'hint', inRoom() ? ROOM.hint() : 'Click to walk · WASD move · Wheel zoom · Enter chat · C My Chog · R My Room');
+const hint = () => el('div', 'hint', inHotel() ? HOTEL.hint() : inRoom() ? ROOM.hint() : 'Click to walk · WASD move · Wheel zoom · Enter chat · C My Chog · R My Room');
 // the chat box is built once and re-attached on every render(), so the log, the draft and the focus survive HUD rebuilds
 let _chat = null;
 function refreshChat() {
@@ -219,7 +222,7 @@ function refreshChat() {
   }
   if (stick) log.scrollTop = log.scrollHeight;
   const on = NET.status === 'online', inp = _chat.querySelector('input');
-  _chat.querySelector('.tabs .on').textContent = inRoom() ? 'Room' : 'Town';
+  _chat.querySelector('.tabs .on').textContent = inHotel() ? 'Hotel' : inRoom() ? 'Room' : 'Town';
   _chat.querySelector('.count').textContent = on ? NET.online() + ' in town' : NET.status === 'connecting' ? 'Connecting…' : 'Offline';
   inp.disabled = !on; _chat.classList.toggle('off', !on); inp.placeholder = on ? 'Press Enter to chat' : 'Chat is offline';
 }
@@ -245,12 +248,22 @@ function playerCard() {
   c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = r.token ? 'Chog holder' : 'Free Chog';
   c.querySelector('.x').onclick = () => NET.closeCard();
   const acts = c.querySelector('.acts'), muted = NET.isMuted(r);
-  const vb = el('button', 'btn ghost', 'Visit room'); vb.onclick = () => { NET.closeCard(); ROOM.visit(r.id); }; acts.appendChild(vb);
+  const vb = el('button', 'btn ghost', 'Invite home'); vb.title = 'Invite this player to your Home'; vb.onclick = () => { NET.invite(r.id); NET.closeCard(); }; acts.appendChild(vb);
   const mb = el('button', 'btn ghost', muted ? 'Unmute' : 'Mute'); mb.onclick = () => { if (muted) { NET.unmute(r); NET.sys(r.name + ' is unmuted.'); } else NET.mute(r); NET.closeCard(); };
   const rb = el('button', 'btn ghost', 'Report');
   rb.onclick = () => { if (rb.dataset.sure) { NET.report(r.id, 'chat/behaviour'); NET.closeCard(); } else { rb.dataset.sure = 1; rb.textContent = 'Confirm report'; } };
   acts.appendChild(mb); acts.appendChild(rb);
   return c;
+}
+// an invitation to somebody's Home: go or not now (a Home is private, this is the way in)
+function inviteCards() {
+  const now = Date.now(); NET.invites = NET.invites.filter(i => i.exp > now); if (!NET.invites.length) return null;
+  const w = el('div', 'invwrap');
+  for (const i of NET.invites.slice(-3)) {
+    const c = el('div', 'invcard paper hit', '<b></b><small>invites you to their Home</small><div class="acts"></div>'); c.querySelector('b').textContent = i.from;
+    const a = c.querySelector('.acts'), go = el('button', 'btn', 'Go'); go.onclick = () => NET.acceptInvite(i.owner); const no = el('button', 'btn ghost', 'Not now'); no.onclick = () => NET.dismissInvite(i.owner); a.appendChild(go); a.appendChild(no); w.appendChild(c);
+  }
+  return w;
 }
 const toastEl = () => { const t = el('div', ''); t.id = 'toast'; return t; };
 const dock = (cls, withLabels) => { const d = el('div', cls); for (const m of MENU) { const b = el('button', 'dk hit' + (m.soon ? ' soon' : '') + (UI.open === m.id ? ' on' : ''), `<span class="ic">${icon(m.icon, 26)}</span>${withLabels ? `<span class="lb">${m.label}</span>` : ''}<span class="kb">${m.key}</span>`); b.title = m.label; b.onclick = () => menuClick(m); d.appendChild(b); } return d; };
@@ -267,10 +280,12 @@ function render() {
   const tr = el('div', 'topright'), mm = el('div', 'mmwrap'); mm.appendChild(minimap(150)); mm.appendChild(el('div', 'loc', '<span class="locname">Chog Plaza</span>')); tr.appendChild(mm); tr.appendChild(walletButton('btn')); root.appendChild(tr);
   root.appendChild(chatBox()); root.appendChild(dock('dock', true)); root.appendChild(hint());
   if (inRoom()) root.appendChild(ROOM.hud());
+  if (inHotel()) root.appendChild(HOTEL.hud());
   if (typeof TOUR !== 'undefined') root.appendChild(TOUR.hud());
   const w = el('div', 'win' + (['chog', 'settings', 'venues'].includes(UI.open) ? ' open' : '') + (UI.open === 'venues' ? ' venues' : ''));
   w.appendChild(UI.open === 'settings' ? settingsCard(closeWin) : UI.open === 'venues' ? venuesCard(closeWin) : card(closeWin)); root.appendChild(w);
   const pc = playerCard(); if (pc) root.appendChild(pc);
+  const iv = inviteCards(); if (iv) root.appendChild(iv);
   root.appendChild(toastEl());
 }
 // the HUD is laid out for a 1440x810 window and scaled with the window height

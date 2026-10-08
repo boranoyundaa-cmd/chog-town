@@ -23,8 +23,8 @@ The game has **one art style**; player freedom is in **assets**: themed kits (mo
 
 ## Pillars (the vertical slice)
 
-1. **Living town:** shared walkable map, other players, chat. Unowned Chogs live in town as NPC residents so it is never empty (judges test alone).
-2. **Venues:** a place of your own from **templates plus settings** (decor, music, entry rule, VIP area, shelves). Not free scripting: it fits 14 days and keeps the set of allowed venue types controllable.
+1. **Living town:** shared walkable map, other players, chat. Fictional NPC residents with real-clock routines keep it from ever being empty (judges test alone); they never copy a real token. Details: `docs/game/world.md`.
+2. **Venues:** a place of your own, a door with an editable facade in the **Hotel**, from **templates plus settings** (decor, music, entry rule, VIP area, shelves). Not free scripting: it fits 14 days and keeps the set of allowed venue types controllable. The permanent public address is what the license unlocks; free players keep a private Home and contests (`docs/game/world.md`).
 3. **Items and market:** cosmetic items as NFTs, published by creators, bought by everyone. Free players need things to buy.
 
 Later: mini-games in venues, NPC daily events, mobile companion.
@@ -77,7 +77,7 @@ Owners can customize their venue with `$CHOG` burns (optional; which items cost 
 ## Candidate features (liked by the owner, not decided)
 
 - **Venue opening hours ("tonight").** Owners set when the doors open; the directory and mobile notifications list what is on tonight. Why: with a small population, concentrating people in time makes venues feel alive instead of scattering them (Dofus limited its retro servers for the same reason). Also gives events, a daily reason to return and mobile pings ("your club opens in 10 minutes, 12 inside"). Risk: time zones.
-- **Doorman.** An NPC doorman enforces the owner's entry rule: dress code (a cosmetic item), guest list, holders only, membership pass. Passes and tickets are items, so there is no wallet popup per entry. Why: free players get a reason to buy cosmetics, the owner gets a moderation tool (ban list) and a venue identity. Entry stays free by default; any rule is the owner's choice.
+- **Doorman.** A guard NPC at the venue's facade in the Hotel corridor enforces the owner's entry rule: dress code (a cosmetic item), guest list, holders only, membership pass. Passes and tickets are items, so there is no wallet popup per entry. Why: free players get a reason to buy cosmetics, the owner gets a moderation tool (ban list) and a venue identity. Entry stays free by default; any rule is the owner's choice.
 
 Other ideas floated but not picked up: an NPC critic that reviews new venues in a town gazette, hired staff (DJ, bartender) from free players, and traits giving venue roles. Revisit if needed.
 

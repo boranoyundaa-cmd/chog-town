@@ -10,7 +10,7 @@
   const at = (r, u, d = 40) => { const k = d / Math.sqrt(3); return [r * 0.7071 - u * 0.4082 - k, u * 0.8165 - k, -r * 0.7071 - u * 0.4082 - k]; };
   // windows sit above the furniture line (bottom edge at 1.6): two on the back wall, one over the desk
   const wins = (w, h, shape) => [{ wall: 'z', u: -1.3, y: 2.15, w, h, shape }, { wall: 'z', u: 1.2, y: 2.15, w, h, shape }, { wall: 'x', u: -1.8, y: 2.15, w, h, shape }];
-  // ---------------------------------------------------------------- themes = asset kits: a palette, a default wall and floor, window shape, scenery. NO render style, NO lighting (that is the ambience).
+  // ---------------------------------------------------------------- themes = asset kits: a palette, a default wall and floor, window shape, scenery. NO render style, NO lighting (light comes only from the pieces placed in a space).
   const T = SPACE.THEMES;
   T.studio = {
     name: 'Modern studio', floorTex: 'wood', wallTex: 'plaster',
@@ -20,35 +20,34 @@
   T.cyberpunk = {
     name: 'Cyberpunk', floorTex: 'metal', wallTex: 'brick', slab: 0x2a2250,
     pal: { wall: 0x4a3a7a, floor: 0x2a2458, trim: 0x14102c, accent: 0xff2a98, accent2: 0x2ad8ff, wood: 0x4a3d6a, metal: 0x6a7aa0, fabric1: 0x4a3f98, fabric2: 0x9a2a80, glow: 0xff5ac8, plant: 0x2aa88a, screen: 0x2ad8ff },
-    neonLights: [{ c: 0xff2a98, i: 0.9, d: 8, p: [-2.6, 2.4, -1.4] }, { c: 0x2ad8ff, i: 0.8, d: 8, p: [2.6, 2.2, 1.8] }],
     windows: wins(1.0, 1.1),
     outside: [B([1.6, 7, 1.6], at(-8.6, 1.5, 45), 0x2a1a50), B([2.2, 10, 2.2], at(-6.6, 2.6, 52), 0x34205e), B([1.4, 5, 1.4], at(-9.8, 0.8, 40), 0x261848), B([2, 8, 2], at(7.8, 2.0, 50), 0x2a1a50), B([1.6, 11, 1.6], at(9.2, 3.2, 56), 0x34205e), B([0.9, 0.9, 0.9], at(-6.6, 7.5, 52), '$accent', { e: 1, g: 5 }), B([0.9, 0.9, 0.9], at(9.2, 8.6, 56), '$accent2', { e: 1, g: 5 })],
   };
   T.retro80s = {
     name: 'Retro 80s', floorTex: 'grid', wallTex: 'stripes', slab: 0x3a1a6a,
     pal: { wall: 0x7a50c0, floor: 0x3a2880, trim: 0x1c1040, accent: 0xff4ac8, accent2: 0x4ae8ff, wood: 0x9a5aba, metal: 0xb8b0e0, fabric1: 0xff4ac8, fabric2: 0x4ae8ff, glow: 0xffe24a, plant: 0x4ae8a0, screen: 0xff8ad8 },
-    neonLights: [{ c: 0xff4ac8, i: 0.7, d: 8, p: [-2.4, 2.4, -1] }, { c: 0x4ae8ff, i: 0.7, d: 8, p: [2.4, 2.4, 1.6] }],
     windows: wins(1.9, 1.0), outside: [Sp([3.6], at(-6.8, 4.2, 55), 0xffc060, { e: 1, g: 14 })],
   };
   T.space = {
     name: 'Space station', floorTex: 'metal', wallTex: 'panels', slab: 0x303858,
     pal: { wall: 0x4a5684, floor: 0x505a7c, trim: 0x1c2244, accent: 0x5ad8ff, accent2: 0xffb03a, wood: 0x7a84a0, metal: 0xa8b4d0, fabric1: 0x4a6ab0, fabric2: 0x8a5ac0, glow: 0x7affea, plant: 0x4ad89a, screen: 0x5ad8ff },
-    neonLights: [{ c: 0x5ad8ff, i: 0.7, d: 8, p: [-2.5, 2.5, -1.5] }, { c: 0xffb03a, i: 0.55, d: 7, p: [2.8, 2.2, 1.5] }],
     windows: wins(1.1, 1.1, 'round'),
     outside: [Sp([3.8], at(-7.0, 3.8, 55), 0x3a8ae8, { m: 0.5 }), Tr([5.6, 0.22], at(-7.0, 3.8, 55), 0xb8c8ff, { r: [75, 0, 20], m: 0.5, k: [1, 1, 0.25] }), Sp([0.9], at(7.6, 4.8, 60), 0xc8c0b8, { m: 0.5 })],
   };
   T.halloween = {
     name: 'Halloween', floorTex: 'boards', wallTex: 'planks', slab: 0x3a2a40,
     pal: { wall: 0x7a5a94, floor: 0x5a3a28, trim: 0x2c1c34, accent: 0xff7a1a, accent2: 0x9a4ad8, wood: 0x7a5232, metal: 0x8a8098, fabric1: 0x8a3ac8, fabric2: 0xff7a1a, glow: 0xffb030, plant: 0x4a8a3a, screen: 0x7aff5a },
-    neonLights: [{ c: 0xff7a1a, i: 0.8, d: 8, p: [-2.2, 2.0, -1.2] }, { c: 0x7aff5a, i: 0.5, d: 6, p: [2.0, 1.6, 1.4] }],
     windows: wins(1.2, 1.1), outside: [Sp([1.8], at(7.4, 4.8, 58), 0xfff0b0, { e: 1, g: 9 })],
   };
-  // ---------------------------------------------------------------- ambience: light and sky of the room, chosen by the creator. Same family as the town's clock; the render never changes.
-  const A = SPACE.AMBIENCE;
-  A.day = { name: 'Day', sky: ['#7fb0e8', '#b8d8f4', '#f6e6d0', '#ffe3b0'], fog: 0xf0d8c0, hemi: [0xfff0dc, 0xa08868, 0.62], sun: [0xffe0b8, 0.55], rim: [0xb0a0ff, 0.14], sunDisc: 0xffd890, window: 0xdff0ff, lights: [{ c: 0xffd8a0, i: 0.4, d: 9, p: [0, 2.8, 0] }] };
-  A.evening = { name: 'Evening', sky: ['#5d4f9c', '#e0807f', '#ffc27c', '#ffe3a8'], fog: 0xf0a888, hemi: [0xb7a3ff, 0x8c6a5c, 0.5], sun: [0xffc88a, 0.7], rim: [0x8e78ff, 0.18], sunDisc: 0xffd890, window: 0xffcf98, lights: [{ c: 0xffc080, i: 0.6, d: 9, p: [0, 2.8, 0] }] };
-  A.night = { name: 'Night', sky: ['#120a30', '#381568', '#a52a74', '#e0705a'], fog: 0x4a1d6e, hemi: [0x7a68e0, 0x3a2a58, 0.4], sun: [0x9a8cf0, 0.32], rim: [0xff5aa8, 0.25], sunDisc: 0xf4f0ff, stars: 150, outside: true, window: 0x30508a, lights: [{ c: 0xffc080, i: 0.7, d: 9, p: [0, 2.8, 0] }] };
-  A.neon = { name: 'Neon night', sky: ['#06030f', '#150a30', '#3a0a50', '#7a1a6a'], fog: 0x15082a, hemi: [0x7a68e0, 0x2a2048, 0.42], sun: [0x8a7aff, 0.3], rim: [0xff5aa8, 0.35], stars: 90, outside: true, neon: true, window: 0x7a3ac8, lights: [{ c: 0xffb070, i: 0.35, d: 9, p: [0, 2.8, 0] }] };
+  // ---------------------------------------------------------------- window views: the background only (sky, fog, sun or moon, stars, window glass, scenery beyond the windows).
+  // Default = the real clock (space.js picks the view for the hour); an owner may pin one. A view NEVER lights the room: interiors are lit only by the lights placed in them (docs/game/world.md).
+  const V = SPACE.VIEWS;
+  V.day = { name: 'Day', sky: ['#7fb0e8', '#b8d8f4', '#f6e6d0', '#ffe3b0'], fog: 0xf0d8c0, sunDisc: 0xffd890, window: 0xdff0ff };
+  V.evening = { name: 'Evening', sky: ['#5d4f9c', '#e0807f', '#ffc27c', '#ffe3a8'], fog: 0xf0a888, sunDisc: 0xffd890, window: 0xffcf98 };
+  V.night = { name: 'Night', sky: ['#120a30', '#381568', '#a52a74', '#e0705a'], fog: 0x4a1d6e, sunDisc: 0xf4f0ff, stars: 150, outside: true, window: 0x30508a };
+  V.neon = { name: 'Neon night', sky: ['#06030f', '#150a30', '#3a0a50', '#7a1a6a'], fog: 0x15082a, stars: 90, outside: true, neon: true, window: 0x7a3ac8 };
+  // the fixed light floor of every interior: small, the same at every hour, not selectable. It only keeps an unlit room readable (and shaded); the mood comes from placed lights.
+  SPACE.INTERIOR = { hemi: [0xfff0dc, 0x7a6a62, 0.3], sun: [0xffe6c8, 0.2], rim: [0xb0a0ff, 0.1] };
 
   // ---------------------------------------------------------------- pieces: stock furniture (every theme), then kits
   let kit = 'stock';                                                          // which kit the next pieces belong to: stock (every theme), then one kit per theme (the room editor lists stock + the room's theme kit)
@@ -66,7 +65,9 @@
   def('bookshelf', 'Bookshelf', 'storage', [1.3, 0.45], [B([1.3, 2.1, 0.38], [0, 1.05, 0], '$wood'), B([1.18, 1.98, 0.05], [0, 1.05, -0.12], '$trim'), ...[0.5, 0.95, 1.4, 1.85].map(y => B([1.18, 0.05, 0.34], [0, y, 0.02], '$wood')), ...books]);
   def('tvUnit', 'TV and stand', 'media', [1.8, 0.55], [B([1.7, 0.5, 0.5], [0, 0.25, 0], '$trim'), B([1.4, 0.8, 0.06], [0, 1.0, 0], '$trim'), Pl([1.3, 0.7], [0, 1.0, 0.04], '$screen', { e: 1 }), Cy([0.04, 0.04, 0.25, 6], [0, 0.6, 0], '$trim')]);
   def('floorLamp', 'Floor lamp', 'light', [0.5, 0.5], [Cy([0.2, 0.22, 0.05, 10], [0, 0.03, 0], '$trim'), Cy([0.025, 0.025, 1.7, 6], [0, 0.9, 0], '$trim'), Cy([0.22, 0.3, 0.42, 12], [0, 1.85, 0], '$glow', { e: 1, o: 0.95, g: 1.8 }), Li([0, 1.8, 0], '$glow', 0.6, 6)]);
-  def('tableLamp', 'Table lamp', 'light', [0.4, 0.4], [Cy([0.12, 0.14, 0.04, 10], [0, 0.02, 0], '$trim'), Cy([0.02, 0.02, 0.3, 6], [0, 0.18, 0], '$trim'), Cy([0.1, 0.16, 0.2, 10], [0, 0.42, 0], '$glow', { e: 1, g: 1 })]);
+  def('tableLamp', 'Table lamp', 'light', [0.4, 0.4], [Cy([0.12, 0.14, 0.04, 10], [0, 0.02, 0], '$trim'), Cy([0.02, 0.02, 0.3, 6], [0, 0.18, 0], '$trim'), Cy([0.1, 0.16, 0.2, 10], [0, 0.42, 0], '$glow', { e: 1, g: 1 }), Li([0, 0.5, 0], '$glow', 0.4, 4)]);
+  def('pendantLamp', 'Pendant lamp', 'ceiling', [0.5, 0.5], [Cy([0.012, 0.012, 0.7, 4], [0, 2.95, 0], '$trim'), Cy([0.05, 0.3, 0.26, 14], [0, 2.52, 0], '$trim'), Cy([0.2, 0.2, 0.05, 14], [0, 2.38, 0], '$glow', { e: 1, g: 2.6 }), Li([0, 2.3, 0], '$glow', 0.85, 8.5)]);
+  def('ceilingNeon', 'Ceiling neon', 'ceiling', [1.6, 0.3], [B([1.7, 0.05, 0.1], [0, 3.1, 0], '$trim'), B([1.6, 0.06, 0.12], [0, 3.03, 0], '$accent', { e: 1, g: 2.4 }), Li([0, 2.8, 0], '$accent', 0.8, 7)]);
   def('plant', 'Plant', 'deco', [0.6, 0.6], [Cy([0.22, 0.17, 0.34, 10], [0, 0.17, 0], '$accent2'), Cy([0.03, 0.03, 0.5, 5], [0, 0.55, 0], '$plant'), Sp([0.26], [0, 0.85, 0], '$plant', { k: [1, 0.9, 1] }), Sp([0.2], [0.2, 0.7, 0.05], '$plant'), Sp([0.2], [-0.18, 0.72, -0.05], '$plant')]);
   def('tallPlant', 'Tall plant', 'deco', [0.7, 0.7], [Cy([0.26, 0.2, 0.42, 10], [0, 0.21, 0], '$trim'), Cy([0.04, 0.05, 1.3, 5], [0, 1.0, 0], '$wood'), Sp([0.4], [0, 1.85, 0], '$plant', { k: [1, 0.8, 1] }), Sp([0.3], [0.3, 1.5, 0.1], '$plant'), Sp([0.3], [-0.3, 1.55, -0.1], '$plant')]);
   def('rug', 'Rug', 'floor', [3.0, 2.0], [B([3.0, 0.03, 2.0], [0, 0.015, 0], '$fabric2'), B([2.6, 0.035, 1.6], [0, 0.017, 0], '$fabric1'), B([2.2, 0.04, 1.2], [0, 0.02, 0], '$fabric2')]);
@@ -127,30 +128,36 @@
   def('nftFrameWide', 'NFT frame (wide)', 'art', [1.7, 0.1], [B([1.7, 1.1, 0.06], [0, 1.85, 0.03], '$trim'), B([1.58, 0.98, 0.03], [0, 1.85, 0.06], '#fffaf0'), { t: 'img', s: [1.5, 0.9], p: [0, 1.85, 0.085], edit: true }]);
   def('nftEasel', 'Easel', 'art', [1.0, 0.8], [B([0.05, 1.5, 0.05], [-0.4, 0.75, 0.1], '$wood', { r: [0, 0, 8] }), B([0.05, 1.5, 0.05], [0.4, 0.75, 0.1], '$wood', { r: [0, 0, -8] }), B([0.05, 1.3, 0.05], [0, 0.65, -0.3], '$wood', { r: [14, 0, 0] }), B([0.95, 0.95, 0.05], [0, 1.15, 0.06], '$trim'), B([0.85, 0.85, 0.03], [0, 1.15, 0.09], '#fffaf0'), { t: 'img', s: [0.78, 0.78], p: [0, 1.15, 0.115], edit: true }]);
   def('nftPlinth', 'Plinth with screen', 'art', [1.0, 0.8], [Cy([0.35, 0.4, 0.8, 4], [0, 0.4, 0], '$trim', { r: [0, 45, 0] }), B([0.8, 0.8, 0.04], [0, 1.25, 0.1], '$trim', { r: [-12, 0, 0] }), { t: 'img', s: [0.7, 0.7], p: [0, 1.25, 0.13], edit: true, r: [-12, 0, 0] }]);
+  // the Chog Hotel's own furniture (kit 'hotel': used by js/hotel.js, never listed in the room editor)
+  kit = 'hotel';
+  def('receptionDesk', 'Reception desk', 'deco', [3.3, 0.9], [B([3.2, 0.95, 0.7], [0, 0.475, 0], '$wood'), B([3.34, 0.08, 0.86], [0, 0.99, 0], '$trim'), B([3.0, 0.55, 0.05], [0, 0.55, 0.37], '$accent'),
+    Tx('RECEPTION', [1.7, 0.26], [0, 0.6, 0.4], '#ffffff', { glow: '#ff9ad8' }), B([0.5, 0.34, 0.04], [-0.9, 1.22, -0.1], '$screen', { e: 1 }), B([0.12, 0.14, 0.12], [-0.9, 1.07, -0.1], '$trim'),
+    Cy([0.1, 0.12, 0.05, 12], [0.8, 1.05, 0.05], '$metal'), Sp([0.07], [0.8, 1.1, 0.05], '$glow', { e: 1 }), Cy([0.025, 0.03, 0.32, 6], [1.25, 1.18, -0.1], '$trim'), Cy([0.12, 0.16, 0.16, 10], [1.25, 1.42, -0.1], '$glow', { e: 1, g: 1.2 })]);
+  kit = 'stock';
   // a creator-made piece lives inside the space document itself, in this same format (here: a little robot made of 11 shapes)
   SPACE.DEMO_ROBOT = { name: 'Robo', cat: 'custom', fp: [0.8, 0.8], parts: [Cy([0.3, 0.3, 0.6, 10], [0, 0.4, 0], '#e8d84a'), B([0.34, 0.18, 0.34], [0, 0.8, 0], '#e8d84a'), Sp([0.26], [0, 1.0, 0], '#e8d84a'), Sp([0.07], [-0.1, 1.04, 0.22], '#ffffff', { e: 1 }), Sp([0.07], [0.1, 1.04, 0.22], '#ffffff', { e: 1 }), Cy([0.015, 0.015, 0.3, 4], [0, 1.4, 0], '#444444'), Sp([0.05], [0, 1.58, 0], '#ff4a4a', { e: 1, a: 'blink', g: 1 }), B([0.12, 0.5, 0.12], [-0.42, 0.45, 0], '#d8c83a', { r: [0, 0, 10] }), B([0.12, 0.5, 0.12], [0.42, 0.45, 0], '#d8c83a', { r: [0, 0, -10] }), B([0.14, 0.3, 0.2], [-0.15, 0.1, 0], '#444444'), B([0.14, 0.3, 0.2], [0.15, 0.1, 0], '#444444')] };
 
-  // ---------------------------------------------------------------- demo layouts: the same studio floor plan; each theme brings its own assets (the ambience is picked separately: ?ambience=day|evening|night|neon)
+  // ---------------------------------------------------------------- demo layouts: the same studio floor plan; each theme brings its own assets (the window view is picked separately: ?view=day|evening|night|neon, default the real clock)
   const base = [
     { p: 'rug', x: 0.6, z: 0.6 }, { p: 'bed', x: -3.2, z: 1.9, ry: 90 }, { p: 'sofa', x: 0.7, z: 1.5, ry: 180 }, { p: 'coffeeTable', x: 0.7, z: 0.1 },
     { p: 'tvUnit', x: 0.7, z: -3.15 }, { p: 'bookshelf', x: -3.3, z: -3.15 }, { p: 'desk', x: -4.05, z: -1.8, ry: 90 }, { p: 'chair', x: -3.15, z: -1.8, ry: -90 },
     { p: 'floorLamp', x: 2.2, z: -3.0 }, { p: 'plant', x: 4.1, z: -2.9 }, { p: 'wallArt', x: -4.5, z: 0.3, ry: 90 },
   ];
   const L = SPACE.LAYOUTS;
-  L.studio = { name: 'Studio', theme: 'studio', ambience: 'day', pieces: base.concat([{ p: 'sideTable', x: -1.6, z: 1.9 }, { p: 'tableLamp', x: -1.6, y: 0.58, z: 1.9 }, { p: 'tallPlant', x: -4.1, z: 3.0 }, { p: 'armchair', x: -1.0, z: -1.1, ry: 40 }, { p: 'speaker', x: 1.9, z: -3.1 }]) };
-  L.cyberpunk = { name: 'Neon loft', theme: 'cyberpunk', ambience: 'day', pieces: base.filter(b => !['wallArt', 'plant', 'bookshelf'].includes(b.p)).map(b => b.p === 'chair' ? { ...b, p: 'gamingChair' } : b).concat([{ p: 'neonTube', x: -1.3, y: -0.75, z: -3.5 }, { p: 'neonTubeBlue', x: -1.3, y: -1.1, z: -3.5 }, { p: 'neonOpen', x: -4.5, z: 0.3, ry: 90 }, { p: 'serverRack', x: 4.0, z: -2.9 }, { p: 'holoScreen', x: -1.2, z: 3.0, ry: 160 }, { p: 'vending', x: -4.05, z: -3.0, ry: 90 }, { p: 'cityModel', x: -1.6, y: 0, z: 1.9 }, { p: 'speaker', x: 1.9, z: -3.1 }]) };
-  L.retro80s = { name: 'Arcade apartment', theme: 'retro80s', ambience: 'day', pieces: base.filter(b => !['bookshelf', 'wallArt', 'tvUnit'].includes(b.p)).concat([{ p: 'retroTv', x: 0.7, z: -3.1 }, { p: 'arcadeCab', x: -1.7, z: -3.0 }, { p: 'arcadeCab', x: -0.7, z: -3.0 }, { p: 'sunPoster', x: -4.5, z: 0.3, ry: 90 }, { p: 'triangleNeon', x: 2.4, z: -3.5 }, { p: 'boombox', x: -1.6, z: 1.9 }, { p: 'palm', x: -4.0, z: 3.0 }, { p: 'discoBall', x: 0.6, z: 0.6 }, { p: 'beanbag', x: -1.3, z: -0.9 }]) };
-  L.space = { name: 'Orbital quarters', theme: 'space', ambience: 'day', pieces: base.filter(b => !['bed', 'bookshelf', 'wallArt', 'plant', 'tvUnit', 'sofa', 'desk', 'chair', 'floorLamp'].includes(b.p)).concat([{ p: 'capsuleBed', x: -3.4, z: 2.2, ry: 90 }, { p: 'sofa', x: 0.7, z: 1.5, ry: 180 }, { p: 'consoleDesk', x: 0.7, z: -3.0 }, { p: 'consoleDesk', x: -2.6, z: -3.0 }, { p: 'spaceChair', x: -2.6, z: -1.9 }, { p: 'holoGlobe', x: 3.0, z: -2.6 }, { p: 'crystal', x: -1.5, z: 1.9 }, { p: 'oxygenTube', x: -4.0, z: -0.6 }, { p: 'oxygenTube', x: 4.0, z: -0.2 }]) };
-  L.halloween = { name: 'Haunted house', theme: 'halloween', ambience: 'day', pieces: base.filter(b => !['bed', 'wallArt', 'plant', 'tvUnit'].includes(b.p)).concat([{ p: 'coffinBed', x: -3.4, z: 1.9, ry: 90 }, { p: 'cauldron', x: 3.0, z: 0.6 }, { p: 'pumpkin', x: 2.4, z: -2.9 }, { p: 'bigPumpkin', x: 3.8, z: 2.9 }, { p: 'gravestone', x: -1.4, z: 2.8, ry: 25 }, { p: 'ghost', x: 1.8, z: 2.4 }, { p: 'candles', x: -1.6, z: 1.9 }, { p: 'cobweb', x: -4.45, z: -3.4, ry: 45 }, { p: 'bat', x: 0.7, z: -3.5 }, { p: 'bat', x: -1.4, z: -3.5 }, { p: 'witchHat', x: -3.6, z: -0.6 }, { p: 'tvUnit', x: 0.7, z: -3.15 }]) };
+  L.studio = { name: 'Studio', theme: 'studio', pieces: base.concat([{ p: 'sideTable', x: -1.6, z: 1.9 }, { p: 'tableLamp', x: -1.6, y: 0.58, z: 1.9 }, { p: 'tallPlant', x: -4.1, z: 3.0 }, { p: 'armchair', x: -1.0, z: -1.1, ry: 40 }, { p: 'speaker', x: 1.9, z: -3.1 }]) };
+  L.cyberpunk = { name: 'Neon loft', theme: 'cyberpunk', pieces: base.filter(b => !['wallArt', 'plant', 'bookshelf'].includes(b.p)).map(b => b.p === 'chair' ? { ...b, p: 'gamingChair' } : b).concat([{ p: 'neonTube', x: -1.3, y: -0.75, z: -3.5 }, { p: 'neonTubeBlue', x: -1.3, y: -1.1, z: -3.5 }, { p: 'neonOpen', x: -4.5, z: 0.3, ry: 90 }, { p: 'serverRack', x: 4.0, z: -2.9 }, { p: 'holoScreen', x: -1.2, z: 3.0, ry: 160 }, { p: 'vending', x: -4.05, z: -3.0, ry: 90 }, { p: 'cityModel', x: -1.6, y: 0, z: 1.9 }, { p: 'speaker', x: 1.9, z: -3.1 }]) };
+  L.retro80s = { name: 'Arcade apartment', theme: 'retro80s', pieces: base.filter(b => !['bookshelf', 'wallArt', 'tvUnit'].includes(b.p)).concat([{ p: 'retroTv', x: 0.7, z: -3.1 }, { p: 'arcadeCab', x: -1.7, z: -3.0 }, { p: 'arcadeCab', x: -0.7, z: -3.0 }, { p: 'sunPoster', x: -4.5, z: 0.3, ry: 90 }, { p: 'triangleNeon', x: 2.4, z: -3.5 }, { p: 'boombox', x: -1.6, z: 1.9 }, { p: 'palm', x: -4.0, z: 3.0 }, { p: 'discoBall', x: 0.6, z: 0.6 }, { p: 'beanbag', x: -1.3, z: -0.9 }]) };
+  L.space = { name: 'Orbital quarters', theme: 'space', pieces: base.filter(b => !['bed', 'bookshelf', 'wallArt', 'plant', 'tvUnit', 'sofa', 'desk', 'chair', 'floorLamp'].includes(b.p)).concat([{ p: 'capsuleBed', x: -3.4, z: 2.2, ry: 90 }, { p: 'sofa', x: 0.7, z: 1.5, ry: 180 }, { p: 'consoleDesk', x: 0.7, z: -3.0 }, { p: 'consoleDesk', x: -2.6, z: -3.0 }, { p: 'spaceChair', x: -2.6, z: -1.9 }, { p: 'holoGlobe', x: 3.0, z: -2.6 }, { p: 'crystal', x: -1.5, z: 1.9 }, { p: 'oxygenTube', x: -4.0, z: -0.6 }, { p: 'oxygenTube', x: 4.0, z: -0.2 }]) };
+  L.halloween = { name: 'Haunted house', theme: 'halloween', pieces: base.filter(b => !['bed', 'wallArt', 'plant', 'tvUnit'].includes(b.p)).concat([{ p: 'coffinBed', x: -3.4, z: 1.9, ry: 90 }, { p: 'cauldron', x: 3.0, z: 0.6 }, { p: 'pumpkin', x: 2.4, z: -2.9 }, { p: 'bigPumpkin', x: 3.8, z: 2.9 }, { p: 'gravestone', x: -1.4, z: 2.8, ry: 25 }, { p: 'ghost', x: 1.8, z: 2.4 }, { p: 'candles', x: -1.6, z: 1.9 }, { p: 'cobweb', x: -4.45, z: -3.4, ry: 45 }, { p: 'bat', x: 0.7, z: -3.5 }, { p: 'bat', x: -1.4, z: -3.5 }, { p: 'witchHat', x: -3.6, z: -0.6 }, { p: 'tvUnit', x: 0.7, z: -3.15 }]) };
   // the free room every player starts with (small, cosy, themed by the studio kit; the player redecorates it in the room editor)
   SPACE.starterRoom = (theme = 'studio') => ({
-    name: 'My room', theme, ambience: 'day',
-    pieces: [{ p: 'rug', x: 0, z: 0.5 }, { p: 'sofa', x: 0, z: 1.5, ry: 180 }, { p: 'coffeeTable', x: 0, z: 0 }, { p: 'tvUnit', x: 0, z: -3.225 }, { p: 'bed', x: -3.45, z: 2, ry: 90 },
+    name: 'My Home', theme,
+    pieces: [{ p: 'pendantLamp', x: 0, z: 0.5 }, { p: 'rug', x: 0, z: 0.5 }, { p: 'sofa', x: 0, z: 1.5, ry: 180 }, { p: 'coffeeTable', x: 0, z: 0 }, { p: 'tvUnit', x: 0, z: -3.225 }, { p: 'bed', x: -3.45, z: 2, ry: 90 },
       { p: 'bookshelf', x: -3.3, z: -3.275 }, { p: 'plant', x: 4.1, z: -3.2 }, { p: 'floorLamp', x: 2.5, z: 1.5 }, { p: 'wallArt', x: -4.5, z: 0, ry: 90 }],
   });
   // a gallery: your own wall colour and floor pattern, text on the wall, NFT frames (the pictures are the owner's tokens; here demo images), and a piece the creator built from shapes
   L.gallery = {
-    name: 'My gallery', theme: 'studio', ambience: 'day', windows: false, wall: { c: '#f4efe6', pat: 'subway' }, floor: { c: '#c9b8a0', pat: 'herringbone' }, custom: { robo: SPACE.DEMO_ROBOT },
+    name: 'My gallery', theme: 'studio', windows: false, wall: { c: '#f4efe6', pat: 'subway' }, floor: { c: '#c9b8a0', pat: 'herringbone' }, custom: { robo: SPACE.DEMO_ROBOT },
     pieces: [
       { p: 'wallText', x: -3.4, z: -3.5, txt: 'MY CHOGS', c: '#7a3ac8' }, { p: 'nftFrame', x: -1.6, z: -3.5, img: 'data/nft_demo_1700.png' }, { p: 'nftFrameWide', x: 0.0, z: -3.5, img: 'data/nft_demo_1700.png' }, { p: 'nftFrame', x: 1.6, z: -3.5, img: 'data/nft_demo_1700.png' },
       { p: 'nftFrame', x: -4.5, z: -2.6, ry: 90, img: 'data/nft_demo_1700.png' }, { p: 'nftFrameWide', x: -4.5, z: -0.2, ry: 90, img: 'data/nft_demo_1700.png' }, { p: 'wallTextSoft', x: -4.5, z: 2.4, ry: 90, txt: 'welcome', c: '#3f3850' },

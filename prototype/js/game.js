@@ -110,7 +110,7 @@ GAME.zoomMin = 7; GAME.zoomMax = 26; GAME.zoomT = 15; GAME.hoverChog = null;
     const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y), dt = performance.now() - down.t; down = null;
     if (moved > 10 || dt > 500 || GAME.editMode) return;                   // while decorating a room the editor (room.js) owns the mouse
     toNdc(e); const c = chogAt();
-    if (c && c !== GAME.me) { if (c.userData.netId) { if (typeof NET !== 'undefined') NET.openCard(c.userData.netId); } else if (typeof toast === 'function') toast(GAME.nameOf(c) + ': "Hello there!"'); return; }
+    if (c && c !== GAME.me) { if (c.userData.onClick) { c.userData.onClick(); return; } if (c.userData.netId) { if (typeof NET !== 'undefined') NET.openCard(c.userData.netId); } else if (typeof toast === 'function') toast(GAME.nameOf(c) + ': "Hello there!"'); return; }
     ray.setFromCamera(ndc, cam);
     if (ray.ray.intersectPlane(plane, pt)) GAME.walkTo(pt.x, pt.z, blocked(pt.x, pt.z, 0.05));
   });

@@ -58,7 +58,7 @@ const DAY = { mode: 'real', fixedHour: 14, hour: 12, n: 0, lamp: 0, windowSets: 
   DAY.setMode = (mode, hour) => { DAY.mode = mode; if (hour !== undefined) DAY.fixedHour = hour; DAY.dirty = true; };
   let lastSky = -99;
   DAY.tick = function () {
-    if (DAY.paused) return;                                                       // a room has its own light (space.js ambience)
+    if (DAY.paused) return;                                                       // inside a space only its placed lights count; space.js draws the window view (background only)
     const h = DAY.mode === 'real' ? clock() : DAY.fixedHour; DAY.hour = h; blend(h);
     if (Math.abs(h - lastSky) > 0.004 || DAY.dirty) { lastSky = h; DAY.dirty = false; paintSky(); }
     scene.fog.color.copy(S.fog); hemi.color.copy(S.hemiC); hemi.groundColor.copy(S.hemiG); hemi.intensity = S.hemiI; sun.color.copy(S.sunC); sun.intensity = S.sunI; rim.color.copy(S.rimC); rim.intensity = S.rimI;

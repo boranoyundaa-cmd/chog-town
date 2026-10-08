@@ -232,3 +232,24 @@ body.neon #doorp { background: rgba(20, 10, 44, .9); color: #f2eaff; border-colo
 @keyframes tourin { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
 #tourpin { position: fixed; left: 0; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 5px 13px 6px 9px; border-radius: 999px; background: #7a3ac8; color: #fff; font: 600 14px/1 "Fredoka", "Nunito", sans-serif; box-shadow: 0 0 0 3px rgba(255, 255, 255, .85), 0 6px 16px rgba(40, 20, 70, .4); pointer-events: none; white-space: nowrap; }
 #tourpin .arr { display: inline-block; font-size: 12px; } body.neon #tourpin { background: #ff5ab8; box-shadow: 0 0 16px #ff5ab8; }
+
+/* invitations to a Home */
+#ui .invwrap { position: absolute; left: 16px; bottom: 270px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
+#ui .invcard { width: 250px; padding: 10px 12px 12px; } #ui .invcard b { display: block; font: 400 17px "Bree Serif", Georgia, serif; } #ui .invcard small { display: block; margin: 1px 0 8px; opacity: .7; }
+#ui .invcard .acts { display: flex; gap: 6px; } #ui .invcard .btn { flex: 1; padding: 6px 8px; font-size: 13px; }
+
+/* the hotel: door prompt (same look as the town door prompt), panels, fade */
+#hotelp { position: fixed; left: 0; top: 0; z-index: 3; display: flex; align-items: center; gap: 8px; padding: 6px 14px 7px 8px; border-radius: 999px; border: 1.5px solid rgba(58, 36, 96, .25); background: #fffaf3; color: #2b2140; font: 700 14px/1 "Fredoka", "Nunito", sans-serif; box-shadow: 0 6px 16px rgba(40, 20, 70, .35); cursor: pointer; white-space: nowrap; transform-origin: 50% 100%; }
+#hotelp kbd { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 7px; background: #7a3ac8; color: #fff; font: inherit; }
+body.neon #hotelp { background: rgba(20, 10, 44, .9); color: #f2eaff; border-color: #7ae8ff; box-shadow: 0 0 14px rgba(122, 232, 255, .45); } body.neon #hotelp kbd { background: #ff5ab8; }
+#ui .hp { right: 16px; top: 88px; bottom: 112px; width: 400px; } #ui .hp > input[type=text] { margin: 0 12px 8px; width: calc(100% - 24px); box-sizing: border-box; padding: 8px 12px; border-radius: 12px; border: 1.5px solid color-mix(in srgb, currentColor 25%, transparent); font: inherit; background: color-mix(in srgb, #fff 70%, transparent); color: inherit; }
+#ui .hp-list { flex: 1; overflow: auto; padding: 0 10px 8px; display: flex; flex-direction: column; gap: 7px; }
+#ui .hv { display: flex; gap: 10px; align-items: center; padding: 9px 10px; border-radius: 14px; border: 1.5px solid color-mix(in srgb, currentColor 16%, transparent); background: color-mix(in srgb, #fff 45%, transparent); }
+#ui .hv .no { min-width: 52px; text-align: center; font: var(--hw) 16px var(--hf); } #ui .hv .no small { display: block; font-size: 11px; opacity: .65; font-weight: 800; }
+#ui .hv .tx { flex: 1; min-width: 0; } #ui .hv .tx b { display: block; font: var(--hw) 16px/1.15 var(--hf); } #ui .hv .tx span { display: block; font-size: 12.5px; line-height: 1.25; opacity: .78; margin: 2px 0 4px; }
+#ui .hv .tx i { display: inline-block; font-style: normal; font-size: 11px; font-weight: 800; padding: 1px 9px; border-radius: 999px; color: #fff; background: var(--cc, #7a3ac8); text-shadow: 0 1px 0 rgba(0, 0, 0, .25); }
+#ui .hv .btn { padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+#ui .hf { display: flex; align-items: center; gap: 12px; text-align: left; padding: 10px 14px; border-radius: 14px; border: 1.5px solid color-mix(in srgb, currentColor 18%, transparent); background: color-mix(in srgb, #fff 45%, transparent); font: inherit; color: inherit; cursor: pointer; }
+#ui .hf b { min-width: 30px; text-align: center; font: var(--hw) 22px var(--hf); } #ui .hf span { font-size: 13px; opacity: .85; } #ui .hf:hover:not(:disabled) { background: var(--sel, #7a3ac8); color: #fff; } #ui .hf.here { background: color-mix(in srgb, var(--sel, #7a3ac8) 25%, transparent); cursor: default; }
+#ui .hp.lift { bottom: auto; max-height: calc(100% - 210px); }
+#hfade { position: fixed; inset: 0; z-index: 9; pointer-events: none; opacity: 0; transition: opacity .34s ease; background: radial-gradient(ellipse at 50% 45%, #3a2468, #120a26 75%); } #hfade.on { opacity: 1; pointer-events: auto; }

@@ -5,7 +5,7 @@
 // Loaded after ui.js and plates.js.
 const NET = {
   ws: null, status: 'connecting', id: null, name: '', maxChat: 140, remotes: new Map(), log: [], draft: '', retry: 0,
-  muted: new Set(), authed: false, authBusy: null, lastSent: null, card: null, space: 'city', rooms: false,
+  muted: new Set(), invites: [], authed: false, authBusy: null, lastSent: null, card: null, space: 'city', rooms: false, hotel: false,
 };
 (function () {
   const QSV = new URLSearchParams(location.search);
@@ -68,7 +68,7 @@ const NET = {
   // ---- sending our own position: only when something changed, ~10 per second
   setInterval(() => {
     const me = GAME.me; if (!me || NET.status !== 'online') return;
-    if (typeof ROOM !== 'undefined' && ROOM.active && NET.space === 'city') return;                 // in a room the server does not know about (old server, or the answer is on its way): do not report room positions as town positions
+    if (typeof ROOM !== 'undefined' && (ROOM.active || (typeof HOTEL !== 'undefined' && HOTEL.active)) && NET.space === 'city') return;                 // in a room the server does not know about (old server, or the answer is on its way): do not report room positions as town positions
     const s = { x: +me.position.x.toFixed(2), z: +me.position.z.toFixed(2), ry: +me.rotation.y.toFixed(2), mv: GAME.moving ? 1 : 0 }, l = NET.lastSent;
     if (l && l.x === s.x && l.z === s.z && l.ry === s.ry && l.mv === s.mv) return;
     NET.lastSent = s; send(Object.assign({ t: 'move' }, s));
@@ -113,6 +113,10 @@ const NET = {
     send(Object.assign({ t: 'enter' }, spec));
     return await waitFor(['entered', 'roomfail'], 8000);
   };
+  // ---- invitations to a Home: you can only enter somebody's Home when its owner invited you (a direct invitation) or gave you their link
+  NET.invite = id => { if (NET.status !== 'online') { toast('The town server is offline.'); return; } send({ t: 'invite', id }); };
+  NET.dismissInvite = owner => { NET.invites = NET.invites.filter(i => i.owner !== owner); if (typeof render === 'function') render(); };
+  NET.acceptInvite = owner => { NET.dismissInvite(owner); if (ROOM.visit) ROOM.visit(owner); };
   NET.send = send;
   NET.waitFor = waitFor;
   NET.logout = function () { NET.authed = false; NET.want = null; send({ t: 'logout' }); };
@@ -136,16 +140,23 @@ const NET = {
     for (const h of [...NET.waiters]) h(m);
     switch (m.t) {
       case 'welcome':
-        NET.id = m.id; NET.name = m.name; NET.challenge = m.challenge; NET.maxChat = m.maxChat || 140; NET.rooms = !!m.rooms; NET.status = 'online'; NET.retry = 0; NET.authed = false; NET.lastSent = null;
+        NET.id = m.id; NET.name = m.name; NET.challenge = m.challenge; NET.maxChat = m.maxChat || 140; NET.rooms = !!m.rooms; NET.hotel = !!m.hotel; NET.status = 'online'; NET.retry = 0; NET.authed = false; NET.lastSent = null;
         clearAll(); for (const p of m.players) upsert(p);
         addLog('sys', NET.log.length ? 'Reconnected to the town.' : 'Connected. ' + (m.players.length ? m.players.length + ' other' + (m.players.length > 1 ? 's' : '') + ' in town.' : 'You are the first one here.'));
         if (GAME.me) { send({ t: 'move', x: +GAME.me.position.x.toFixed(2), z: +GAME.me.position.z.toFixed(2), ry: +GAME.me.rotation.y.toFixed(2), mv: 0 }); }
-        NET.space = 'city'; if (ROOM.active) ROOM.resync();                // the server starts every connection in the town: go back to the room we were in
+        NET.space = 'city'; if (ROOM.active) ROOM.resync(); else if (HOTEL.active) HOTEL.resync();                // the server starts every connection in the town: go back to the room we were in
         if (NET.want) NET.appear(NET.want);
         refreshChat(); if (typeof render === 'function') render(); break;
       case 'entered': NET.space = m.space; NET.lastSent = null; clearAll(); for (const p of m.players) upsert(p); refreshChat(); if (typeof render === 'function') render(); break;
       case 'roomdoc': if (ROOM.onDoc) ROOM.onDoc(m.doc); break;
+      case 'hotel': if (typeof HOTEL !== 'undefined') HOTEL.onInfo(m); break;
+      case 'counts': if (typeof HOTEL !== 'undefined') HOTEL.setCounts(m.c); break;
       case 'roomfail': toast(m.reason || 'That did not work.'); break;
+      case 'invited': {
+        const from = [...NET.remotes.values()].find(r => r.name === m.from);
+        if (from && NET.isMuted(from)) break;
+        NET.invites = NET.invites.filter(i => i.owner !== m.owner && i.exp > Date.now()); NET.invites.push({ owner: m.owner, from: m.from, exp: m.exp }); addLog('sys', m.from + ' invited you to their Home.'); if (typeof render === 'function') render(); break;
+      }
       case 'join': upsert(m.p); if (NET.refreshChat) NET.refreshChat(); break;
       case 'leave': remove(m.id); break;
       case 'appear': if (m.p.id === NET.id) { NET.name = m.p.name; if (typeof render === 'function') render(); } else upsert(m.p); break;

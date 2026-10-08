@@ -5,7 +5,7 @@
 
 ## World and style
 
-A small modern city district on a floating slab: two avenues crossing, a tower with the free player rooms ("Chog Lofts"), a cafe, an arcade, a club, a gallery, street furniture (lamps, benches, bus stop, cars, trees). Direction changed on 2026-10-08 from the medieval island to **modern**; the render style did not change.
+A small modern city district on a floating slab: two avenues crossing, a tower that will be the Hotel ("Chog Hotel", venues, not built yet), a small Home house for every player, a cafe, an arcade, a club, a gallery, street furniture (lamps, benches, bus stop, cars, trees). Direction changed on 2026-10-08 from the medieval island to **modern**; the render style did not change.
 
 **Render style:** smooth stylised 3D (the `hybrid` style): a real 3D scene rendered 2x supersampled (3840x2160 down to 1920x1080), soft toon shading, ambient occlusion, saturated colours, glow, light vignette. Palette accents come from Chog itself: purple and magenta against warm cream, terracotta and sky gradient. Pixel-3D stays as `?style=pixel` for reference only.
 
@@ -25,7 +25,7 @@ Decided by the owner 2026-10-08. The game has one art style and one render pipel
 - **Variety is theme, not style.** We offer a wide catalogue of themes (modern, cyberpunk, retro 80s, space, halloween, and more over time) so a player can make a halloween house or a space station, but every piece is built in the same visual language: chunky toon shapes, saturated palette, small lit details, readable silhouettes, shared proportions.
 - **How a theme is made:** a palette, a default wall and floor, a set of pieces. Never a different shader, outline, realism level, pixel look or photo texture.
 - **Colours and patterns are free for players; shapes and scale are shared.** Wallpapers, floors and backgrounds come from a pattern list tinted with any colour.
-- **Light is the world's, not a style.** Rooms pick an ambience (day, evening, night, neon night) in the same family as the town's clock.
+- **Light is the world's, not a style.** The real clock lights only the outdoors and the view through windows. Interiors are lit only by the lights placed in them (`docs/game/world.md`).
 - Details and the creator toolset: `docs/game/spaces.md`. A `?style=` switch exists for developers only.
 
 ## UI style: three skins
@@ -60,7 +60,7 @@ Derived from the official art (`assets/reference/official_sheet.png`). The NFT p
 | Door | 1.75 tall |
 | Building body | 4 to 10 (1 to 5 floors of 1.5) |
 | Trees | 3 |
-| Town slab | 16.4 × 16.4 (`HALF` 8.2), roads 3 wide |
+| Town slab | 20.8 × 20.8 (`HALF` 10.4), roads 3 wide |
 
 Chogs must always read smaller than doors and houses.
 

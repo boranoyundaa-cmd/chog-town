@@ -1,13 +1,13 @@
 // ===== space: data-driven rooms and venues =====
 // ONE art style for the whole game: the render pipeline is fixed and nothing in a space can change it. Creators get freedom in CONTENT:
 // themed asset kits (modern, cyberpunk, retro, space, halloween ...), wallpapers, floors, backgrounds, text, their own shapes, NFT frames.
-// A space is a JSON document: { name, theme, ambience, wall?, floor?, pieces:[{p, x, z, y?, ry?, c?, k?, txt?, img?}], custom? }.
+// A space is a JSON document: { name, theme, view?, wall?, floor?, pieces:[{p, x, z, y?, ry?, c?, k?, txt?, img?}], custom? }.
 // A piece is a list of primitive parts, and stock furniture, theme kits and creator-made pieces all use the SAME format, so there is no code to trust:
 //   part = { t:'box'|'cyl'|'sph'|'cone'|'tor'|'plane'|'text'|'img'|'light', s:[size...], p:[x,y,z], r:[rx,ry,rz] (degrees), c:'$token'|'#rrggbb', e:1 (glows), o:opacity,
 //            k:[sx,sy,sz] (scale), g:size (soft halo), a:'spin'|'bob'|'blink'|'pulse', txt:'..', edit:true (text/image taken from the placed item), i/d (light) }
 // Colour tokens ($wall, $accent ...) resolve against the theme palette, so one piece looks right in every theme. See docs/game/spaces.md.
-// Loaded after core.js (needs scene, lights, cam). Themes, ambiences and the catalog live in space_data.js.
-const SPACE = { THEMES: {}, AMBIENCE: {}, PIECES: {}, LAYOUTS: {}, group: null, doc: null, theme: null, placed: [], lights: [], limits: { parts: 48, pieces: 400, lights: 10, scale: [0.4, 3] } };
+// Loaded after core.js (needs scene, lights, cam). Themes, window views and the catalog live in space_data.js.
+const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc: null, theme: null, placed: [], lights: [], limits: { parts: 48, pieces: 400, lights: 10, scale: [0.4, 3] } };
 (function () {
   const rad = d => d * Math.PI / 180, clampN = (v, a, b) => Math.max(a, Math.min(b, +v || 0));
   const colorOf = (c, pal) => typeof c === 'number' ? c : typeof c === 'string' ? (c[0] === '$' ? (pal[c.slice(1)] ?? 0xff00ff) : parseInt(c.slice(1), 16) || 0) : 0xcccccc;
@@ -66,7 +66,7 @@ const SPACE = { THEMES: {}, AMBIENCE: {}, PIECES: {}, LAYOUTS: {}, group: null, 
     }
     return g;
   }
-  SPACE.buildParts = buildParts;
+  SPACE.buildParts = buildParts; SPACE.textMesh = textMesh;
 
   // ---- wall and floor patterns: neutral maps tinted by the chosen colour (the colour is free, the pattern comes from the list)
   const TEXS = {}, tex = (key, w, h, fn, rx = 1, ry = 1) => (TEXS[key] = TEXS[key] || paint(w, h, fn, rx, ry));
@@ -97,9 +97,10 @@ const SPACE = { THEMES: {}, AMBIENCE: {}, PIECES: {}, LAYOUTS: {}, group: null, 
     subway: () => tex('w_subway', 64, 64, (g, w, h) => { fill(g, w, h, '#f8f8f8'); g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 2; for (let y = 0; y < h; y += 16) for (let x = 0; x < w; x += 32) { const ox = (y / 16) % 2 ? 16 : 0; g.strokeRect(x + ox, y, 32, 16); } }, 8, 5),
     wainscot: () => tex('w_wain', 64, 64, (g, w, h) => { fill(g, w, h, '#f4f4f4'); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, 38, w, 26); g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(0, 37, w, 2); g.strokeStyle = 'rgba(0,0,0,.2)'; for (let x = 0; x < w; x += 21) g.strokeRect(x + 2, 42, 17, 18); }, 4, 1),
   };
-  SPACE.PATTERNS = { wall: Object.keys(WALL), floor: Object.keys(FLOOR) };
+  SPACE.PATTERNS = { wall: Object.keys(WALL), floor: Object.keys(FLOOR) }; SPACE.WALL = WALL; SPACE.FLOOR = FLOOR;
 
-  // ---- ambience: the room's light, sky and window colour. Same idea as the town's clock (day / evening / night), NOT an art style: rendering never changes.
+  // ---- window view: the background only (sky, fog, sun or moon, stars, window glass). It never lights the room: interiors get a small fixed light floor (SPACE.INTERIOR) plus the lights placed in them.
+  // The default view follows the real clock; a space may pin one (doc.view). Not an art style: rendering never changes.
   SPACE.size = [9, 7]; SPACE.H = 3.3; SPACE.door = null;
   let stars = null;
   let shellHalos = [];
@@ -112,25 +113,31 @@ const SPACE = { THEMES: {}, AMBIENCE: {}, PIECES: {}, LAYOUTS: {}, group: null, 
   SPACE.unload = function () {                                       // leave the room: remove everything it added to the scene
     clear(); SPACE.group = null; SPACE.doc = null; if (stars) { cam.remove(stars); stars = null; } SPACE.refreshHidden();
   };
-  function applyAmbience(a) {
+  SPACE.viewKey = doc => { if (doc && SPACE.VIEWS[doc.view]) return doc.view; const d = new Date(), h = typeof DAY === 'undefined' || DAY.mode === 'real' ? d.getHours() + d.getMinutes() / 60 : DAY.fixedHour; return h >= 7.3 && h < 17.4 ? 'day' : (h >= 5.5 && h < 7.3) || (h >= 17.4 && h < 20.6) ? 'evening' : 'night'; };
+  let viewNow = null;
+  function applyView(v) {
     const cv = document.createElement('canvas'); cv.width = 4; cv.height = 256; const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
-    [0, 0.42, 0.78, 1].forEach((s, i) => gr.addColorStop(s, a.sky[i])); g.fillStyle = gr; g.fillRect(0, 0, 4, 256); scene.background = new THREE.CanvasTexture(cv);
-    scene.fog.color.set(a.fog); hemi.color.set(a.hemi[0]); hemi.groundColor.set(a.hemi[1]); hemi.intensity = a.hemi[2]; sun.color.set(a.sun[0]); sun.intensity = a.sun[1]; rim.color.set(a.rim[0]); rim.intensity = a.rim[1];
-    SUN_OFF.set(...(a.sunOff || [-11, 10, 6])); sunSprites.forEach(([s]) => { s.visible = !!a.sunDisc; if (a.sunDisc) s.material.color.set(a.sunDisc); });
+    [0, 0.42, 0.78, 1].forEach((s, i) => gr.addColorStop(s, v.sky[i])); g.fillStyle = gr; g.fillRect(0, 0, 4, 256); scene.background = new THREE.CanvasTexture(cv);
+    const I = SPACE.INTERIOR; scene.fog.color.set(v.fog); hemi.color.set(I.hemi[0]); hemi.groundColor.set(I.hemi[1]); hemi.intensity = I.hemi[2]; sun.color.set(I.sun[0]); sun.intensity = I.sun[1]; rim.color.set(I.rim[0]); rim.intensity = I.rim[1];
+    SUN_OFF.set(-11, 10, 6); sunSprites.forEach(([s]) => { s.visible = !!v.sunDisc; if (v.sunDisc) s.material.color.set(v.sunDisc); });
     if (stars) { cam.remove(stars); stars = null; }
-    if (a.stars) {
-      const sp = []; for (let i = 0; i < a.stars; i++) sp.push((R() - 0.5) * 26 * 1.9, (R() - 0.5) * 14.6, -118);
+    if (v.stars) {
+      const sp = []; for (let i = 0; i < v.stars; i++) sp.push((R() - 0.5) * 26 * 1.9, (R() - 0.5) * 14.6, -118);
       const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
       stars = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffffff, size: 4, sizeAttenuation: false, transparent: true, opacity: 0.9, fog: false, depthWrite: false })); stars.userData.noNormal = true; stars.frustumCulled = false; cam.add(stars);
     }
     sun.shadow.camera.left = sun.shadow.camera.bottom = -14; sun.shadow.camera.right = sun.shadow.camera.top = 14; sun.shadow.camera.updateProjectionMatrix();
   }
+  SPACE.applyView = applyView;
+  SPACE.clearSky = () => { if (stars) { cam.remove(stars); stars = null; } };               // leave a space that drew its own sky (the town's clock draws its own again)
+  let lastCheck = 0;
+  animated.push(t => { if (!SPACE.group || t - lastCheck < 20) return; lastCheck = t; if (SPACE.viewKey(SPACE.doc) !== viewNow && SPACE.onView) SPACE.onView(); });      // the hour moved on while you are inside: the window view changes
 
   // ---- build a space: shell (floor, two back walls, windows, door), pieces, lights, scenery
   SPACE.build = function (doc) {
-    clear(); const th = SPACE.THEMES[doc.theme] || SPACE.THEMES.studio, amb = SPACE.AMBIENCE[doc.ambience || 'day'] || SPACE.AMBIENCE.day, pal = th.pal; SPACE.doc = doc; SPACE.theme = th;
+    clear(); viewNow = SPACE.viewKey(doc); const th = SPACE.THEMES[doc.theme] || SPACE.THEMES.studio, amb = SPACE.VIEWS[viewNow], pal = th.pal; SPACE.doc = doc; SPACE.theme = th;
     const [W, D] = SPACE.size, H = SPACE.H, grp = new THREE.Group(); SPACE.group = grp; world.add(grp); const sh = (c, k) => new THREE.Color(c).multiplyScalar(k).getHex();
-    applyAmbience(amb);
+    applyView(amb);
     // the creator's wall and floor: any colour, a pattern from the list
     const wallC = doc.wall && doc.wall.c !== undefined ? colorOf(doc.wall.c, pal) : pal.wall, wallPat = (doc.wall && WALL[doc.wall.pat]) ? doc.wall.pat : th.wallTex || 'plaster';
     const floorC = doc.floor && doc.floor.c !== undefined ? colorOf(doc.floor.c, pal) : pal.floor, floorPat = (doc.floor && FLOOR[doc.floor.pat]) ? doc.floor.pat : th.floorTex || 'wood';
@@ -152,8 +159,7 @@ const SPACE = { THEMES: {}, AMBIENCE: {}, PIECES: {}, LAYOUTS: {}, group: null, 
     onWall(dr.wall, dr.u, 1.0, BOX(1.1, 2.0, 0.12, tmat(pal.accent2 ?? pal.accent)), 0.06); onWall(dr.wall, dr.u, 1.0, BOX(1.3, 2.15, 0.08, tmat(pal.trim)), 0.03);
     onWall(dr.wall, dr.u + 0.34, 1.0, SPH(0.06, tmat(0xf0d070)), 0.16); onWall(dr.wall, dr.u, 2.35, textMesh('EXIT', 0.8, 0.22, '#ffffff', null, amb.neon ? '#5ad8ff' : null), 0.1);
     if (th.outside && amb.outside) { const n0 = noNormalPass.length; grp.add(buildParts(th.outside, pal)); shellHalos = noNormalPass.slice(n0); }                       // scenery beyond the window, only when the sky is dark enough to show it
-    SPACE.lights = []; for (const l of amb.lights || []) { const L = new THREE.PointLight(l.c, l.i, l.d ?? 8, 1.8); L.position.set(...l.p); grp.add(L); SPACE.lights.push(L); }
-    if (amb.neon) for (const l of th.neonLights || []) { const L = new THREE.PointLight(colorOf(l.c, pal), l.i, l.d ?? 8, 1.8); L.position.set(...l.p); grp.add(L); SPACE.lights.push(L); }
+    SPACE.lights = [];                                                                  // the only room lights are the placed pieces' (SPACE.addEntry)
     // pieces: any piece in the catalog or in the document's own `custom` table; per item: tint, scale, text, image
     SPACE.placed = [];
     for (const it of (doc.pieces || []).slice(0, SPACE.limits.pieces)) { const e = SPACE.makePiece(it); if (e) SPACE.addEntry(e); }

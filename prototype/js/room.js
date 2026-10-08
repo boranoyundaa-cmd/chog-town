@@ -1,5 +1,5 @@
 // ===== room: your own room, free for every player =====
-// Enter from the door of Chog Lofts (or press R), walk around, decorate (grid, click a piece, click the spot), save it signed by your wallet, invite friends.
+// Enter from the door of your Home house in the town (or press R), walk around, decorate (grid, click a piece, click the spot), save it signed by your wallet, invite friends.
 // A room is a space document (js/space.js, docs/game/spaces.md); this file owns the rules around it: entering and leaving the town scene, walking collision,
 // the placement editor and its panel, the server link (net.js: enter / roomprep / roomsave). Loaded after net.js and ui.js.
 const ROOM = {
@@ -8,16 +8,16 @@ const ROOM = {
 };
 (function () {
   const SNAP = 0.5, LIMIT = 40;                                              // grid step; pieces per free room (the server enforces the same number)
-  const CITY_OUT = { x: -4.8, z: -2.35, ry: 0 }, CITY_DOOR = { x: -4.8, z: -2.7 }, SPAWN = { x: 2.9, z: -2.3, ry: 0 };   // the Lofts door in the town; where you appear inside (by the room's own door)
+  const CITY_DOOR = CITY.doors.home, HOTEL_DOOR = CITY.doors.hotel, CITY_OUT = { x: CITY_DOOR.x, z: CITY_DOOR.out, ry: 0 }, SPAWN = { x: 2.9, z: -2.3, ry: 0 };   // the Home door in the town; where you appear inside (by the room's own door)
   const WALL_GAP = 0.3, rad = d => d * Math.PI / 180;
-  const isWall = d => d.cat === 'wall' || d.fp[1] <= 0.12, isFlat = d => d.cat === 'floor';
+  const isWall = d => d.cat === 'wall' || d.fp[1] <= 0.12, isFlat = d => d.cat === 'floor' || d.cat === 'ceiling', grp = d => (d.cat === 'ceiling' ? 2 : d.cat === 'floor' ? 1 : 0);          // rugs and ceiling lights do not block walking; each kind only collides with its own kind
   const rotated = it => Math.round((it.ry || 0) / 90) % 2 !== 0;
   const rectOf = (it, d) => ({ x: it.x, z: it.z, hw: (rotated(it) ? d.fp[1] : d.fp[0]) / 2, hd: (rotated(it) ? d.fp[0] : d.fp[1]) / 2 });
   const wallOf = it => (rotated(it) ? 'x' : 'z');
   const hexOf = s => '0x' + [...new TextEncoder().encode(s)].map(b => b.toString(16).padStart(2, '0')).join('');
   const dims = () => SPACE.size;
   const defOf = it => SPACE.PIECES[it.p];
-  const CATS = [['all', 'All'], ['seat', 'Seating'], ['table', 'Tables'], ['sleep', 'Beds'], ['storage', 'Storage'], ['light', 'Lights'], ['deco', 'Decor'], ['floor', 'Rugs'], ['wall', 'Wall'], ['media', 'Media'], ['tech', 'Tech'], ['work', 'Work'], ['kitchen', 'Kitchen']];
+  const CATS = [['all', 'All'], ['seat', 'Seating'], ['table', 'Tables'], ['sleep', 'Beds'], ['storage', 'Storage'], ['light', 'Lights'], ['ceiling', 'Ceiling'], ['deco', 'Decor'], ['floor', 'Rugs'], ['wall', 'Wall'], ['media', 'Media'], ['tech', 'Tech'], ['work', 'Work'], ['kitchen', 'Kitchen']];
   const TINTS = ['#7a3ac8', '#ff7aa8', '#6fbdb0', '#ffc23a', '#e8553a', '#3a8ad8', '#4aa84a', '#f4f0e8', '#2b2140'];
   const save$ = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
   const load$ = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
@@ -28,8 +28,10 @@ const ROOM = {
   doorMark.rotation.set(-Math.PI / 2, 0, Math.PI / 4); doorMark.position.set(CITY_DOOR.x, 0.05, CITY_DOOR.z + 0.1); doorMark.userData.noNormal = true; world.add(doorMark); hiddenInNormal.push(doorMark);
   const prompt = document.createElement('button'); prompt.id = 'doorp'; prompt.style.display = 'none'; prompt.onclick = () => doorAction();
   document.body.insertBefore(prompt, document.getElementById('ui'));
-  const doorAction = () => { if (ROOM.busy || ROOM.mode === 'edit') return; if (ROOM.active) { if (nearExit()) ROOM.leave(); } else if (nearDoor()) enterRoom({ kind: 'mine' }); };
-  const nearDoor = () => GAME.me && Math.hypot(GAME.me.position.x - CITY_DOOR.x, GAME.me.position.z - CITY_DOOR.z) < 1.6;
+  const doorAction = () => { if (ROOM.busy || ROOM.mode === 'edit' || (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.busy))) return; if (ROOM.active) { if (nearExit()) ROOM.leave(); } else if (nearDoor()) enterRoom({ kind: 'mine' }); else if (nearHotel()) HOTEL.enterFromTown(); };
+  const inTownNow = () => !(typeof HOTEL !== 'undefined' && HOTEL.active);                  // the hotel scenes reuse the coordinates of the street
+  const nearDoor = () => inTownNow() && GAME.me && Math.hypot(GAME.me.position.x - CITY_DOOR.x, GAME.me.position.z - CITY_DOOR.z) < 1.6;
+  const nearHotel = () => inTownNow() && GAME.me && Math.hypot(GAME.me.position.x - HOTEL_DOOR.x, GAME.me.position.z - HOTEL_DOOR.z) < 1.6;
   const exitSpot = () => { const [RW, RD] = dims(); return { x: SPACE.door ? SPACE.door.u : RW / 2 - 1.6, z: -RD / 2 }; };
   const nearExit = () => { const e = exitSpot(); return GAME.me && Math.hypot(GAME.me.position.x - e.x, GAME.me.position.z - e.z) < 1.9; };
 
@@ -41,24 +43,25 @@ const ROOM = {
     GAME.room = { blocked: (x, z, r) => roomBlocked(x, z, r) }; ROOM.active = true; GAME.path = []; GAME.keys = {};
     GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.zoomT = 13.5;
   }
-  function leaveScene() {
-    SPACE.unload(); for (const o of CITY_NODES) o.visible = true; doorMark.visible = true; DAY.resume();
+  ROOM.showTown = on => { for (const o of CITY_NODES) o.visible = on; doorMark.visible = on; };            // the hotel hides and shows the street the same way a room does
+  function leaveScene(keepTown) {                                                          // keepTown: going from a venue back to the hotel, the street stays hidden
+    SPACE.unload(); if (!keepTown) { ROOM.showTown(true); DAY.resume(); }
     const sc = sun.shadow.camera; if (prev) { Object.assign(sc, { left: prev.shadow.l, right: prev.shadow.r, top: prev.shadow.t, bottom: prev.shadow.b, far: prev.shadow.f }); sc.updateProjectionMatrix(); GAME.zoomT = prev.zoom; }
     GAME.room = null; GAME.camFixed = null; GAME.editMode = false; GAME.dragUI = false; GAME.regrid(); ROOM.active = false; ROOM.mode = 'walk';
-    const me = GAME.me; me.position.set(CITY_OUT.x, 0, CITY_OUT.z); me.rotation.y = CITY_OUT.ry; GAME.path = [];
+    if (!keepTown) { const me = GAME.me; me.position.set(CITY_OUT.x, 0, CITY_OUT.z); me.rotation.y = CITY_OUT.ry; GAME.path = []; }
     SPACE.refreshHidden(); document.body.classList.remove('inroom');
   }
   function placeMe(s) { const me = GAME.me; me.position.set(s.x, 0, s.z); me.rotation.y = s.ry; GAME.path = []; }
 
-  // spec: {kind:'mine'} or {kind:'visit', who: wallet address | player id}
+  // spec: {kind:'mine'} or {kind:'visit', who: wallet address, inv?: a link token}; the server lets you into a Home only when you were invited
   async function enterRoom(spec) {
-    if (ROOM.busy) return; ROOM.busy = true;
+    if (ROOM.busy || (typeof HOTEL !== 'undefined' && HOTEL.busy)) return; ROOM.busy = true;
     const SPAWN_AT = { x: SPAWN.x + (Math.random() - 0.5) * 0.8, z: SPAWN.z + Math.random() * 0.5, ry: 0 };       // a little scatter so two people arriving together do not stand inside each other
     try {
-      let doc = null; const info = { kind: spec.kind, owner: null, ownerName: null, mine: spec.kind === 'mine', savedAt: null, draft: false };
+      let doc = null; const info = { kind: spec.kind, owner: null, ownerName: null, mine: spec.kind === 'mine', savedAt: null, draft: false, venue: null };
       if (spec.kind === 'visit') {
-        if (NET.status !== 'online' || !NET.rooms) { toast('The town server is offline, so rooms cannot be visited right now.'); return; }
-        const r = await NET.enter(Object.assign({ space: 'room', who: spec.who }, SPAWN_AT));
+        if (NET.status !== 'online' || !NET.rooms) { toast('The town server is offline, so Homes cannot be visited right now.'); return; }
+        const r = await NET.enter(Object.assign({ space: 'room', who: spec.who, inv: spec.inv }, SPAWN_AT));
         if (!r) { toast('The server did not answer. Try again.'); return; }
         if (r.t !== 'entered') return;                                                         // net.js already showed why
         Object.assign(info, { kind: r.mine ? 'mine' : 'visit', owner: r.owner, ownerName: r.ownerName, mine: r.mine, savedAt: r.savedAt }); doc = r.doc;
@@ -71,12 +74,24 @@ const ROOM = {
         if (dr && dr.doc) { doc = dr.doc; info.draft = true; toast('Your unsaved changes are back.'); }
         if (!doc) doc = SPACE.starterRoom();
       }
-      info.spawn = SPAWN_AT; ROOM.setup(doc, info);
-    } finally { ROOM.busy = false; }
+      info.spawn = SPAWN_AT; if (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.away)) { HOTEL.hideScene(false); HOTEL.away = false; }       // going to a Home from inside the hotel: the street comes back when you leave it
+      ROOM.setup(doc, info);
+    } finally { ROOM.busy = false; ROOM.refreshUI(); }
   }
+  // a hotel venue: a room document the server serves to anyone who walks in (not editable, not a Home). Returns true when it opened.
+  ROOM.enterVenue = async function (v) {
+    if (ROOM.busy) return false; ROOM.busy = true;
+    const SPAWN_AT = { x: SPAWN.x + (Math.random() - 0.5) * 0.8, z: SPAWN.z + Math.random() * 0.5, ry: 0 };
+    try {
+      const r = await NET.enter(Object.assign({ space: 'venue', id: v.id }, SPAWN_AT)); if (!r || r.t !== 'entered') return false;
+      if (typeof HOTEL !== 'undefined') { HOTEL.hideScene(true); HOTEL.away = true; }
+      ROOM.setup(r.doc, { kind: 'venue', owner: null, ownerName: null, mine: false, savedAt: null, draft: false, venue: r.venue || v, spawn: SPAWN_AT }); return true;
+    } finally { ROOM.busy = false; ROOM.refreshUI(); }
+  };
+  ROOM.exitVenueScene = function () { setEdit(false); ROOM.venue = null; leaveScene(true); ROOM.refreshUI(); if (typeof render === 'function') render(); };
   ROOM.setup = function (doc, info) {
     if (!Array.isArray(doc.pieces)) doc.pieces = [];
-    doc.pieces = doc.pieces.filter(it => SPACE.PIECES[it.p]).slice(0, LIMIT);
+    doc.pieces = doc.pieces.filter(it => SPACE.PIECES[it.p]).slice(0, info.kind === 'venue' ? 80 : LIMIT);
     Object.assign(ROOM, info, { doc, dirty: !!info.draft, held: null, hover: null, mode: 'walk' });
     if (!ROOM.active) enterScene();
     GAME.editMode = false; GAME.dragUI = false; dropGhost();
@@ -86,18 +101,20 @@ const ROOM = {
   };
   ROOM.leave = function () {
     if (!ROOM.active) return; setEdit(false);
-    leaveScene(); if (NET.status === 'online') NET.enter(Object.assign({ space: 'city' }, CITY_OUT));
+    if (ROOM.venue && typeof HOTEL !== 'undefined') { HOTEL.returnFromVenue(ROOM.venue); return; }          // back to its door in the hotel corridor
+    leaveScene(false); if (NET.status === 'online') NET.enter(Object.assign({ space: 'city' }, CITY_OUT));
     ROOM.refreshUI(); if (typeof render === 'function') render();
   };
-  ROOM.toggle = function () { if (ROOM.busy) return; if (ROOM.active) ROOM.leave(); else enterRoom({ kind: 'mine' }); };
-  ROOM.visit = who => { if (!ROOM.busy) enterRoom({ kind: 'visit', who }); };
+  ROOM.toggle = function () { if (ROOM.busy) return; if (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.busy) && !ROOM.active) { toast('Step out to the street first, then go home.'); return; } if (ROOM.active) ROOM.leave(); else enterRoom({ kind: 'mine' }); };
+  ROOM.visit = (who, inv) => { if (!ROOM.busy) enterRoom({ kind: 'visit', who, inv }); };
   ROOM.resync = function () {                                                              // the server connection came back (it starts every connection in the town): rejoin this room
     if (!ROOM.active) return; const me = GAME.me, pos = { x: me.position.x, z: me.position.z, ry: me.rotation.y };
+    if (ROOM.venue) { NET.enter(Object.assign({ space: 'venue', id: ROOM.venue.id }, pos)); return; }
     NET.enter(Object.assign({ space: ROOM.kind === 'solo' || !ROOM.owner ? 'solo' : 'room', who: ROOM.owner }, pos));
   };
-  ROOM.onDoc = function (doc) { if (!ROOM.active || ROOM.mine) return; ROOM.doc = doc; SPACE.build(doc); rebuildNav(); toast('The owner changed the room.'); };       // the owner saved while we are visiting
+  ROOM.onDoc = function (doc) { if (!ROOM.active || ROOM.mine) return; ROOM.doc = doc; SPACE.build(doc); rebuildNav(); toast('The owner changed the Home.'); };       // the owner saved while we are visiting
   ROOM.editing = () => ROOM.active && ROOM.mode === 'edit';
-  ROOM.title = () => (ROOM.kind === 'visit' ? (ROOM.doc && ROOM.doc.name ? ROOM.doc.name : 'A room') : ROOM.doc && ROOM.doc.name ? ROOM.doc.name : 'My room');
+  ROOM.title = () => (ROOM.kind === 'venue' ? (ROOM.venue && ROOM.venue.name) || 'Hotel room' : ROOM.kind === 'visit' ? (ROOM.doc && ROOM.doc.name ? ROOM.doc.name : 'A Home') : ROOM.doc && ROOM.doc.name ? ROOM.doc.name : 'My Home');
   ROOM.hint = () => (ROOM.mode === 'edit'
     ? (ROOM.held ? 'Click the spot to place · R turn · Del remove · Esc cancel · Shift: keep placing' : 'Pick a piece from the list, or click one in the room to move it · B done')
     : ROOM.mine ? 'Click to walk · B decorate · E at the door to leave · R leave' : 'Click to walk · E at the door to leave');
@@ -129,7 +146,7 @@ const ROOM = {
     if (r.x - r.hw < -RW / 2 - eps || r.x + r.hw > RW / 2 + eps || r.z - r.hd < -RD / 2 - eps || r.z + r.hd > RD / 2 + eps) return 'Outside the room.';
     const ex = exitSpot(); if (!isFlat(d) && Math.abs(r.x - ex.x) < r.hw + 0.9 && r.z - r.hd < ex.z + 1.5) return 'Keep the way to the door clear.';
     for (const e of SPACE.placed) {
-      if (e.it === ignore || isWall(e.def) || isFlat(e.def) !== isFlat(d)) continue;
+      if (e.it === ignore || isWall(e.def) || grp(e.def) !== grp(d)) continue;
       const o = rectOf(e.it, e.def); if (Math.abs(r.x - o.x) < r.hw + o.hw - 0.02 && Math.abs(r.z - o.z) < r.hd + o.hd - 0.02) return 'That spot is taken.';
     }
     return null;
@@ -265,7 +282,8 @@ const ROOM = {
     if (!GAME.me) return;
     if (ROOM.editing()) updateEdit();
     let show = false, label = '', at = null;
-    if (!ROOM.active && nearDoor() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter your room'; at = [CITY_DOOR.x, 2.35, CITY_DOOR.z]; }
+    if (!ROOM.active && nearDoor() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter your Home'; at = [CITY_DOOR.x, 2.45, CITY_DOOR.z]; }
+    else if (!ROOM.active && nearHotel() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter the Chog Hotel'; at = [HOTEL_DOOR.x, 2.35, HOTEL_DOOR.z]; }
     else if (ROOM.active && ROOM.mode === 'walk' && nearExit() && !ROOM.busy) { const ex = exitSpot(); show = true; label = '<kbd>E</kbd> Leave the room'; at = [ex.x, 2.5, ex.z]; }
     if (show) {
       v3.set(at[0], at[1], at[2]).project(cam); const sc = Math.max(0.8, Math.min(1.6, innerHeight / 810));
@@ -274,33 +292,35 @@ const ROOM = {
     doorMark.material.opacity = 0.55 + 0.3 * Math.sin(performance.now() / 380);
   });
 
-  // ------------------------------------------------------------------ rebuild after look changes (theme, ambience, wall, floor, windows)
+  // ------------------------------------------------------------------ rebuild after look changes (theme, window view, wall, floor, windows)
   function rebuild() { SPACE.build(ROOM.doc); if (ROOM.held) setGhost(ROOM.held.it); SPACE.refreshHidden(); rebuildNav(); }
+  SPACE.onView = () => { if (ROOM.active) rebuild(); };
   const look = fn => () => { fn(); touch(); rebuild(); ROOM.refreshUI(); if (typeof render === 'function') render(); };
 
   // ------------------------------------------------------------------ saving: the wallet signs the cleaned document, the server stores it
   ROOM.save = async function () {
     if (ROOM.busy || !ROOM.mine) return;
-    if (!WALLET.account) { toast('Connect a wallet to save your room. Your changes stay on this device meanwhile.'); if (typeof connectFlow === 'function') connectFlow(); return; }
+    if (!WALLET.account) { toast('Connect a wallet to save your Home. Your changes stay on this device meanwhile.'); if (typeof connectFlow === 'function') connectFlow(); return; }
     if (NET.status !== 'online' || !NET.rooms) { toast('The town server is offline. Your changes stay on this device.'); return; }
     ROOM.busy = true; ROOM.refreshUI();
     try {
       if (!await NET.authenticate()) { toast('Signing in with your wallet did not work.'); return; }
       NET.send({ t: 'roomprep', doc: ROOM.doc }); const prep = await NET.waitFor(['roomprep', 'roomfail'], 8000);
       if (!prep || prep.t !== 'roomprep') { if (!prep) toast('The server did not answer.'); return; }
-      toast('Sign the message in your wallet to save the room (free, no transaction).');
+      toast('Sign the message in your wallet to save the Home (free, no transaction).');
       let sig; try { sig = await WALLET.provider.request({ method: 'personal_sign', params: [hexOf(prep.message), WALLET.account] }); } catch (e) { toast(e && e.code === 4001 ? 'Not saved: you declined the signature.' : 'Could not sign.'); return; }
       NET.send({ t: 'roomsave', doc: ROOM.doc, ts: prep.ts, sig }); const r = await NET.waitFor(['roomsaved', 'roomfail'], 8000);
       if (r && r.t === 'roomsaved') {
-        ROOM.dirty = false; ROOM.savedAt = r.at; ROOM.owner = WALLET.account.toLowerCase(); save$(draftKey(), null); toast('Room saved. Friends can visit it now.');
+        ROOM.dirty = false; ROOM.savedAt = r.at; ROOM.owner = WALLET.account.toLowerCase(); save$(draftKey(), null); toast('Home saved. Invite friends from the top bar.');
         if (ROOM.kind === 'solo') { ROOM.kind = 'mine'; const me = GAME.me; NET.enter({ space: 'room', who: 'me', x: me.position.x, z: me.position.z, ry: me.rotation.y }); }      // now others can come in
       } else if (!r) toast('The server did not answer. Try Save again.');
     } finally { ROOM.busy = false; ROOM.refreshUI(); if (typeof render === 'function') render(); }
   };
-  ROOM.invite = function () {
-    const a = ROOM.owner; if (!a || ROOM.kind === 'solo' || !ROOM.savedAt) { toast('Save your room first, then you can share the link.'); return; }
-    const url = location.origin + location.pathname + '?room=' + a;
-    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast('Invite link copied. Anyone with it can visit your room.'), () => toast(url));
+  ROOM.invite = async function (renew) {                                                    // copy the share link (renew = the old link stops working)
+    if (!ROOM.owner || ROOM.kind === 'solo' || !ROOM.savedAt) { toast('Save your Home first, then you can invite people.'); return; }
+    NET.send({ t: 'invlink', renew: !!renew }); const r = await NET.waitFor(['invlink', 'roomfail'], 6000); if (!r || r.t !== 'invlink') { if (!r) toast('The server did not answer.'); return; }
+    const url = location.origin + location.pathname + '?room=' + ROOM.owner + '&inv=' + r.token;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(() => toast(renew ? 'New link copied. The old one no longer works.' : 'Invite link copied. Anyone with it can visit your Home for a week.'), () => toast(url));
   };
 
   // ------------------------------------------------------------------ HUD: top bar, the panel
@@ -312,12 +332,12 @@ const ROOM = {
   const btn = (cls, txt, fn, title) => { const b = el('button', 'btn hit ' + cls, ''); b.textContent = txt; b.onclick = fn; if (title) b.title = title; return b; };
   function topBar() {
     const bar = el('div', 'roombar hit'), name = el('div', 'rn'); const t = el('b'); t.textContent = ROOM.title(); name.appendChild(t);
-    const s = el('small'); s.textContent = ROOM.kind === 'visit' ? 'Visiting ' + (ROOM.ownerName || shortAddr(ROOM.owner || '0x0000000000')) : ROOM.mine ? (ROOM.kind === 'solo' ? 'Not saved to the server' : ROOM.dirty ? 'Unsaved changes' : ROOM.savedAt ? 'Saved' : 'New room') : '';
+    const s = el('small'); s.textContent = ROOM.kind === 'venue' ? 'Room ' + ROOM.venue.no + ' · Floor ' + ROOM.venue.floor + ' · ' + (ROOM.venue.by || 'Chog Hotel') : ROOM.kind === 'visit' ? 'Visiting ' + (ROOM.ownerName || shortAddr(ROOM.owner || '0x0000000000')) : ROOM.mine ? (ROOM.kind === 'solo' ? 'Not saved to the server' : ROOM.dirty ? 'Unsaved changes' : ROOM.savedAt ? 'Saved' : 'New Home') : '';
     name.appendChild(s); bar.appendChild(name);
     if (ROOM.mine) {
       bar.appendChild(btn(ROOM.mode === 'edit' ? '' : 'ghost', ROOM.mode === 'edit' ? 'Done' : 'Decorate (B)', () => setEdit(ROOM.mode !== 'edit')));
       const sv = btn(ROOM.dirty || !ROOM.savedAt ? '' : 'ghost', ROOM.busy ? 'Saving…' : 'Save', () => ROOM.save(), 'Sign with your wallet to store the room on the server'); sv.disabled = ROOM.busy; bar.appendChild(sv);
-      bar.appendChild(btn('ghost', 'Invite', () => ROOM.invite()));
+      bar.appendChild(btn('ghost', 'Invite link', () => ROOM.invite(), 'Copy a link that lets people in for a week')); bar.appendChild(btn('ghost', 'Reset link', () => ROOM.invite(true), 'Make a new link; the old one stops working'));
     }
     bar.appendChild(btn('ghost', 'Leave', () => ROOM.leave())); return bar;
   }
@@ -367,9 +387,10 @@ const ROOM = {
   }
   function lookTab() {
     const w = el('div'), doc = ROOM.doc, sect = t => { const h = el('h4'); h.textContent = t; w.appendChild(h); };
-    sect('Name'); const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 32; nm.value = doc.name || ''; nm.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') nm.blur(); }; nm.onchange = () => { doc.name = nm.value.trim() || 'My room'; touch(); ROOM.refreshUI(); }; w.appendChild(nm);
+    sect('Name'); const nm = document.createElement('input'); nm.type = 'text'; nm.maxLength = 32; nm.value = doc.name || ''; nm.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') nm.blur(); }; nm.onchange = () => { doc.name = nm.value.trim() || 'My Home'; touch(); ROOM.refreshUI(); }; w.appendChild(nm);
     sect('Theme'); const th = el('div', 'rp-opts'); for (const k of Object.keys(SPACE.THEMES)) { const b = el('button', doc.theme === k ? 'on' : ''); b.textContent = SPACE.THEMES[k].name; b.onclick = look(() => { doc.theme = k; }); th.appendChild(b); } w.appendChild(th);
-    sect('Light'); const am = el('div', 'rp-opts'); for (const k of Object.keys(SPACE.AMBIENCE)) { const b = el('button', (doc.ambience || 'day') === k ? 'on' : ''); b.textContent = SPACE.AMBIENCE[k].name; b.onclick = look(() => { doc.ambience = k; }); am.appendChild(b); } w.appendChild(am);
+    sect('Window view'); const am = el('div', 'rp-opts'); for (const k of ['', ...Object.keys(SPACE.VIEWS)]) { const b = el('button', (doc.view || '') === k ? 'on' : ''); b.textContent = k ? SPACE.VIEWS[k].name : 'Real time'; b.onclick = look(() => { if (k) doc.view = k; else delete doc.view; }); am.appendChild(b); } w.appendChild(am);
+    const lt = el('div', 'rp-note'); lt.textContent = 'The view is only what you see through the windows. The room is lit by the lights you place.'; w.appendChild(lt);
     for (const [key, lb, pats, defC] of [['wall', 'Wall', SPACE.PATTERNS.wall, SPACE.theme.pal.wall], ['floor', 'Floor', SPACE.PATTERNS.floor, SPACE.theme.pal.floor]]) {
       sect(lb); const row = el('div', 'rp-row'), cur = doc[key] || {}, ci = document.createElement('input'); ci.type = 'color'; ci.value = cur.c || '#' + new THREE.Color(defC).getHexString();
       ci.onchange = look(() => { doc[key] = Object.assign({}, doc[key], { c: ci.value }); }); row.appendChild(ci);
@@ -396,7 +417,7 @@ const ROOM = {
       g.save(); g.translate(a, b); g.rotate(Math.atan2(ey, ex2) + Math.PI / 2); g.beginPath(); g.moveTo(0, -7); g.lineTo(5, 5); g.lineTo(0, 2); g.lineTo(-5, 5); g.closePath(); g.fillStyle = '#ffd84a'; g.strokeStyle = '#1a0a2e'; g.lineWidth = 2; g.stroke(); g.fill(); g.restore(); }
   };
 
-  // ------------------------------------------------------------------ start-up options: ?room=<wallet address> visits a room, ?room=mine opens yours
+  // ------------------------------------------------------------------ start-up options: ?room=<wallet address>&inv=<token> visits a Home with its owner's link, ?room=mine opens yours
   const q = QS.get('room');
-  if (q) (async () => { for (let i = 0; i < 60 && (NET.status !== 'online' && q !== 'mine'); i++) await new Promise(r => setTimeout(r, 500)); await WALLET.dataReady; if (q === 'mine') enterRoom({ kind: 'mine' }); else if (/^0x[0-9a-fA-F]{40}$/.test(q)) enterRoom({ kind: 'visit', who: q }); })();
+  if (q) (async () => { for (let i = 0; i < 60 && (NET.status !== 'online' && q !== 'mine'); i++) await new Promise(r => setTimeout(r, 500)); await WALLET.dataReady; if (q === 'mine') enterRoom({ kind: 'mine' }); else if (/^0x[0-9a-fA-F]{40}$/.test(q)) enterRoom({ kind: 'visit', who: q, inv: QS.get('inv') || undefined }); })();
 })();

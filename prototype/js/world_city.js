@@ -1,10 +1,10 @@
 // ===== world: the modern city district (replaces the medieval island). One kit, one block, walkable =====
 // Exports for the rest of the game: HALF, world, WORLD_BLOCKERS (walk collision), occluders (see-through), walkers (NPC residents), CITY (names for the HUD), hiddenInNormal.
 // Windows are InstancedMesh (one draw call per building); daycycle.js recolours them (lit or dark) and drives lamps/neon.
-const HALF = 8.2;                                           // half size of the slab; walking limit is HALF - 0.45
+const HALF = 10.4;                                          // half size of the slab; walking limit is HALF - 0.45 (the server keeps the same number: CFG.half)
 const world = new THREE.Group(); scene.add(world);
 const WORLD_BLOCKERS = [], occluders = [], walkers = [], occ = [];
-const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5 };
+const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       // doors: where the town's enterable doors are (room.js)
 (function () {
   const P = { road: 0x7c7a8c, walk: 0xd2c8bc, curb: 0xe8dfd2, trim: 0x3f3850, roofc: 0xb8b4c4, tree: 0x5eb868, slab: 0xb8ad9f, face: [0xf0d6c0, 0xa6d8c8, 0xf0aebb, 0xb4c0ee, 0xf1cf78, 0xf4c19a], glassTint: 0x9ccdf2 };
   const F = P.face, sh = (c, k) => new THREE.Color(c).multiplyScalar(k).getHex();
@@ -108,6 +108,26 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5 };
     CITY.buildings.push({ name, x, z, w, d, color: '#' + new THREE.Color(body).getHexString() }); return g;
   }
 
+  // a plain house: one door, everyone finds their own Home behind it (docs/game/world.md)
+  function house(o) {
+    const { name, x, z, w, d, h = 2.5, body, roofC = 0xc4604a, doorU = 0.55 } = o;
+    const g = new THREE.Group(), specs = []; g.position.set(x, 0, z);
+    { const bd = cbox(w, h, d, body, 2.0); bd.position.y = h / 2; g.add(bd); }
+    g.add(BOX(w + 0.12, 0.14, d + 0.12, tmat(P.trim), 0, 0.07, 0)); g.add(BOX(w + 0.5, 0.08, d + 0.5, tmat(P.trim), 0, h + 0.04, 0));
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), tmat(roofC)); roof.rotation.y = Math.PI / 4; roof.scale.set(w + 0.5, 1.15, d + 0.5); roof.position.y = h + 0.08 + 0.575; roof.castShadow = roof.receiveShadow = true; g.add(roof);
+    g.add(BOX(0.36, 0.9, 0.36, tmat(0x9a5a4a), w * 0.24, h + 0.85, -d * 0.18));
+    onFace(g, 'z', w, d, BOX(1.1, 1.85, 0.07, tmat(P.trim)), doorU, 0.93, 0.03); onFace(g, 'z', w, d, BOX(0.9, 1.72, 0.1, tmat(o.doorColor ?? 0x2f6a5c)), doorU, 0.87, 0.07); onFace(g, 'z', w, d, SPH(0.05, tmat(0xf0d070)), doorU + 0.3, 0.9, 0.14);
+    onFace(g, 'z', w, d, BOX(1.3, 0.1, 0.5, tmat(P.curb)), doorU, 0.05, 0.3);
+    onFace(g, 'z', w, d, sign('HOME', 0.9, 0.3, { fg: '#fff3da', bg: '#7a4a3a', px: 58, font: '"Fredoka", sans-serif' }), doorU, 2.2, 0.06);
+    const wl = (face, u) => specs.push({ face, u, y: 1.3, ww: 0.8, wh: 0.8 });
+    wl('z', -0.62); wl('x', 0);
+    buildWindows(g, w, d, specs);
+    world.add(g); g.updateMatrixWorld(true); occluders.push({ g, min: 0.12 }); block(x, z, w / 2 + 0.02, d / 2 + 0.02);
+    CITY.buildings.push({ name, x, z, w, d, color: '#' + new THREE.Color(body).getHexString() });
+    CITY.doors.home = { x: x + doorU, z: z + d / 2 + 0.4, out: z + d / 2 + 0.7, label: 'Enter your Home' };
+    return g;
+  }
+
   // ---------- street furniture (each registers its walking blocker)
   function lamp(x, z) {
     const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -160,13 +180,13 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5 };
     }
     const white = new THREE.MeshBasicMaterial({ color: 0xf4f0e8 }), yel = new THREE.MeshBasicMaterial({ color: 0xf2c84a });
     const bar = (x, z, w, d, m = white) => { const b = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); b.rotation.x = -Math.PI / 2; b.position.set(x, 0.012, z); world.add(b); };
-    for (let i = 0; i < 7; i++) { const t = -HALF + 0.9 + i * 2.2; if (Math.abs(t) > 2.3) { bar(t, 0, 1.0, 0.1, yel); bar(0, t, 0.1, 1.0, yel); } }
+    for (let i = 0; i < Math.floor((HALF * 2 - 1.8) / 2.2) + 1; i++) { const t = -HALF + 0.9 + i * 2.2; if (Math.abs(t) > 2.3) { bar(t, 0, 1.0, 0.1, yel); bar(0, t, 0.1, 1.0, yel); } }
     for (let i = -3; i <= 3; i++) for (const s of [-1, 1]) { bar(i * 0.3, s * (RW + 0.9), 0.16, 0.8); bar(s * (RW + 0.9), i * 0.3, 0.8, 0.16); }
   }
 
   // ---------- the district
-  building({ name: 'Chog Lofts', x: -4.8, z: -4.8, w: 3.6, d: 3.4, floors: 5, fh: 1.45, body: F[0], balcony: true, pitch: 1.2, roof: { tank: true, antenna: true, garden: true },
-    shop: { h: 2.1, door: 0.0, doorColor: 0x4a8a78, in1: '#fff0c8', in2: '#f0b878', sign: { text: 'CHOG LOFTS', w: 2.6, h: 0.42, fg: '#3a2f4a', bg: '#fff6e0', px: 54, font: '"Fredoka", sans-serif', y: 2.5 } } });
+  building({ name: 'Chog Hotel', x: -4.8, z: -4.8, w: 3.6, d: 3.4, floors: 5, fh: 1.45, body: F[0], balcony: true, pitch: 1.2, roof: { tank: true, antenna: true, garden: true },
+    shop: { h: 2.1, door: 0.0, doorColor: 0x4a8a78, in1: '#fff0c8', in2: '#f0b878', sign: { text: 'CHOG HOTEL', w: 2.6, h: 0.42, fg: '#3a2f4a', bg: '#fff6e0', px: 54, font: '"Fredoka", sans-serif', y: 2.5 } } });
   building({ name: 'NOVA Club', x: 4.75, z: -4.7, w: 3.8, d: 3.4, floors: 2, fh: 1.6, body: F[1], roof: { antenna: true },
     shop: { h: 2.2, door: -0.9, doorColor: 0x1a1030, in1: '#ff9ad8', in2: '#6a3aa0', sign: { text: 'NOVA', w: 2.0, h: 0.62, fg: '#ff5ab8', glow: '#ff2a98', px: 78, y: 3.0, glowColor: 0xff3aa8 } },
     vsign: { text: 'CLUB', w: 0.7, h: 2.4, fg: '#7ae8ff', glow: '#2ad8ff', px: 70, u: 1.5, y: 4.4, glowColor: 0x3ad8ff }, shopSide: { h: 2.2, in1: '#8a5ad8', in2: '#3a1a70' } });
@@ -179,15 +199,18 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5 };
   building({ name: 'Gallery', x: 0, z: -6.5, w: 3.6, d: 2.0, floors: 1, fh: 1.9, body: 0xf8f4ee, roof: { garden: true },
     shop: { h: 2.4, door: 1.2, doorColor: 0xd8d0c4, in1: '#fffaf0', in2: '#efe2d0', sign: { text: 'GALLERY', w: 2.0, h: 0.4, fg: '#2a2630', px: 46, font: '"Fredoka", sans-serif', y: 2.85 } } });
 
+  CITY.doors.hotel = { x: -4.8, z: -2.75, out: -2.4, label: 'Chog Hotel opens soon' };
+  house({ name: 'Home', x: 8.5, z: 7.1, w: 2.6, d: 2.4, body: F[5], doorColor: 0x2f6a5c });      // in front of everything (nearest to the camera) so no building hides it
+  planter(6.7, 8.4, 1.0);
   for (const [x, z] of [[-1.85, -1.85], [1.85, -1.85], [-1.85, 1.85], [1.85, 1.85]]) lamp(x, z);
-  for (const [x, z] of [[-2.5, 7.4], [2.5, 7.4], [-7.4, 2.5], [7.4, 2.5], [7.4, -2.5], [-7.4, -2.5]]) tree(x, z, 0.95);
+  for (const [x, z] of [[-2.5, HALF - 0.8], [2.5, HALF - 0.8], [-HALF + 0.8, 2.5], [HALF - 0.8, 2.5], [HALF - 0.8, -2.5], [-HALF + 0.8, -2.5], [-HALF + 0.8, -7.4], [-6.9, -HALF + 0.8]]) tree(x, z, 0.95);
   tree(-2.1, 4.6, 0.9); tree(2.1, 4.6, 0.9); tree(-2.1, -4.4, 0.9); tree(2.1, -3.4, 0.9);
   bench(-2.1, 3.1, Math.PI / 2); bench(2.15, 5.9, -Math.PI / 2); bench(3.4, 2.15, Math.PI); bench(-3.6, -2.15, 0);   // the seat faces the road (local +z), the back leans on the shops
   bin(5.4, 2.0); bin(-2.3, -2.3, 0x5a6ad0); bin(2.9, -2.2, 0x4a8a78);
   busStop(-4.0, 2.4, Math.PI); scooters(5.8, 1.9, 0); scooters(-6.4, -1.9, Math.PI);
   car(-5.0, 0.95, 0, 0xff7a6a); car(4.2, -0.95, Math.PI, 0x5ad6c0); car(0.95, 5.6, Math.PI / 2, 0xffd84a);
   planter(5.0, 2.45); planter(-6.0, -2.4, 1.6);
-  bollards(-1.4, 7.7, 1.4, 7.7, 5); bollards(7.7, -1.2, 7.7, 1.2, 4); bollards(-7.7, -1.2, -7.7, 1.2, 4);
+  bollards(-1.4, HALF - 0.5, 1.4, HALF - 0.5, 5); bollards(HALF - 0.5, -1.2, HALF - 0.5, 1.2, 4); bollards(-HALF + 0.5, -1.2, -HALF + 0.5, 1.2, 4);
   {                                                                                       // the town's bulletin pylon, glowing at night
     const g = new THREE.Group(); g.position.set(5.3, 0, -2.25); { const pb = cbox(1.3, 0.24, 1.3, P.curb, 1); pb.position.y = 0.12; g.add(pb); }
     g.add(CYL(0.4, 0.44, 0.5, tmat(P.trim), 0, 0.38, 0, 14)); g.add(CYL(0.32, 0.32, 2.4, tmat(0xfdfaf2, { em: 0.2 }), 0, 1.65, 0, 14));
