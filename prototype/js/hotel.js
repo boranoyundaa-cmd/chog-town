@@ -3,7 +3,7 @@
 // venue number = floor * 100 + slot (slot 1..4 on the long wall, 5..8 on the short one), so adding venues adds doors and adding floors costs nothing.
 // Every hotel scene hides the town like a room does (ROOM.showTown, DAY.pause). A venue is a room document the server serves (ROOM.enterVenue); leaving it returns to its door.
 // Loaded after room.js and net.js. Needs the town server: the list of venues and the head count come from it.
-const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, busy: false, ui: null, panel: null, q: '', cat: 'All', fadeEl: null };
+const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, facadeBy: {}, mineId: null, busy: false, ui: null, panel: null, q: '', cat: 'All', fadeEl: null };
 (function () {
   const rad = d => d * Math.PI / 180, H = 3.3, wait = ms => new Promise(r => setTimeout(r, ms));
   const LOB = { w: 11, d: 8 };                                                        // lobby floor: x -5.5..5.5, z -4..4
@@ -91,6 +91,35 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
   }
   if (document.fonts) document.fonts.load('700 40px "Fredoka"').then(() => plates.forEach(p => p.draw())).catch(() => { });
 
+  // ------------------------------------------------------------------ facades: a venue's own strip of corridor wall (a document the owner placed, docs/game/world.md)
+  // doc coordinates are those of a room 3 m x span wide and FAC_D deep whose back wall is the corridor wall: x runs along the wall, z out of it (-FAC_D/2 = against the wall).
+  const FAC_D = 1.4;
+  function buildFacade(g, o, it) {
+    const doc = it.doc || {}, th = SPACE.THEMES[doc.theme] || SPACE.THEMES.studio, fpal = th.pal, d = doorOf(it.no, it.span), W = it.span * SLOT, hexN = s => parseInt(String(s).slice(1), 16);
+    const toWorld = (xl, zl, ry) => (d.wall === 'z' ? { x: d.u + xl, z: o.z0 + zl + FAC_D / 2, ry } : { x: o.x0 + zl + FAC_D / 2, z: d.u - xl, ry: ry + 90 });
+    if (doc.wall && (doc.wall.c || doc.wall.pat)) {                                       // a wall colour or pattern: a panel over the corridor wall
+      const c = doc.wall.c ? hexN(doc.wall.c) : fpal.wall, pat = SPACE.WALL[doc.wall.pat] ? doc.wall.pat : th.wallTex || 'plaster';
+      onWall(g, o, d.wall, d.u, (H - 0.1) / 2 + 0.05, BOX(W - 0.08, H - 0.1, 0.05, wallMat(c, pat, W / 3, 1)), 0.045);
+    }
+    if (doc.floor && (doc.floor.c || doc.floor.pat)) {                                    // a floor colour or pattern: a mat in front of the door
+      const c = doc.floor.c ? hexN(doc.floor.c) : fpal.floor, pat = SPACE.FLOOR[doc.floor.pat] ? doc.floor.pat : th.floorTex || 'wood', along = W - 0.08;
+      const m = new THREE.Mesh(new THREE.BoxGeometry(d.wall === 'z' ? along : FAC_D, 0.02, d.wall === 'z' ? FAC_D : along), floorMat(c, pat, W / 2.4, FAC_D / 2.4)); m.receiveShadow = true;
+      m.position.set(d.wall === 'z' ? d.u : o.x0 + FAC_D / 2, 0.012, d.wall === 'z' ? o.z0 + FAC_D / 2 : d.u); g.add(m);
+    }
+    for (const p of doc.pieces || []) {
+      const def = SPACE.PIECES[p.p]; if (!def) continue;
+      const pc = Object.assign({}, fpal), tint = p.c ? hexN(p.c) : null; if (tint !== null) { pc.accent = tint; pc.fabric1 = tint; }
+      const n0 = noNormalPass.length, grp = SPACE.buildParts(def.parts, pc, lights, { anims, lightCount: () => lights.length, tint, txt: p.txt && String(p.txt) });
+      halos.push(...noNormalPass.slice(n0)); const w = toWorld(+p.x || 0, +p.z || 0, +p.ry || 0); grp.position.set(w.x, 0, w.z); grp.rotation.y = rad(w.ry); g.add(grp);
+      const wallP = def.cat === 'wall' || def.fp[1] <= 0.12, flat = def.cat === 'floor' || def.cat === 'ceiling';
+      if (!wallP && !flat) { const q = Math.round(w.ry / 90) % 2 !== 0; block(w.x, w.z, (q ? def.fp[1] : def.fp[0]) / 2, (q ? def.fp[0] : def.fp[1]) / 2); }
+    }
+  }
+  HOTEL.onFacades = m => {                                                              // the server sent the facades of a floor (stepping onto it, or an owner saved one)
+    const same = JSON.stringify(HOTEL.facadeBy[m.floor] || null) === JSON.stringify(m.items || []); HOTEL.facadeBy[m.floor] = m.items || [];
+    if (!same && HOTEL.active && HOTEL.floor === m.floor && !HOTEL.busy && G) HOTEL.rebuildHere();
+  };
+
   // ------------------------------------------------------------------ the two scenes
   function buildLobby() {
     const g = new THREE.Group(), o = { z0: -LOB.d / 2, x0: -LOB.w / 2, lenX: LOB.w, lenZ: LOB.d, cx: 0, cz: 0, wallC: 0xf0e2d0, wallPat: 'wainscot', floorC: 0xe6d6c0, floorPat: 'tiles', floors: [[0, 0, LOB.w, LOB.d]] };
@@ -137,6 +166,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
       spots.push({ x: d.stand.x, z: d.stand.z, r: 1.2, label: v.state === 'closed' ? (own ? 'Enter your venue (closed)' : 'Closed') : 'Enter ' + v.name, run: () => (v.state === 'closed' && !own ? toast(v.name === 'Opening soon' ? 'This room is not open yet.' : v.name + ' is closed right now.') : HOTEL.enterVenue(v)), at: d.wall === 'z' ? [d.u, 2.45, -FLC + 0.4] : [-FLC + 0.4, 2.45, d.u], v });
       mapDoors.push({ x: d.wall === 'z' ? d.u : -FLC, z: d.wall === 'z' ? -FLC : d.u, col: v.state === 'closed' ? '#7a6a98' : hexOf(colOf(v.cat)) });
     }
+    for (const it of HOTEL.facadeBy[f] || []) buildFacade(g, o, it);
     // lights: a pendant every few metres, over each arm
     for (const [x, z] of [[-6.0, -6.0], [-2.9, -6.0], [0.1, -6.0], [3.1, -6.0], [6.1, -6.0], [-6.0, -2.9], [-6.0, 0.1], [-6.0, 3.1], [-6.0, 6.1]]) piece(g, 'pendantLamp', x, z);
     G = g; return { spawn: { x: -6.0, z: -5.4, ry: 0 } };
@@ -161,6 +191,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
     const me = GAME.me, a = spawn || (floor === 0 ? { x: 3.6, z: -2.0, ry: 0 } : { x: -6.0, z: -5.4, ry: 0 });
     const r = await NET.enter({ space: 'hotel', floor, x: a.x, z: a.z, ry: a.ry || 0 }); if (!r || r.t !== 'entered') return false;
     if (r.counts) HOTEL.counts = r.counts;
+    if (floor > 0) { NET.send({ t: 'hotelfloor', floor }); for (let i = 0; i < 3; i++) { const fr = await NET.waitFor(['facades'], 3000); if (!fr || fr.floor === floor) break; } }
     if (!saved) { const sc = sun.shadow.camera; saved = { zoom: GAME.zoomT, shadow: { l: sc.left, r: sc.right, t: sc.top, b: sc.bottom, f: sc.far } }; ROOM.showTown(false); DAY.pause(); }
     clearScene(); const out = floor === 0 ? buildLobby() : buildFloor(floor); world.add(G);
     SPACE.applyView(SPACE.VIEWS[SPACE.viewKey(null)]); SPACE.refreshHidden();
@@ -170,6 +201,12 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
     HOTEL.active = true; HOTEL.floor = floor; HOTEL.panel = null; document.body.classList.add('inhotel'); HOTEL.refreshUI(); if (typeof render === 'function') render();
     return true;
   }
+  // rebuild the floor you stand on without moving anywhere (a facade changed)
+  HOTEL.rebuildHere = function () {
+    if (!HOTEL.active || HOTEL.floor === 0) return; const me = GAME.me, p = { x: me.position.x, z: me.position.z, ry: me.rotation.y };
+    clearScene(); buildFloor(HOTEL.floor); world.add(G); SPACE.applyView(SPACE.VIEWS[SPACE.viewKey(null)]); SPACE.refreshHidden();
+    GAME.room = { blocked: (x, z, rr) => blocked(x, z, rr) }; GAME.regrid(); me.position.set(p.x, 0, p.z); me.rotation.y = p.ry; HOTEL.refreshUI();
+  };
   // town -> lobby
   HOTEL.enterFromTown = async function () {
     if (HOTEL.busy || ROOM.busy || ROOM.active || HOTEL.active) return;

@@ -155,9 +155,9 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
       if (round) onWall(w.wall, w.u, w.y, M(new THREE.TorusGeometry(w.w / 2, 0.08, 8, 28), tmat(pal.trim)), 0.05);
       else { onWall(w.wall, w.u, w.y + w.h / 2 + 0.05, BOX(w.w + 0.2, 0.1, 0.1, tmat(pal.trim)), 0.05); onWall(w.wall, w.u, w.y - w.h / 2 - 0.05, BOX(w.w + 0.3, 0.12, 0.2, tmat(pal.trim)), 0.08); for (const s of [-1, 1]) onWall(w.wall, w.u + s * (w.w / 2 + 0.05), w.y, BOX(0.1, w.h + 0.2, 0.1, tmat(pal.trim)), 0.05); onWall(w.wall, w.u, w.y, BOX(0.05, w.h, 0.05, tmat(pal.trim)), 0.05); onWall(w.wall, w.u, w.y, BOX(w.w, 0.05, 0.05, tmat(pal.trim)), 0.05); }
     }
-    const dr = th.door || { wall: 'z', u: W / 2 - 1.6 }; SPACE.door = dr;
+    const dr = SPACE.doorAt || th.door || { wall: 'z', u: W / 2 - 1.6 }; SPACE.door = dr;                         // doorAt: a facade strip puts the venue's door in the middle
     onWall(dr.wall, dr.u, 1.0, BOX(1.1, 2.0, 0.12, tmat(pal.accent2 ?? pal.accent)), 0.06); onWall(dr.wall, dr.u, 1.0, BOX(1.3, 2.15, 0.08, tmat(pal.trim)), 0.03);
-    onWall(dr.wall, dr.u + 0.34, 1.0, SPH(0.06, tmat(0xf0d070)), 0.16); onWall(dr.wall, dr.u, 2.35, textMesh('EXIT', 0.8, 0.22, '#ffffff', null, amb.neon ? '#5ad8ff' : null), 0.1);
+    onWall(dr.wall, dr.u + 0.34, 1.0, SPH(0.06, tmat(0xf0d070)), 0.16); onWall(dr.wall, dr.u, 2.35, textMesh(SPACE.doorAt ? 'DOOR' : 'EXIT', 0.8, 0.22, '#ffffff', null, amb.neon ? '#5ad8ff' : null), 0.1);
     if (th.outside && amb.outside) { const n0 = noNormalPass.length; grp.add(buildParts(th.outside, pal)); shellHalos = noNormalPass.slice(n0); }                       // scenery beyond the window, only when the sky is dark enough to show it
     SPACE.lights = [];                                                                  // the only room lights are the placed pieces' (SPACE.addEntry)
     // pieces: any piece in the catalog or in the document's own `custom` table; per item: tint, scale, text, image
