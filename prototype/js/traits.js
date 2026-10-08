@@ -93,7 +93,8 @@ function headOptions(name) {
 }
 
 // ---- Eyes
-function eyeOptions(name) {
+function eyeOptions(name) { return Object.assign(eyeOptionsOld(name), { eyeName: name }); }
+function eyeOptionsOld(name) {
   const s = name.toLowerCase(), o = {};
   if (s.includes('laser')) return { eyeStyle: 'laser', eyeColor: has(s, 'fire') ? 0xff6a20 : has(s, 'green') ? 0x40ff60 : has(s, 'purple') ? 0xb040ff : 0x40e0f0 };
   if (s.includes('visor')) return { eyeStyle: 'visor', eyeColor: has(s, 'plasma') ? 0xff30c0 : has(s, 'sunset') ? 0xff8a30 : 0xff5ab0, eyeColor2: has(s, 'plasma') ? 0x8030ff : has(s, 'sunset') ? 0xff4a80 : 0x4a8aff };

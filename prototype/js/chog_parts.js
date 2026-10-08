@@ -13,6 +13,7 @@ function gradTex(c1, c2) {
 const glowAt = (x, y, r, c, op) => { const g = glowM(new THREE.CircleGeometry(r, 16), c, op); g.position.set(x, y, 0.04); return g; };
 // ---- eyes (+ cheeks, brows). Returns the meshes that blink (scaled in y).
 function chogEyes(face, o) {
+  if (o.eyeName && typeof EYE_LOOK !== 'undefined' && EYE_LOOK[o.eyeName]) return eyeLook(face, o);                  // chog_eyes.js: every Eyes value has its own drawing
   const st = o.eyeStyle, ec = o.eyeColor ?? 0x40e0f0, fill = o.eyeFill, blink = [];
   const cheeks = () => { if (!o.noCheeks) for (const sx of [-1, 1]) face.add(decal(new THREE.CircleGeometry(0.065, 14), 0xd93d86, sx * 0.205, -0.1, 0.033, 1, 0.85)); };
   const brows = (tilt, y = 0.135) => { for (const sx of [-1, 1]) { const br = decal(new THREE.PlaneGeometry(0.12, 0.02), DARK, sx * 0.125, y, 0.036); br.rotation.z = -sx * tilt; face.add(br); } };
