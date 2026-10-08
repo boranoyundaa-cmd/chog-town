@@ -266,3 +266,7 @@ body.neon #hotelp { background: rgba(20, 10, 44, .9); color: #f2eaff; border-col
 #ui .vsec .vf { display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: center; margin: 6px 0; font-size: 13px; } #ui .vsec .vf input, #ui .vsec .vf select { min-width: 0; padding: 6px 8px; border-radius: 8px; border: 1.5px solid color-mix(in srgb, currentColor 22%, transparent); background: rgba(255, 255, 255, .6); font: inherit; color: inherit; }
 #ui .vsec .vhead { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; } #ui .vsec .vhead b { font-size: 16px; } #ui .vsec .vhead span { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(128, 128, 128, .2); } #ui .vsec .vhead span.on { background: #bfeccf; color: #1d5c34; }
 #ui .vsec .actions { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; } #ui .vsec .btn { padding: 7px 14px; }
+
+/* wallet modals: connect, choose, errors */
+#ui .modal.walletm .card { position: relative; } #ui .modal.walletm .wnote { margin: 4px 16px 10px; font-size: 13.5px; line-height: 1.4; opacity: .8; }
+#ui .modal.walletm a.wal { text-decoration: none; text-align: center; } #ui .modal.walletm .x { top: 8px; right: 8px; }

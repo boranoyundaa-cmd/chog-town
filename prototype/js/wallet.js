@@ -93,7 +93,18 @@ WALLET.findOwned = async function (account) {
 // ---- providers (EIP-6963 announcements, plus the legacy window.ethereum)
 addEventListener('eip6963:announceProvider', e => { if (!WALLET.providers.some(p => p.info.uuid === e.detail.info.uuid)) { WALLET.providers.push(e.detail); emit('providers', WALLET.providers); } });
 dispatchEvent(new Event('eip6963:requestProvider'));
-WALLET.available = () => WALLET.providers.length ? WALLET.providers : (window.ethereum ? [{ info: { name: 'Browser wallet', uuid: 'legacy', icon: '' }, provider: window.ethereum }] : []);
+// every wallet the page can see: the EIP-6963 announcements, plus the legacy `window.ethereum` (and its `providers` list when several wallets share it), each once
+const nameOfProvider = p => (p.isRabby ? 'Rabby' : p.isMetaMask ? 'MetaMask' : p.isCoinbaseWallet ? 'Coinbase Wallet' : p.isPhantom ? 'Phantom' : p.isBraveWallet ? 'Brave Wallet' : p.isOkxWallet || p.isOKExWallet ? 'OKX Wallet' : 'Browser wallet');
+WALLET.available = () => {
+  const out = [...WALLET.providers], seen = new Set(out.map(e => e.provider)), eth = window.ethereum;
+  for (const p of eth ? (Array.isArray(eth.providers) && eth.providers.length ? eth.providers : [eth]) : []) {
+    if (seen.has(p)) continue; const nm = nameOfProvider(p);
+    if (out.some(e => e.info.name === nm && nm !== 'Browser wallet')) continue;            // the same wallet announced under its own name
+    seen.add(p); out.push({ info: { name: nm, uuid: 'legacy-' + nm, icon: '' }, provider: p });
+  }
+  return out;
+};
+WALLET.refresh = async () => { dispatchEvent(new Event('eip6963:requestProvider')); await new Promise(r => setTimeout(r, 350)); return WALLET.available(); };      // ask again and give the wallets a moment to answer
 
 async function ensureMonad(provider) {
   const cur = await provider.request({ method: 'eth_chainId' });
@@ -110,11 +121,11 @@ async function ensureMonad(provider) {
 async function adopt(provider, account) {
   WALLET.provider = provider; WALLET.account = account; WALLET.error = null; emit('account', account);
   WALLET.owned = await WALLET.findOwned(account); emit('owned', WALLET.owned);
-  try { localStorage.setItem('chog_wallet', '1'); } catch (e) { /* ignore */ }
+  try { localStorage.setItem('chog_wallet', WALLET.chosen || '1'); } catch (e) { /* ignore */ }
 }
 WALLET.connect = async function (entry) {
   try {
-    const provider = (entry || WALLET.available()[0] || {}).provider; if (!provider) throw new Error('No wallet found');
+    const picked = entry || WALLET.available()[0] || {}, provider = picked.provider; if (!provider) throw new Error('No wallet found'); WALLET.chosen = picked.info && picked.info.name;
     const accs = await provider.request({ method: 'eth_requestAccounts' });
     try { await ensureMonad(provider); } catch (e) { /* reading works on any chain; only switching failed */ }
     provider.on && provider.on('accountsChanged', a => { if (a[0]) adopt(provider, a[0]); else WALLET.disconnect(); });
@@ -126,6 +137,7 @@ WALLET.disconnect = function () { WALLET.provider = null; WALLET.account = null;
 WALLET.resume = async function () {
   try { if (localStorage.getItem('chog_wallet') !== '1') return; } catch (e) { return; }
   await new Promise(r => setTimeout(r, 400));
-  const e = WALLET.available()[0]; if (!e) return;
+  const want = localStorage.getItem('chog_wallet'), list = WALLET.available(), e = list.find(x => x.info.name === want) || list[0]; if (!e) return;      // the wallet you picked last time
+  WALLET.chosen = e.info.name;
   const accs = await e.provider.request({ method: 'eth_accounts' }); if (accs[0]) { e.provider.on && e.provider.on('accountsChanged', a => { if (a[0]) adopt(e.provider, a[0]); else WALLET.disconnect(); }); await adopt(e.provider, accs[0]); }
 };

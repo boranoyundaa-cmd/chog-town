@@ -176,13 +176,33 @@ function settingsCard(onClose) {
 }
 
 // ---- wallet
+// a modal that stays until closed (a toast is too easy to miss, and the HUD redraws under it)
+function walletModal(title, build) {
+  document.querySelectorAll('#ui .modal.walletm').forEach(x => x.remove());
+  const m = el('div', 'modal walletm hit'), box = el('div', 'card'); box.appendChild(el('h2', '', title)); box.firstChild.style.margin = '16px 16px 4px';
+  const x = el('button', 'x', '×'); x.setAttribute('aria-label', 'Close'); x.onclick = () => m.remove(); box.appendChild(x); build(box, () => m.remove());
+  m.appendChild(box); m.onclick = e => { if (e.target === m) m.remove(); }; document.getElementById('ui').appendChild(m); return m;
+}
+const note = txt => { const p = el('p', 'wnote'); p.textContent = txt; return p; };
 async function connectFlow() {
-  const list = WALLET.available();
-  if (!list.length) { toast('No wallet found. Install MetaMask or Rabby and reload.'); return; }
-  if (list.length === 1) { toast('Check your wallet…'); await WALLET.connect(list[0]); return; }
-  const m = el('div', 'modal hit'); const box = el('div', 'card', '<h2 style="margin:16px">Choose a wallet</h2>');
-  for (const p of list) { const b = el('button', 'btn ghost wal', (p.info.icon ? `<img src="${p.info.icon}" width="22" height="22" style="vertical-align:middle;margin-right:8px;border-radius:6px">` : '') + p.info.name); b.onclick = async () => { m.remove(); toast('Check your wallet…'); await WALLET.connect(p); }; box.appendChild(b); }
-  m.appendChild(box); m.onclick = e => { if (e.target === m) m.remove(); }; document.getElementById('ui').appendChild(m);
+  const list = await WALLET.refresh();
+  if (!list.length) {
+    walletModal('No wallet found', (box, close) => {
+      box.appendChild(note('This browser has no crypto wallet. Install one, then reload this page. You can keep playing as a guest meanwhile.'));
+      for (const [nm, url] of [['Rabby', 'https://rabby.io'], ['MetaMask', 'https://metamask.io/download']]) { const a = el('a', 'btn ghost wal', 'Get ' + nm); a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; box.appendChild(a); }
+      const r = el('button', 'btn wal', 'I installed one, reload'); r.onclick = () => location.reload(); box.appendChild(r);
+    }); return;
+  }
+  const go = async entry => {
+    const m = walletModal('Connecting…', box => box.appendChild(note('Check your wallet: it asks to share your address. This does not cost anything.')));
+    const before = WALLET.account; await WALLET.connect(entry); m.remove();
+    if (!WALLET.account && WALLET.error) walletModal('Could not connect', (box, close) => { box.appendChild(note(WALLET.error)); const r = el('button', 'btn wal', 'Try again'); r.onclick = () => { close(); connectFlow(); }; box.appendChild(r); });
+    else if (WALLET.account && WALLET.account !== before) { /* the account handler says "Connected" */ }
+  };
+  if (list.length === 1) { go(list[0]); return; }
+  walletModal('Choose a wallet', (box, close) => {
+    for (const p of list) { const b = el('button', 'btn ghost wal', (p.info.icon ? `<img src="${p.info.icon}" width="22" height="22" style="vertical-align:middle;margin-right:8px;border-radius:6px">` : '') + p.info.name); b.onclick = () => { close(); go(p); }; box.appendChild(b); }
+  });
 }
 function walletButton(cls = 'btn') {
   if (WALLET.account) { const p = el('button', cls + ' ghost wallet hit', `<span class="dot"></span>${shortAddr(WALLET.account)}`); p.onclick = () => menuClick(MENU[0]); return p; }
@@ -323,7 +343,7 @@ addEventListener('keydown', e => { if (e.target.matches && e.target.matches('inp
   fitUI(); render();
   WALLET.on('account', a => { if (a) toast('Connected ' + shortAddr(a)); else NET.logout(); render(); });
   WALLET.on('scan', () => render());
-  WALLET.on('error', m => toast(m));
+  WALLET.on('error', m => { if (!document.querySelector('#ui .modal.walletm')) toast(m); });
   WALLET.on('owned', async ids => {
     if (!ids.length) { if (WALLET.account) toast('No Chog found in this wallet. You can still play as a Guest Chog.'); render(); return; }
     let want = ids[0]; try { const s = +localStorage.getItem('chog_sel'); if (ids.includes(s)) want = s; } catch (e) { /* ignore */ }
