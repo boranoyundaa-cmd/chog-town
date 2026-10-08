@@ -42,7 +42,11 @@ const HAT = {
   },
   spikes(head, o, s) { for (const [x, y, r, h, rz] of s.list) { const c = cm(new THREE.ConeGeometry(r, h, 7), s.c, x, y, -0.06); c.rotation.z = rz; head.add(c); head.add(cm(new THREE.CylinderGeometry(r * 1.02, r * 1.25, 0.04, 7), new THREE.Color(s.c).multiplyScalar(0.7).getHex(), x - Math.sin(rz) * h * -0.45 * 0 + 0, y - h * 0.5 * Math.cos(rz), -0.06)); } },
   band(head, o, s) {                                                                    // a headband / bandana around the forehead with a knot and tails
-    HAT.ring(head, 0.5, 0.045, 0.2, s.c, -0.1, 1.05); if (s.dot) head.add(decal(new THREE.CircleGeometry(0.06, 14), s.dot, 0, 0.2, 0.43));
+    if (o && o.radio) {                                                                 // on a radioactive head the wrap is see-through red, wide across the eyes, as in the art
+      const w = cm(new THREE.CylinderGeometry(0.51, 0.51, 0.24, 20, 1, true), s.c, 0, 0.1, -0.1, true); w.material = w.material.clone(); Object.assign(w.material, { transparent: true, opacity: 0.55, depthWrite: false }); w.userData.noOutline = true; w.scale.set(1, 1, 1.02); head.add(w);
+      HAT.ring(head, 0.51, 0.02, 0.22, s.c, -0.1, 1.02); HAT.ring(head, 0.51, 0.02, -0.02, s.c, -0.1, 1.02);
+    } else HAT.ring(head, 0.5, 0.045, 0.2, s.c, -0.1, 1.05);
+    if (s.dot) head.add(decal(new THREE.CircleGeometry(0.06, 14), s.dot, 0, 0.2, 0.43));
     if (s.knot) { head.add(cm(new THREE.SphereGeometry(0.075, 7, 6), s.c, -0.5, 0.2, -0.1)); for (const dy of [-0.07, -0.16]) { const t = cm(new THREE.BoxGeometry(0.07, 0.17, 0.03), s.c, -0.55, 0.18 + dy, -0.16); t.rotation.z = 0.2; head.add(t); } }
   },
   afro(head, o, s) { for (const [x, y, z, r, c] of s.puffs) head.add(cm(new THREE.IcosahedronGeometry(r, 1), c, x, y, z)); },
@@ -84,7 +88,7 @@ const ONEOFFS = {
   'Mafia Hat': head => { head.add(cm(new THREE.CylinderGeometry(0.34, 0.4, 0.34, 12), 0x2a2a32, 0, 0.46, -0.1)); const br = cm(new THREE.CylinderGeometry(0.66, 0.66, 0.035, 18), 0x34343c, 0, 0.28, -0.04); br.rotation.x = 0.1; head.add(br); head.add(cm(new THREE.CylinderGeometry(0.405, 0.405, 0.07, 12), 0xc8c8d0, 0, 0.34, -0.1)); },
   Plumber: head => { const d = cm(new THREE.SphereGeometry(0.25, 10, 7, 0, Math.PI * 2, 0, Math.PI / 2), 0xd82a2a, -0.02, 0.5, -0.02); d.scale.set(1, 0.85, 1); head.add(d); const st = cm(new THREE.CylinderGeometry(0.025, 0.025, 0.8, 6), 0x8a5a38, 0.18, 0.78, -0.02); st.rotation.z = -0.6; head.add(st); },
   'Poison Shroom': head => { for (const [x, y, z, r] of [[-0.2, 0.6, 0.0, 0.17], [0.22, 0.56, -0.05, 0.15], [-0.4, 0.38, 0.05, 0.1]]) { head.add(cm(new THREE.CylinderGeometry(r * 0.2, r * 0.25, r * 1.2, 6), 0xe8e0c0, x, y - r * 0.5, z)); const c = cm(new THREE.SphereGeometry(r, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), 0x8ac0a0, x, y, z); c.scale.set(1.2, 0.6, 1.2); head.add(c); head.add(decal(new THREE.CircleGeometry(r * 0.16, 6), 0xe8e8c0, x + r * 0.3, y + r * 0.36, z + r * 0.4)); } },
-  'Red Bandana': head => HAT.band(head, null, { c: 0xd8452a, knot: true }), 'Red Headband': head => HAT.band(head, null, { c: 0xd8323c, knot: true }),
+  'Red Bandana': (head, o) => HAT.band(head, o, { c: 0xd8452a, knot: true }), 'Red Headband': (head, o) => HAT.band(head, o, { c: 0xd8323c, knot: true }),
   Robber: head => { HAT.dome(head, 0.53, 0.14, 0x4a4a52, 1.0); for (const sx of [-1, 1]) head.add(cm(new THREE.BoxGeometry(0.1, 0.5, 0.55), 0x4a4a52, sx * 0.5, -0.02, -0.04)); },
   'Russian Hat': head => { HAT.dome(head, 0.52, 0.22, 0xb8a080, 0.95); HAT.ring(head, 0.5, 0.07, 0.2, 0xd8c4a0, -0.1, 1.05); for (const sx of [-1, 1]) head.add(cm(new THREE.BoxGeometry(0.13, 0.4, 0.36), 0xb8a080, sx * 0.53, -0.05, -0.05)); },
   'Silver wreath': head => { for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2, l = cm(new THREE.SphereGeometry(0.075, 6, 5), 0x9ac0a8, Math.sin(a) * 0.5, 0.26, Math.cos(a) * 0.5 - 0.1); l.scale.set(0.5, 0.25, 1.4); l.rotation.y = a; l.userData.noOutline = false; head.add(l); } },

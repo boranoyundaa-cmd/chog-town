@@ -20,15 +20,16 @@ function blade(L, W, T, bend, segs = 5) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
   const ng = g.toNonIndexed(); ng.computeVertexNormals(); return ng;
 }
-const FACE_SHAPE = () => {
+const FACE_SHAPE = () => {                                           // a wide, round face: zigzag hairline on top, full cheeks, a rounded jaw (the art's face is soft, not a hexagon)
   const s = new THREE.Shape();
   s.moveTo(-0.27, 0.19); s.lineTo(-0.14, 0.215); s.lineTo(-0.05, 0.185); s.lineTo(0.06, 0.225); s.lineTo(0.15, 0.19); s.lineTo(0.27, 0.21);
-  s.lineTo(0.285, -0.03); s.quadraticCurveTo(0.26, -0.2, 0.1, -0.245); s.lineTo(-0.1, -0.245); s.quadraticCurveTo(-0.26, -0.2, -0.285, -0.03); s.lineTo(-0.27, 0.19);
+  s.bezierCurveTo(0.325, 0.12, 0.33, -0.06, 0.285, -0.15); s.bezierCurveTo(0.24, -0.245, 0.14, -0.262, 0, -0.262);
+  s.bezierCurveTo(-0.14, -0.262, -0.24, -0.245, -0.285, -0.15); s.bezierCurveTo(-0.33, -0.06, -0.325, 0.12, -0.27, 0.19);
   return s;
 };
 const FACE_GEO = (() => {
   const s = FACE_SHAPE();
-  const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.018, bevelSegments: 1, curveSegments: 3 });
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.018, bevelSegments: 2, curveSegments: 10 });
   g.translate(0, 0, -0.1); return g;
 })();
 // a vertical colour gradient laid over the face (Multi Colored skin: pink at the top, green at the jaw)
@@ -135,7 +136,7 @@ function chog(o = {}) {
   }
   const head = new THREE.Group(); head.position.y = 1.0; root.add(head);
   const hairG = new THREE.Group(); head.add(hairG);
-  const mass = cm(new THREE.IcosahedronGeometry(0.44, 1), hairC, 0, 0.06, -0.12); mass.scale.set(1.08, 0.95, 0.98); hairG.add(mass);
+  const mass = cm(new THREE.IcosahedronGeometry(0.44, 2), hairC, 0, 0.06, -0.12); mass.scale.set(1.08, 0.95, 0.98); hairG.add(mass);
   if (o.faceGrad && !o.bald) mass.material = new THREE.MeshToonMaterial({ map: skullRainbow(o.faceGrad), gradientMap: toonGrad4, emissive: 0x303030 });                 // a Multi Colored radioactive head is rainbow all over
   if (o.bald) { hairG.remove(mass); const cr = cm(new THREE.SphereGeometry(0.43, 14, 10), FACEL, 0, 0.07, -0.06); cr.scale.set(1.12, 1.0, 1.0); hairG.add(cr); if (o.faceGrad) cr.material = new THREE.MeshToonMaterial({ map: skullRainbow(o.faceGrad), gradientMap: toonGrad4, emissive: 0x303030 }); }                // a skull: a bare round head, no hair
   const hc = new THREE.Color(hairC), hsl = {}; hc.getHSL(hsl);
