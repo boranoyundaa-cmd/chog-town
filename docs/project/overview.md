@@ -48,6 +48,15 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 | PC-first; mobile is a companion added later | The game is played on desktop |
 | No deep offline simulation | Costly, adds little |
 
+## Handover (end of the 2026-10-08 session)
+
+- **State:** everything described under Status is built, deployed and pushed (game `9f0281e`, server `bbc12a9`). The next work is the numbered list under Next steps; start at 0 and 2 (live checks), then 3 (facades, tiers, guard).
+- **Not tried yet, do these first:** a real wallet signing a Home save and an invitation on the live site; two players in the hotel (the "N inside" count on door plates); performance on real hardware (9 point lights per hotel floor, 4096 shadow map).
+- **Small known issues:** the tower of the Chog Hotel is a fixed height (should follow the floor count); an invitation is matched to the sender by display name on the client (two players with the same name could mute the wrong one, `net.js` case `invited`); the outer strips of the 20.8 m slab are bare; the Gallery One seed venue is sparse; `ROOM.enterVenue` and the hotel fades chain several `enter` calls (the server drops one that comes within 400 ms of the previous, which the client treats as "no answer").
+- **Owner preferences:** the owner speaks Turkish (answer in Turkish); consult before UI/UX, platform and design choices, then write the decision into the docs; ideas that solve several problems at once inside the fiction are valued; the owner picks the mini-games and the final name (still open, `docs/game/world.md` Open).
+- **Deploying:** server `flyctl deploy --ha=false --remote-only` from `server/` (the `Dockerfile` copies files by name, add new ones), site `python tools/build_site.py` then `wrangler pages deploy` from outside the repo (`docs/engineering/prototype.md`). Deploy the server first. Commit and push both repos (`server/` is its own repo).
+- **Testing tips** are in `docs/engineering/prototype.md` under Pitfalls (Browser pane size, tabs, snapping, mock wallet).
+
 ## Next steps (in order)
 
 0. **Still to verify:** a real wallet signing a room save on the live site (only a mock wallet and a throwaway wallet were tried).
