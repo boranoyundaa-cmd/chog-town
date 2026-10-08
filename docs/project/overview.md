@@ -1,0 +1,69 @@
+# Overview
+
+## Vision
+
+**Chog Town**: a living, shared 3D town where all 1,969 Chog Genesis NFTs exist at once and players run their own places: clubs, shops, galleries, arcades. Anyone can play (default purple Chog); Chog holders play as their own Chog and hold venue licenses (higher tier with more or rarer Chogs). Runs on Monad (single shard).
+
+**The game is played on PC.** Mobile is a companion, added later. Everything is built and polished for the desktop browser first.
+
+Pitch (draft): *a town where the Chog you own is who you are, and the place you run is yours.* Details and rules: `docs/game/design.md`.
+
+## Status (update every session)
+
+- **Modern direction (2026-10-08, owner):** the theme is modern, not medieval; Duels are gone; the HUD must follow. Decided: **modern city district** as the world; every player gets a **free small room** (decorate, solo-fun), the public **venue license** stays holder-only. **Picked (owner, same day):** HUD default = warm modern cards, with Neon night and Storybook as options in Settings; scene = **one city whose lighting follows the real clock** (dawn/dusk golden, day bright, night neon, blended). Both are built into the game, the medieval island is deleted.
+- **Direction (2026-10-08):** pivot from the medieval MMORPG plan to a social creator sandbox with player-run venues, after researching why web3 games and MMOs fail (`docs/game/core-loop-research.md`). Gambling venues are deferred, not decided.
+- **Free rooms (2026-10-08, built; server and site live on 2026-10-08):** every player has a small room (9 x 7, 40 pieces). Enter by the door of Chog Lofts (`E`) or the `R` key; leave at the room's own door. Walk with collision, **decorate** (`B`): pick a piece in the panel, click the spot (half-metre grid, pieces glue to walls; click a placed piece to pick it up, `R` turn, `Del` remove, `Esc` cancel), tint, wall text, theme (5 kits), light (4 ambiences), wall/floor colour and pattern, windows. **Save = the wallet signs the cleaned document** and the server stores it (one room per wallet); guests keep a local draft. Friends visit through `?room=<wallet>`, the player card ("Visit room") or the owner's invite link, and see changes live. Rooms are separate spaces on the server (presence, chat, movement never cross). Design in `docs/game/spaces.md`, code `js/room.js`, `server/rooms.js`.
+- **First-visit tips (2026-10-08, built and live):** `js/tour.js`, owner picked light hints: five short skippable cards (walk, find the Lofts door, `B` to decorate, place something, save) that advance on what the player actually does, plus a pin that points at the door when it is off screen. Shown once (`localStorage` `chog_tour`), replayable in Settings ("Welcome tips"), `?tour=1` forces it, invite links (`?room=`) skip it.
+- **Room limits (known):** no stacking (lamp on a table), pieces rotate in 90 degree steps only, free-room budget only (no tier budgets yet), no owner entry rules, NFT frames and the Part Lab are not offered yet (NFT frames need an NFT indexer for Monad, undecided), rooms are stored on a Fly volume (`docs/engineering/server.md`).
+- **Live:** game `https://chog-town.pages.dev` (Cloudflare Pages, deploy steps in `docs/engineering/prototype.md`), server `wss://chog-town-ws.fly.dev` (Fly.io, `docs/engineering/server.md`; code also in the private GitHub repo `boranoyundaa-cmd/chog-town-server`). Accounts: Fly and Cloudflare under neoboranaybek@gmail.com; a Northflank account exists unused.
+- **Done:** Render style locked (smooth stylised 3D "hybrid" with thick Chog outlines; chosen 2026-10-07). Modern city district (`world_city.js`: 5 buildings, street furniture, 9 NPC residents, walk collision, see-through buildings) with a real-clock day cycle (`daycycle.js`), see `docs/assets/city-*.png`. Registration on the Chogathon `/apply` page is done.
+- **Built (prototype, not yet polished):** trait-driven characters (`js/traits.js`, `js/chog_parts.js`, gallery at `gallery.html`); a walkable town: click-to-move (A* path finding) or WASD, follow camera, see-through buildings and trees (`js/game.js`); wallet connect and "which Chogs do I own" (`js/wallet.js`, verified against the real chain, 190 ms with the owner snapshot); game feel (hover tile and ring, cursors, click rings, smooth zoom), nameplates (`js/plates.js`), a Chog mask pass for one continuous outline, and the desktop HUD in the **Storybook** style (`js/ui.js`, `css/ui.css`): player frame, minimap, wallet button, chat box (placeholder), wooden action bar, "My Chog" window. The wallet flow was tested end to end with a mock wallet on the real chain.
+- **Data:** 1,969 tokens sit in **1,012 wallets** (721 hold one; 19 hold 10 or more, together 422 tokens), snapshot in `prototype/data/owners.json`. **Full trait dump done (2026-10-08):** `prototype/data/chogs.json` has all 1,969 tokens (fetched via the Filebase gateway; Pinata's free gateway bans after ~250-275 requests, see `docs/engineering/prototype.md`), and `tools/build_tokens.py` turns it into `prototype/data/tokens.json` (470 KB), which the client loads: **no IPFS calls at runtime**. `wallet.js` exposes `WALLET.pointsOf`, `venueTier`, `license` and `tierStats`; the HUD shows the venue license (pill, My Chog card, Venues ladder). Collection `Tier` trait: Common 1,279, Uncommon 590, Rare 60, Epic 30, Legendary 10.
+- **Multiplayer v0 (2026-10-08, `server/`, `docs/engineering/server.md`):** Node WebSocket server for presence and chat; players see each other walk (own Chog by wallet signature plus on-chain `ownerOf` check, guests as the default Chog), speech bubbles, working chat box with link/address stripping (no profanity filter, by decision), rate limit, report and mute. 43 server checks pass (`npm test`, rooms included); the browser path was tested with a mock wallet and a mock chain. **Live (2026-10-08):** game at `https://chog-town.pages.dev` (Cloudflare Pages, free), server at `wss://chog-town-ws.fly.dev` (Fly.io Frankfurt, ~$2.5/month, origin-restricted); two browser tabs on the live site saw each other and chatted. **Never tried:** a real wallet signing on the live site, more than two players, mobile/other browsers, performance on real hardware.
+- **Not started:** venues, items, market, contracts, NPC residents as a system (the 9 residents only walk and pose), sound, icon set, mobile companion.
+- **Known gaps:** Chog is still polygonal next to the smooth official art; the see-through fade is abrupt; performance never measured on real hardware (4096² shadow map, 2x supersampling; see `docs/engineering/prototype.md`); crowd Chogs behind buildings are not faded; resident names are placeholders; real MetaMask / Rabby not tried (only a mock wallet).
+
+## Decisions (and why)
+
+| Decision | Why |
+|---|---|
+| One art style; creator variety comes from asset themes (2026-10-08) | A consistent look makes the world one game. Players get themed kits, patterns, own shapes, text and NFT frames, never different render styles. `docs/game/spaces.md` |
+| Social creator sandbox with player-run venues, not a combat MMORPG (2026-10-08) | An MMORPG needs content we cannot write in 14 days and is a crowded field; players make the content here. Research: `docs/game/core-loop-research.md` |
+| Venue license from holdings: points per Chog by rarity, tier from total, one venue per wallet | Splitting NFTs across wallets must not pay; consolidating should. Diminishing returns. See `docs/game/design.md` |
+| Host economy, not play-to-earn: no minted rewards, income only from running a venue, free entry by default | Axie-style emission-funded rewards collapse; venue income is player-to-player. "Passive income" is never promised |
+| `$CHOG` burn only for optional things (item publishing, featured placement, festivals); no developer or protocol share in v1 | A cut of a non-existent economy looks like extraction; burn demand must not gate core features |
+| Gambling venues deferred (not in v1; demo use undecided) | Fits neither the no play-and-earn rule nor the legal risk (Roblox class action, Second Life ban) without review |
+| Not nostalgia-led, audience is everyone | Nostalgia alone does not retain and that audience is not in web3 |
+| Smooth stylised 3D ("hybrid"), not pixel-3D | Chog faces and outlines read far better, closer to the official art; code produces lighting, depth, animation and trait swapping. Pixel-3D stays as `?style=pixel` |
+| Warm, soft world | Owner preference; fits Chog's friendly character |
+| No testnet, Monad mainnet | Owner decision (fees are low). Mitigate with pausable contracts and daily caps |
+| Server-light architecture, plus a small realtime server (Node + WebSocket) | Contracts hold ownership and money; the server only relays presence and chat, holds no funds, and the game degrades to solo play if it is down. Same language as the browser client |
+| HUD: Storybook (wood and parchment) | Chosen by the owner from three concepts; rules in `docs/art/art-direction.md` |
+| PC-first; mobile is a companion added later | The game is played on desktop |
+| No deep offline simulation | Costly, adds little |
+
+## Next steps (in order)
+
+1. **Ship the rooms:** the server with the Fly volume is live (2026-10-08); the site is deployed too; still to do: test a real wallet signing a room save on the live site (only a mock wallet was tried, the live server was checked with a throwaway wallet). Then room polish the owner will notice first: stacking small items on tables, free rotation, a "my room" first-visit tour.
+2. **Reasons to return, from players, not NPCs (owner, 2026-10-08: no NPC system decided):** a room directory (who is where, who is inside now), visit traces (likes, guestbook), then venue v0. Pick after the owner has played it. The first-visit tips are built; measure them with a real new player.
+3. **Venue v0 (holders):** one template in the NOVA/Arcade/Moka buildings, tier from holdings, owner-set entry rule and VIP gate, visitors see it in the Directory.
+4. **Items and market:** cosmetic and furniture items as NFTs, creators publish, free players buy.
+5. **Venue tiers:** points from the on-chain `Tier` trait (Common 1, Uncommon 1, Rare 3, Epic 5, Legendary 12; thresholds 1 / 3 / 5 / 12 giving 814 / 99 / 72 / 27 wallets) approved 2026-10-08 and embedded in the client; details in `docs/game/design.md`. HUD built (owner picked B + C + small A): "Tier N" pill, license card in My Chog, tier ladder in the Venues window. Deployed to `chog-town.pages.dev` on 2026-10-08 (returning visitors may see the old build for up to 5 minutes: `_headers` caches for 300 s). To do: use the same numbers in the venue contract; decide the final tier names and what each tier really gets when venue v0 is built.
+6. **Contracts:** venue license, items, market on Monad (pausable, daily caps).
+7. **Polish:** measure performance on real hardware, sound, icon set, the see-through fade, more district (second block).
+8. 3-minute demo video, repo, submission details for the Chogathon.
+9. Mobile companion after the PC game works.
+
+## Open questions
+
+- **Anti-rental details:** minimum holding period, delegation from cold wallets.
+- **What tiers add** beyond size (capacity, VIP room, stage, shelves) so tier 4 beats ten tier 1 venues. **The tier names (Stall / Shop / Mansion / Landmark) are placeholders** and the Venues window lists sizes only, no perks, until venue v0 defines them; pick final names then.
+- **Do non-holders pay?** The economy assumes free players spend MON on items and tickets. Test early: a Discord poll and our 3-4 seed venues.
+- **Long-term goals without combat:** collection, venue upgrades, reputation. Undecided.
+- **Interiors and the venue editor scope** (templates plus settings; how much furniture logic).
+- **Candidate features:** venue opening hours and the doorman (`docs/game/design.md`); decide whether they enter the 14-day slice.
+- **Venue customization burns:** which items cost how much `$CHOG` (security camera is the first idea, `docs/game/design.md`); camera view on mobile needs a phone performance test.
+- **Gambling templates:** decide late, with remaining time and legal review.
+- **Moderation:** filter, report, who reviews.
+- Submission/video logistics (face or voice on video) are the owner's call.
+- Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.

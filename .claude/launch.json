@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "prototype", "runtimeExecutable": "python", "runtimeArgs": ["prototype/server.py"], "port": 8766 },
+    { "name": "town-server", "runtimeExecutable": "node", "runtimeArgs": ["server/index.js"], "port": 8767 }
+  ]
+}

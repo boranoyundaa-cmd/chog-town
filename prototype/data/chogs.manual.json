@@ -1,0 +1,95 @@
+{
+ "_note": "Traits read from the public sources on 2026-10-07. 1700: IPFS metadata (1192.json). Others: OpenSea item pages. Real data, used as dev fixtures.",
+ "tokens": {
+  "1700": {
+   "file": "1192.json",
+   "name": "CHOG #1192",
+   "traits": {
+    "Background": "Radioactive",
+    "Aura": "Wind",
+    "Base": "Radioactive",
+    "Skin": "Multi Colored",
+    "Side": "Left",
+    "Body": "purple vest",
+    "Eyes": "Mixed Round Eye",
+    "Head": "Red Bandana",
+    "Form": "Chog",
+    "Tier": "Epic",
+    "Naked": "No"
+   }
+  },
+  "1557": {
+   "traits": {
+    "Background": "Mint",
+    "Base": "Origin",
+    "Body": "Tuxedo",
+    "Eyes": "Retro Glass",
+    "Form": "Chog",
+    "Head": "Peace hat",
+    "Mouth": "Lip Bite",
+    "Naked": "No",
+    "Side": "Right",
+    "Skin": "Red",
+    "Tier": "Common"
+   }
+  },
+  "409": {
+   "traits": {
+    "Background": "Sky Blue",
+    "Base": "Origin",
+    "Body": "Kings Robe",
+    "Eyes": "Round Crying",
+    "Form": "Chog",
+    "Head": "Crown",
+    "Mouth": "Rainbow Puke",
+    "Naked": "No",
+    "Side": "Right",
+    "Skin": "Pink",
+    "Tier": "Common"
+   }
+  },
+  "1808": {
+   "traits": {
+    "Background": "Sunlight",
+    "Base": "Origin",
+    "Body": "Banana suit",
+    "Eyes": "Round Tear",
+    "Form": "Chog",
+    "Mouth": "Sad",
+    "Naked": "No",
+    "Side": "Right",
+    "Skin": "Black",
+    "Tier": "Common"
+   }
+  },
+  "1000": {
+   "traits": {
+    "Background": "Light Purple",
+    "Base": "Origin",
+    "Body": "Blue Homeless Shirt",
+    "Eyes": "cyan laser",
+    "Form": "Chog",
+    "Head": "BTC Cap",
+    "Mouth": "Sad",
+    "Naked": "No",
+    "Side": "Left",
+    "Skin": "Origin",
+    "Tier": "Uncommon"
+   }
+  },
+  "1942": {
+   "traits": {
+    "Aura": "Royal Blue Aura",
+    "Background": "Light Purple",
+    "Base": "Origin",
+    "Eyes": "Round Tear",
+    "Form": "Chog",
+    "Mouth": "Sad",
+    "Naked": "Yes",
+    "Side": "Right",
+    "Skin": "Yellow",
+    "Tier": "Common"
+   }
+  }
+ }
+}

@@ -1,0 +1,13 @@
+node_modules/
+server/data/
+prototype/shots/
+dist/
+.wrangler/
+
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
+
+# the realtime server has its own private repo (boranoyundaa-cmd/chog-town-server)
+server/

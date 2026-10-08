@@ -1,0 +1,21 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Chog Town spaces</title>
+<style>html,body{margin:0;height:100%;background:#1a0f2e;overflow:hidden}body{display:flex;align-items:center;justify-content:center}
+canvas{display:block;width:100vw;height:100vh;object-fit:contain;touch-action:none}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<!-- Space viewer: ?layout=studio|cyberpunk|retro80s|space|halloween|gallery  ?ambience=day|evening|night|neon  (the render style is fixed, always) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/common.js"></script><script src="js/chog.js"></script><script src="js/chog_parts.js"></script><script src="js/core.js"></script>
+<script>const world = new THREE.Group(); scene.add(world);</script>
+<script src="js/space.js"></script><script src="js/space_data.js"></script><script src="js/styles.js"></script><script src="js/main.js"></script>
+<script>
+  { const d = Object.assign({}, SPACE.LAYOUTS[QS.get('layout') || 'studio']); if (QS.get('ambience')) d.ambience = QS.get('ambience'); SPACE.build(d); }
+  const people = [[{ hair: 0x5b35b0 }, 2.9, -2.2, 0.4, 1.08], [{ hair: 0xff4a98, outfit: 'jacket', trim: 0x60e0f0, head: 'headset' }, 1.6, 2.7, -2.4, 1], [{ hair: 0xf4c82c, outfit: 'vest', vest: 0x3a8a6a }, -1.2, 0.2, 0.8, 1]];
+  for (const [o, x, z, ry, s] of people) { const c = chog(Object.assign({ scale: CHOG_SCALE * s }, o)); c.position.set(x, 0, z); c.rotation.y = ry; world.add(c); }
+  SPACE.refreshHidden();
+  FW = +(QS.get('zoom') || 20); camTarget.set(0.2, 0.9, 0.2); updateCam();
+</script>
+</body></html>

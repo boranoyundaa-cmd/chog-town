@@ -1,0 +1,110 @@
+# Prototype
+
+Three.js r128 (global build from cdnjs), plain scripts, no build step, no dependencies besides Python for the dev server.
+
+## Run
+
+```bash
+python prototype/server.py        # http://localhost:8766
+```
+
+- `index.html`: the game (the walkable modern city). `gallery.html`: real Chogs built from trait data (`?ids=1700,1557,409`). `lineup.html`: a row of hand-made Chogs.
+- `space.html?layout=studio|cyberpunk|retro80s|space|halloween|gallery&ambience=day|evening|night|neon` is the space viewer (`js/space.js`, `js/space_data.js`, design in `docs/game/spaces.md`).
+- `hudmock.html?skin=warm|neon|storybook&bg=shots/<scene>.png` renders the HUD as a static mock over a screenshot (concept shots). `index.html?as=1700&open=venues` previews a holder Chog without a wallet and opens a window (`open=1|venues|settings`). Full-res PNG of any page without WebGL: `msedge --headless=new --window-size=1920,1080 --virtual-time-budget=6000 --screenshot=out.png <url>`. **Pages with the 3D scene (`index.html`) cannot be captured this way**: headless Edge never finishes the WebGL loop, the command hangs and leaves msedge processes behind (tried 2026-10-08 with swiftshader flags too). The Browser pane's screenshots are downscaled (800x450) and lag one frame; for the real game press **P** in a normal browser to save a full-res PNG, and check HUD logic through the DOM (`read_page`, `javascript_tool`).
+- Game: click or tap the ground to walk (A* path finding), WASD / arrows to walk, wheel = zoom, the camera follows the player. **P** = save a full-resolution PNG to `prototype/shots/`. Scenes without `js/game.js` (gallery, lineup): drag = pan.
+- From the console / automation: `await capture('name.png')`.
+- **Hidden tab:** the browser pauses `requestAnimationFrame` when the page is not visible (the Browser pane often is), so nothing moves. Use `step(n, dt)` to advance the simulation by n steps and render; `capture()` renders by itself.
+- `?style=hybrid|pixel|smooth|paint|flat|comic|mini` renders the same scene in another look. Default and locked: `hybrid`. Every style except `pixel` renders at 3840×2160 and downsamples to 1920×1080; the final-pass shaders live in `js/styles.js` (`pixel` keeps its own composite shader in `main.js`). Side-by-side comparison sheets from the style decision: `shots/compare_overview.png`, `shots/compare_close.png`.
+- Rooms: `?room=mine` opens your room on load, `?room=<wallet address>` visits a saved room (needs the town server). With a mock wallet for tests: load ethers from cdnjs in the page, set `WALLET.account` and a `WALLET.provider.request` that signs with it (the whole save flow then runs for real against `node server/index.js`).
+- URL params: `hour=<0-24>` (pin the time of day), `zoom` (visible world width), `tx` `tz` `ty` (camera target), `freeze=<seconds>` (stop animation time for repeatable shots), `res=1920x1080` (force the canvas size, for screenshots; otherwise the canvas follows the window), `as=<tokenId>` (preview a holder Chog without a wallet), `open` (open the My Chog window). Add `&r=<n>` to dodge caches.
+- The server sends `no-store`, so edits show on reload.
+- Multiplayer: also run `node server/index.js` (port 8767). `?server=ws://host:port` points the page elsewhere. Enter focuses the chat box; click another player (or a name in the chat) for Mute / Report.
+
+## Hosting (live site)
+
+`https://chog-town.pages.dev` (Cloudflare Pages, project `chog-town`, free). Publish:
+
+```bash
+python tools/build_site.py     # collects only what the page loads into dist/ (about 300 KB)
+cd <any folder outside the repo> && npx wrangler@latest pages deploy D:/Projects/Chog/dist --project-name chog-town --branch main
+```
+
+- Run `wrangler` from **outside** the repo: it writes a `wrangler.jsonc` and `.wrangler/` into the current folder and switches to Workers mode. Login is `wrangler login` (browser, short timeout: approve at once). The project was created with the hidden `pages project create --force` (new wrangler delegates Pages to Workers otherwise); later deploys need no `--force`.
+- `build_site.py` ships `data/tokens.json` (all 1,969 tokens, 470 KB; built by `tools/build_tokens.py`) and stops if a data file is missing. The game never calls IPFS at runtime. After the collection or the tier rules change: `python tools/build_tokens.py`, then build and deploy again.
+
+## Files (`prototype/js`, loaded in this order)
+
+| File | Responsibility |
+|---|---|
+| `common.js` | render style (`STYLE`, `PIXEL`, `HULL_T`), seeded RNG, toon materials (`tmat`), mesh helpers (`BOX/CYL/SPH/ICO`, `addRot`), procedural textures (`TEX.*`), glow sprites, shared lists (`animated`, `noNormalPass`, `smokeSources`) |
+| `chog.js` | `chog(options)`: the character builder, ink outlines, blade/face geometry. Options include `kind`/`cloth` (clothing), `eyeStyle`, `mouth`, `head`, `acc`, `aura`, `hairMulti`, `faceC` |
+| `chog_parts.js` | eyes, mouths, hats, held accessories and auras driven by traits (called from `chog()`) |
+| `traits.js` | NFT traits to `chog()` options (`chogOptionsFromTraits`, `chogFromTraits`, `DEFAULT_TRAITS`), keyword classifiers with fallbacks for the long tail |
+| `core.js` | renderer (canvas follows the window, capped at 1920 on the long side; scene supersampled 2x, 1.5x on small screens; `pixel`: 960×540 ×2), scene, sky, fog, iso camera (`FW`, `ASPECT`, `camTarget`), lights, sun |
+| `daycycle.js` | real-clock lighting: keyframes dawn/golden/day/dusk/night blended into sky, fog, lights, sun offset, stars and moon; hooks `DAY.addWindows/glow/light` for the world; modes `real` / `fixed` (`DAY.setMode`, `?hour=`) |
+| `world_city.js` | the district: slab, roads, sidewalks, 5 buildings (instanced windows, shopfronts, signs, roofs), street furniture, residents (NPC walkers). Exports `HALF`, `world`, `WORLD_BLOCKERS`, `occluders`, `walkers`, `CITY` (names for the HUD), `hiddenInNormal` |
+| `wallet.js` | wallet connect (EIP-6963 and `window.ethereum`), switch to Monad (chain 143), `findOwned` (owner snapshot verified with `ownerOf`, scan fallback), `traitsOf` |
+| `space.js`, `space_data.js` | the room engine (a space is a JSON document, `docs/game/spaces.md`): themes, ambiences, the piece catalog, `SPACE.build/unload`, one piece at a time (`makePiece/addEntry/removeEntry`). Also used standalone by `space.html` |
+| `game.js` | the player Chog, click/WASD movement with A* on a 0.25 grid, follow camera, see-through occluders (buildings and trees fade when they hide the player). `GAME.room` (set by `room.js`) swaps the collision, grid and camera for a room; `GAME.editMode` hands the mouse to the editor |
+| `plates.js` | nameplates over every Chog: HTML tags positioned from the 3D head, hidden behind buildings (`GAME.hiddenAt`) |
+| `net.js` | link to `server/` (`docs/engineering/server.md`): other players (Chog, plate, smooth movement), speech bubbles, wallet proof, reconnect with backoff, local mute. Needs `ui.js` and `plates.js` loaded first. The page works without the server |
+| `room.js` | your own room: enter/leave (hides the town: `CITY_NODES`, `DAY.pause()`), collision from the furniture, the placement editor (`fits` = the rules, `aim` = grid snapping, ghost preview), the panel and top bar, save through `NET` (`roomprep` / `roomsave`), visits, drafts in `localStorage`. Needs `NET`, `ui.js`, `space.js` |
+| `tour.js` | first-visit tips: cards that follow `GAME` / `ROOM` state, the door pin, progress in `localStorage`. Loaded after `room.js` |
+| `ui.js` | HTML overlay (`css/ui.css`): skins (`SKINS`, `applySkin()`), player frame, minimap, wallet button, chat box, action bar, windows (`card()` = My Chog, `settingsCard()` = skin and time of day), portraits rendered with a second hidden renderer. `UI.open` holds the open window; add a window by extending `MENU` and `render()` |
+| `styles.js` | final-pass shaders for every style except `pixel` (loaded before `main.js`) |
+| `main.js` | post-process pipeline (targets rebuilt on resize), controls, capture, `update()`/`frame()`/`step()` |
+| `lineup.js`, `gallery.js` | scenes for `lineup.html` and `gallery.html` only |
+
+## Render pipeline (`main.js`)
+
+1. Scene → `rtScene` (3840×2160, linear, depth texture; `pixel`: 960×540, nearest).
+2. Normals pass with `MeshNormalMaterial` (objects in `noNormalPass` and ink hulls hidden).
+3. Bloom: bright pass → two blur iterations at half resolution (`BL` keeps the glow width the same at every resolution).
+3b. **Chog mask** (non-pixel styles): the scene is drawn again with flat materials into `rtMask` (own depth texture): layer 1 (every visible Chog part) red, layer 2 (the face) yellow. `chog()` tags its meshes with `tagChogLayers`. The shadow map is not re-rendered for these extra passes.
+4. Composite (`hybrid`): thin depth/normal edge lines for the environment, screen-space AO from depth (switched off on Chogs, fully off on faces, using the mask), grade and saturation, bloom, a continuous ink outline around every visible Chog silhouette (dilated mask, depth-tested against the scene so hidden Chogs get none), soft-shoulder tone map, light vignette. The ink hulls (thickness `HULL_T`) still draw the inner lines between parts.
+
+Anything transparent / glowing / far away (clouds, smoke, sprites, water overlays) goes into `noNormalPass`; sky-like meshes use `depthWrite:false` so they get no outline.
+
+## Conventions
+
+- `hiddenInNormal` and `noNormalPass` are global lists in `common.js`. Anything added later that must not be drawn in the normal pass (glows, helper meshes) needs `userData.noNormal = true` and `SPACE.refreshHidden()` afterwards (it rebuilds `hiddenInNormal` from the whole scene).
+- A room hides the town by switching `visible` off on `CITY_NODES` (the list taken at the end of `world_city.js`) and stops the clock lighting with `DAY.pause()`; leaving restores both and the sun's shadow box. Anything new added to the town after that line is not hidden by rooms.
+- Units are metres-ish; see `docs/art/art-direction.md` for scale rules. The town slab half size is `HALF = 8.2` (also the server's walking limit; change both).
+- Register every animation as a function pushed to `animated` (`(t, dt) => …`).
+- Walking collision comes from `WORLD_BLOCKERS` (`{x,z,hw,hd}` half sizes), filled by each prop and building function in `world_city.js`.
+- Tall objects the camera can see through (buildings, trees) go into `occluders.push({ g, min })`; `game.js` clones their materials and fades them.
+- A Chog made after load must go through `registerChog()` (done by `chogFromTraits`) so its ink hulls and glow objects are hidden in the normal pass.
+- Lights are expensive and easy to overexpose: current total is sun 0.68, hemisphere 0.42, rim 0.16, ~11 small point lights (0.2–0.4). Check any change in a full-res capture.
+
+## Game feel (in `game.js`)
+
+- Hover: a gold diamond marks the ground tile under the cursor (red on blocked tiles, with the `not-allowed` cursor); hovering a Chog shows a ring, the `pointer` cursor and a highlighted nameplate; clicking a resident answers with a toast. Click: a white ring at the target, a red ring where you clicked if it was blocked (you walk to the nearest free spot).
+- Camera: follows the player with smoothing, the wheel zooms smoothly between `GAME.zoomMin` (7) and `GAME.zoomMax` (26); the camera target is clamped to the slab plus one unit.
+
+## Performance notes (not measured on real hardware yet)
+
+- The 4096² shadow map is re-rendered every frame (the colour pass); 2048² would likely look the same and cost much less. Measure first.
+- The 2x supersampled scene (3840×2160 on a 1080p window) is the other big cost; a render-scale setting is the obvious fix.
+- The Chog outline loop samples the mask 16 times for every pixel outside a Chog.
+
+## Data and tools (`tools/`, output in `prototype/data/`)
+
+- `fetch_owners.py` → `owners.json` (token id → owner, chain only, ~1 min). Used by `wallet.js` to find a wallet's Chogs in ~190 ms.
+- `fetch_chogs.py [SECONDS]` → `chogs.json` (traits per token, from IPFS; resumes from `chogs.json.partial`). The free Pinata gateway allows only ~250-275 requests, then bans for 1 hour (`Retry-After: 3600`); speed does not matter, the count does. The script now tries `ipfs.filebase.io` first (no limit seen: the last 1,243 tokens came in one run) and falls back to Pinata; run `python tools/fetch_chogs.py 0.5`. On a long ban of every gateway it stops cleanly and resumes from the saved cache (the log first prints `resuming: N already saved`). Rerunning is only needed if the collection changes; ship the output, never call IPFS from the game at runtime.
+- `build_tokens.py` → `tokens.json` (the table the client loads: name, traits, rarity rank per token, plus `tierPoints` and `venueTiers`). The venue-tier rules (points per `Tier` trait, thresholds 1 / 3 / 5 / 12, approved 2026-10-08) live in its constants; the client derives points from them (`WALLET.pointsOf`, `WALLET.venueTier(ids)` in `wallet.js`), and the venue contract must use the same numbers. It also prints the wallets per tier on the owner snapshot and compares them with the design target (814 / 99 / 72 / 27).
+- `chogs.manual.json`: six real tokens (#1700 and five others) used as fixtures.
+- Public RPC (`rpc.monad.xyz`): no `eth_getLogs` over wide ranges (413), batches above ~25 calls get 429.
+
+## Pitfalls (each cost real time)
+
+- A closed HUD window (`.win` without `.open`) is only transparent, and its `.card.hit` child used to keep `pointer-events: auto`: an invisible card in the middle of the screen swallowed clicks and the mouse wheel. The stylesheet now disables pointer events on everything inside a closed window. When something "sometimes does not work", scan the screen with `document.elementFromPoint` before suspecting game code.
+- Three.js raycasts ignore `visible`: a hidden object still catches `intersectObjects`. Filter by `visible` when picking (done for the residents while a room hides the town).
+- Benches face local `+z`; check the facing in a capture when adding one (all four were turned towards the shops).
+
+- The Browser pane's page is often hidden, so `requestAnimationFrame` does not run: use `step()`.
+
+- `group.add(mesh).rotation = …` rotates the **group**, not the mesh (`add` returns the parent). Use `addRot(parent, mesh, rx, ry, rz)`. Same for `.userData`.
+- `object.position = …` silently fails in r128; use `position.set()`.
+- Pane screenshots are small lossy JPEGs and made things look blurry; judge only from `capture()` PNGs.
+- `BoxGeometry` takes one texture repeat for all faces; use `texBox()` for per-axis repeats.
+- Blades are `DoubleSide` thin meshes: no ink hull (set `userData.noOutline`), orient with `orientBlade()`.

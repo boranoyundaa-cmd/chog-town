@@ -1,0 +1,58 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Chog Town HUD concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bree+Serif&family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&family=Rubik:wght@500;600;700&family=Bungee&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/ui.css">
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#1a0f2e}#stage{position:fixed;inset:0;background-size:cover;background-position:center}#ui .win{left:73%;top:calc(50% - 20px)}</style>
+</head>
+<body>
+<!-- Static HUD concepts over a scene screenshot. ?skin=storybook|warm|neon  ?bg=shots/city_golden.png -->
+<div id="stage"></div>
+<div id="plates"></div>
+<div id="ui"></div>
+<script>
+const Q = new URLSearchParams(location.search), SKIN = Q.get('skin') || 'warm', BG = Q.get('bg') || 'shots/city_golden.png';
+document.body.className = SKIN; document.getElementById('stage').style.backgroundImage = `url(${BG})`;
+const I = {
+  person: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+  home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v10h13V10"/><path d="M10 20v-5h4v5"/>',
+  bag: '<path d="M5.5 8h13l-1 12.5h-11z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/>',
+  pin: '<path d="M12 21s7-6.2 7-11.5A7 7 0 0 0 5 9.5C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
+};
+const ic = (n, s = 26) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[n]}</svg>`;
+const menu = [['person', 'My Chog', 'C', 1], ['home', 'My Room', 'R'], ['bag', 'Market', 'M'], ['pin', 'Venues', 'V'], ['gear', 'Settings', 'Esc']];
+const chips = [['Skin', 'Multi Colored'], ['Body', 'purple vest'], ['Head', 'Red Bandana'], ['Eyes', 'Mixed Round Eye'], ['Aura', 'Wind']];
+document.getElementById('ui').className = SKIN;
+document.getElementById('ui').innerHTML = `
+<button class="me hit"><span class="av" style="background-image:url(shots/portrait_1700.png);--bg:#80e040"></span><span class="nm"><b>Chog #1700</b><small>Epic</small></span></button>
+<div class="topright"><div class="mmwrap"><canvas class="minimap" width="300" height="300" style="width:150px;height:150px"></canvas><div class="loc"><span>Chog Plaza</span></div></div><button class="btn ghost wallet hit"><span class="dot"></span>0x19E7…Aff2</button></div>
+<div class="chat hit"><div class="tabs"><span class="on">Town</span><span class="count">12 in town</span></div>
+ <div class="log"><p class="sys">Connected. 11 others in town.</p><p><b>Moka</b> gm! fresh batch of lattes at the café</p><p><b>Guest-3514</b> anyone going to NOVA tonight?</p><p class="mine"><b>Chog #1700</b> opening my gallery at 8, come by</p></div>
+ <div class="in"><input placeholder="Press Enter to chat" disabled></div></div>
+<div class="dock">${menu.map(([i, l, k, on]) => `<button class="dk hit${on ? ' on' : ''}"><span class="ic">${ic(i)}</span><span class="lb">${l}</span><span class="kb">${k}</span></button>`).join('')}</div>
+<div class="hint">Click to walk · WASD move · Wheel zoom · Enter chat · C My Chog</div>
+<div class="win open"><div class="card hit"><div class="hero" style="--bg:#80e040"><img src="shots/portrait_1700.png"><span class="tier" style="--tier:#9a5ad8">Epic</span><button class="x">×</button></div>
+ <h2>Chog #1700</h2><div class="sub">Your Genesis Chog</div>
+ <div class="chips">${chips.map(([k, v]) => `<span class="chip"><b>${k}</b>${v}</span>`).join('')}</div>
+ <div class="perks"><h3>Holder perks</h3><div class="perk"><i>✓</i><span>Play as your own Chog, with its traits</span></div><div class="perk"><i>✓</i><span>Venue license: run your own place <small>(tier 2 from your holdings)</small></span></div></div>
+ <div class="actions"><button class="btn ghost">Disconnect</button><button class="btn">Open My Room</button></div></div></div>
+<div id="toast" style="opacity:1">Welcome back, Chog #1700</div>`;
+// nameplates over the three nearest Chogs (positions measured on the 1920x1080 screenshot)
+document.getElementById('plates').innerHTML = [[868, 538, 'Chog #1700', 1], [826, 596, 'Pip', 0], [1146, 612, 'Moka', 0]].map(([x, y, n, me]) => `<div class="plate${me ? ' me' : ''}" style="transform:translate(${x}px,${y}px) translate(-50%,-100%) scale(1.33)"><i class="dot"></i><b>${n}</b></div>`).join('')
+  + `<div class="plate" style="transform:translate(868px,486px) translate(-50%,-100%) scale(1.33);display:none"></div>`;
+document.getElementById('ui').style.zoom = 1080 / 810;
+// minimap: the district seen from above, rotated like the camera
+(function () {
+  const cv = document.querySelector('.minimap'), g = cv.getContext('2d'), S = cv.width, k = S / 22, R = Math.SQRT1_2, N = SKIN === 'neon';
+  const P = (x, z) => [S / 2 + (x - z) * R * k, S / 2 + (x + z) * R * k];
+  const poly = (pts, c) => { g.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = P(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.fillStyle = c; g.fill(); };
+  const rect = (x, z, hw, hd, c) => poly([[x - hw, z - hd], [x + hw, z - hd], [x + hw, z + hd], [x - hw, z + hd]], c);
+  g.fillStyle = N ? '#1a1038' : '#cbbbe8'; g.fillRect(0, 0, S, S);
+  rect(0, 0, 8.2, 8.2, N ? '#5a4a86' : '#d9cfc0'); rect(0, 0, 1.5, 8.2, N ? '#2d2548' : '#8d8a9c'); rect(0, 0, 8.2, 1.5, N ? '#2d2548' : '#8d8a9c');
+  for (const [x, z, w, d, c] of [[-4.8, -4.8, 3.6, 3.4, N ? '#7a5ac8' : '#e9c98a'], [4.75, -4.7, 3.8, 3.4, N ? '#ff5ab8' : '#6fbdb0'], [-4.7, 4.7, 3.6, 3.2, N ? '#3a8ad8' : '#a592e0'], [4.8, 4.7, 3.6, 3.2, N ? '#ffc23a' : '#e08a68'], [0, -6.5, 3.6, 2, N ? '#d8d0ff' : '#f8f4ee']]) rect(x, z, w / 2, d / 2, c);
+  for (const [x, z] of [[2.4, 2.2], [-3.6, 5.6], [3.4, 4.1], [-2.8, 0.4]]) { const [a, b] = P(x, z); g.beginPath(); g.arc(a, b, 3.2, 0, 7); g.fillStyle = N ? '#7ae8ff' : '#fff'; g.fill(); }
+  const [a, b] = P(0.4, 1.9); g.save(); g.translate(a, b); g.rotate(2.3); g.beginPath(); g.moveTo(0, -9); g.lineTo(7, 7); g.lineTo(0, 3); g.lineTo(-7, 7); g.closePath(); g.fillStyle = '#ffd84a'; g.strokeStyle = '#1a0a2e'; g.lineWidth = 2.5; g.stroke(); g.fill(); g.restore();
+})();
+</script>
+</body></html>
