@@ -17,13 +17,24 @@ function blade(L, W, T, bend, segs = 5) {
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
   const ng = g.toNonIndexed(); ng.computeVertexNormals(); return ng;
 }
-const FACE_GEO = (() => {
+const FACE_SHAPE = () => {
   const s = new THREE.Shape();
   s.moveTo(-0.27, 0.19); s.lineTo(-0.14, 0.215); s.lineTo(-0.05, 0.185); s.lineTo(0.06, 0.225); s.lineTo(0.15, 0.19); s.lineTo(0.27, 0.21);
   s.lineTo(0.285, -0.03); s.quadraticCurveTo(0.26, -0.2, 0.1, -0.245); s.lineTo(-0.1, -0.245); s.quadraticCurveTo(-0.26, -0.2, -0.285, -0.03); s.lineTo(-0.27, 0.19);
+  return s;
+};
+const FACE_GEO = (() => {
+  const s = FACE_SHAPE();
   const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.018, bevelSegments: 1, curveSegments: 3 });
   g.translate(0, 0, -0.1); return g;
 })();
+// a vertical colour gradient laid over the face (Multi Colored skin: pink at the top, green at the jaw)
+function faceGradient(stops) {
+  const cv = document.createElement('canvas'); cv.width = 4; cv.height = 64; const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
+  stops.forEach((c, i) => gr.addColorStop(i / (stops.length - 1), '#' + new THREE.Color(c).getHexString())); g.fillStyle = gr; g.fillRect(0, 0, 4, 64);
+  const geo = new THREE.ShapeGeometry(FACE_SHAPE()), uv = geo.attributes.uv, p = geo.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.5, 1 - (p.getY(i) + 0.245) / 0.47);
+  const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.9 })); m.position.z = 0.032; m.userData.noOutline = true; return m;
+}
 function orientBlade(mesh, d) {
   const Y = d.clone().normalize(); const Z = new THREE.Vector3(0, 0.25, 1); Z.addScaledVector(Y, -Z.dot(Y));
   if (Z.lengthSq() < 1e-3) Z.set(0, 1, 0); Z.normalize();
@@ -103,6 +114,7 @@ function chog(o = {}) {
   const head = new THREE.Group(); head.position.y = 1.0; root.add(head);
   const hairG = new THREE.Group(); head.add(hairG);
   const mass = cm(new THREE.IcosahedronGeometry(0.44, 1), hairC, 0, 0.06, -0.12); mass.scale.set(1.08, 0.95, 0.98); hairG.add(mass);
+  if (o.bald) { hairG.remove(mass); const cr = cm(new THREE.SphereGeometry(0.43, 14, 10), CREAM, 0, 0.07, -0.06); cr.scale.set(1.12, 1.0, 1.0); hairG.add(cr); }                // a skull: a bare round head, no hair
   const hc = new THREE.Color(hairC), hsl = {}; hc.getHSL(hsl);
   const shadeC = k => new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(0.85, Math.max(0.1, hsl.l * k))).getHex();
   const top = hasHat ? 0.55 : 1;
@@ -118,23 +130,24 @@ function chog(o = {}) {
     [[-0.22, -0.2, -0.32], [-0.5, -0.5, -1], 0.4, 0.2, -0.2, 0.8],
     [[0.22, -0.2, -0.32], [0.5, -0.5, -1], 0.4, 0.2, -0.2, 0.8],
   ];
-  let bi = 0; const rainbow = () => new THREE.Color().setHSL((bi++ * 0.093) % 1, 0.78, 0.56).getHex();
-  for (const [p, d, L, W, bend, k] of blades) {
-    const b = cm(blade(L, W * 1.15, 0.16, bend), o.hairMulti ? rainbow() : shadeC(0.92 + (k - 0.8) * 0.4), p[0], p[1], p[2], true); b.userData.noOutline = true;
+  let bi = 0; const rainbow = () => new THREE.Color().setHSL((bi++ * 0.093) % 1, 0.78, 0.56).getHex(), palette = () => o.hairPalette[bi++ % o.hairPalette.length], hk = o.hairScale || 1;     // palette: a flame's or a devil's own hair colours
+  if (!o.bald) for (const [p, d, L, W, bend, k] of blades) {
+    const b = cm(blade(L * hk, W * 1.15 * (hk > 1 ? 1.15 : 1), 0.16, bend), o.hairMulti ? rainbow() : o.hairPalette ? palette() : shadeC(0.92 + (k - 0.8) * 0.4), p[0], p[1], p[2], true); b.userData.noOutline = true;
     orientBlade(b, new THREE.Vector3(d[0], d[1], d[2]));
     hairG.add(b);
   }
-  for (let i = 0; i < 9; i++) {
+  if (!o.bald) for (let i = 0; i < 9; i++) {
     const a = (i / 9) * Math.PI * 2, dxh = Math.sin(a), dzh = Math.cos(a); if (dzh > 0.3) continue;
-    const b = cm(blade(0.42, 0.34, 0.16, -0.3), o.hairMulti ? rainbow() : shadeC(0.9 + 0.2 * Math.abs(Math.sin(i * 2.3))), dxh * 0.4, 0.12 + 0.12 * Math.sin(i * 1.7), dzh * 0.36 - 0.12, true); b.userData.noOutline = true;
+    const b = cm(blade(0.42 * hk, 0.34, 0.16, -0.3), o.hairMulti ? rainbow() : o.hairPalette ? palette() : shadeC(0.9 + 0.2 * Math.abs(Math.sin(i * 2.3))), dxh * 0.4, 0.12 + 0.12 * Math.sin(i * 1.7), dzh * 0.36 - 0.12, true); b.userData.noOutline = true;
     orientBlade(b, new THREE.Vector3(dxh, 0.4, dzh * 0.8 - 0.25)); hairG.add(b);
   }
   const face = new THREE.Group(); face.position.set(0, -0.02, 0.35); head.add(face);
-  { const fm = cm(FACE_GEO, CREAM); fm.receiveShadow = false; face.add(fm); }          // the face never sits in the hair's shadow
+  { const fm = cm(FACE_GEO, o.bald ? new THREE.Color(CREAM).multiplyScalar(0.84).getHex() : CREAM); fm.receiveShadow = false; if (o.bald) fm.userData.noOutline = true; face.add(fm); }          // a bald skull's face plate has no ink line of its own: it sits in the round skull          // the face never sits in the hair's shadow
+  if (o.faceGrad) face.add(faceGradient(o.faceGrad));
   const hl = shadeC(0.95);
-  { const lid = cm(new THREE.BoxGeometry(0.62, 0.05, 0.2), shadeC(0.95), 0, 0.235, -0.03); lid.userData.noOutline = true; face.add(lid); }
-  face.add(decal(new THREE.PlaneGeometry(0.62, 0.075), hl, 0, 0.215, 0.04));
-  for (let i = 0; i < 6; i++) { const t = decal(new THREE.CircleGeometry(0.065, 3), hl, -0.2 + i * 0.08, 0.17, 0.041); t.rotation.z = Math.PI / 2 * 3 + (i % 2 ? 0.1 : -0.1); t.scale.set(1, 0.9 + (i % 3) * 0.18, 1); face.add(t); }
+  if (!o.bald) { const lid = cm(new THREE.BoxGeometry(0.62, 0.05, 0.2), shadeC(0.95), 0, 0.235, -0.03); lid.userData.noOutline = true; face.add(lid); }
+  if (!o.bald) face.add(decal(new THREE.PlaneGeometry(0.62, 0.075), hl, 0, 0.215, 0.04));
+  if (!o.bald) for (let i = 0; i < 6; i++) { const t = decal(new THREE.CircleGeometry(0.065, 3), hl, -0.2 + i * 0.08, 0.17, 0.041); t.rotation.z = Math.PI / 2 * 3 + (i % 2 ? 0.1 : -0.1); t.scale.set(1, 0.9 + (i % 3) * 0.18, 1); face.add(t); }
   let eyes = [];
   if (o.eyeStyle) eyes = chogEyes(face, o);
   else for (const sx of [-1, 1]) {
@@ -144,7 +157,7 @@ function chog(o = {}) {
     const br = decal(new THREE.PlaneGeometry(0.12, 0.02), 0x120820, sx * 0.125, 0.135, 0.036); br.rotation.z = -sx * (o.angry ? 0.35 : 0.1); face.add(br);
     face.add(decal(new THREE.CircleGeometry(0.065, 14), 0xd93d86, sx * 0.205, -0.1, 0.033, 1, 0.85));
   }
-  const nose = decal(new THREE.CircleGeometry(0.032, 3), 0xe0509a, 0, -0.055, 0.036); nose.rotation.z = Math.PI / 2 * 3 + Math.PI / 6; face.add(nose);
+  const nose = decal(new THREE.CircleGeometry(0.032, 3), o.noseC ?? 0xe0509a, 0, -0.055, 0.036); nose.rotation.z = Math.PI / 2 * 3 + Math.PI / 6; face.add(nose);
   if (o.mouth || o.cigar) chogMouth(face, o);
   else { const mo = decal(new THREE.TorusGeometry(0.065, 0.009, 4, 10, Math.PI), 0x2a1230, 0.015, -0.115, 0.036, 1, 0.55); mo.rotation.z = Math.PI; face.add(mo); }
   if (o.head === 'clownnose') { const cn = cm(new THREE.SphereGeometry(0.065, 8, 6), 0xd8202a, 0, -0.055, 0.08); cn.userData.noOutline = true; face.add(cn); }
@@ -167,6 +180,7 @@ function chog(o = {}) {
   } else if (o.head && o.head !== 'none' && !['clownnose', 'thirdeye', 'wig'].includes(o.head)) chogHead(head, o, trim);
   if (o.item === 'mug') { const m = cm(new THREE.CylinderGeometry(0.07, 0.07, 0.12, 8), 0xe8d8b0, 0, 0, 0); m.position.set(0.17, -0.4, 0.14); arms[1].add(m); }
   if (o.acc) chogAccessory(arms[1], face, o);
+  if (o.special && typeof CHOG_SPECIAL !== 'undefined' && CHOG_SPECIAL[o.special]) CHOG_SPECIAL[o.special]({ root, body, head, face, hairG, arms, legs, o });      // one of the ten one-of-one Chogs (chog_legends.js)
   root.userData = { body, head, hairG, legs, arms, eyes, face };
   if (o.aura !== undefined) chogAura(root, o);
   addOutlines(root);

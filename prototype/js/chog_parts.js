@@ -10,10 +10,11 @@ function gradTex(c1, c2) {
   t.magFilter = t.minFilter = THREE.LinearFilter; return t;
 }
 
+const glowAt = (x, y, r, c, op) => { const g = glowM(new THREE.CircleGeometry(r, 16), c, op); g.position.set(x, y, 0.04); return g; };
 // ---- eyes (+ cheeks, brows). Returns the meshes that blink (scaled in y).
 function chogEyes(face, o) {
   const st = o.eyeStyle, ec = o.eyeColor ?? 0x40e0f0, fill = o.eyeFill, blink = [];
-  const cheeks = () => { for (const sx of [-1, 1]) face.add(decal(new THREE.CircleGeometry(0.065, 14), 0xd93d86, sx * 0.205, -0.1, 0.033, 1, 0.85)); };
+  const cheeks = () => { if (!o.noCheeks) for (const sx of [-1, 1]) face.add(decal(new THREE.CircleGeometry(0.065, 14), 0xd93d86, sx * 0.205, -0.1, 0.033, 1, 0.85)); };
   const brows = (tilt, y = 0.135) => { for (const sx of [-1, 1]) { const br = decal(new THREE.PlaneGeometry(0.12, 0.02), DARK, sx * 0.125, y, 0.036); br.rotation.z = -sx * tilt; face.add(br); } };
   const round = (sx, col = DARK, hi = true, sc = 1) => {
     const e = decal(new THREE.CircleGeometry(1, 18), col, sx * 0.125, 0.02, 0.036, 0.07 * sc, 0.095 * sc); e.userData.by = 0.095 * sc; face.add(e); blink.push(e);
@@ -26,6 +27,13 @@ function chogEyes(face, o) {
     return blink;
   }
   switch (st) {
+    case 'glow': for (const sx of [-1, 1]) { face.add(glowAt(sx * 0.125, 0.03, 0.17, ec, 0.55)); const e = decal(new THREE.CircleGeometry(1, 18), ec, sx * 0.125, 0.03, 0.04, 0.085, 0.1); e.userData.by = 0.1; face.add(e); blink.push(e); face.add(decal(new THREE.CircleGeometry(0.045, 12), 0xffffff, sx * 0.125, 0.03, 0.044)); } break;
+    case 'ring': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(0.115, 18), 0x9a6a40, sx * 0.125, 0.04, 0.036)); const e = decal(new THREE.CircleGeometry(0.095, 18), 0xfff3cf, sx * 0.125, 0.04, 0.038); e.userData.by = 1; face.add(e); face.add(decal(new THREE.CircleGeometry(0.02, 8), 0x4a2a20, sx * 0.125, 0.04, 0.041)); blink.push(e); } break;
+    case 'zombie': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(0.115, 18), DARK, sx * 0.125, 0.02, 0.036)); face.add(glowAt(sx * 0.125, 0.02, 0.2, 0x50ff30, 0.4)); const e = decal(new THREE.CircleGeometry(0.055, 14), 0x60ff40, sx * 0.125, 0.02, 0.041); e.userData.by = 0.055; face.add(e); blink.push(e); face.add(decal(new THREE.CircleGeometry(0.02, 8), 0xffffff, sx * 0.115, 0.04, 0.045)); } break;
+    case 'frog': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(0.115, 18), 0x1a3a22, sx * 0.125, 0.02, 0.035)); face.add(decal(new THREE.CircleGeometry(0.098, 18), 0xfdf6e0, sx * 0.125, 0.02, 0.037)); const e = decal(new THREE.CircleGeometry(0.06, 14), 0x1a3a22, sx * 0.125, -0.005, 0.041); e.userData.by = 0.06; face.add(e); blink.push(e); face.add(decal(new THREE.PlaneGeometry(0.24, 0.09), o.faceC || 0xfdf3cc, sx * 0.125, 0.085, 0.05)); face.add(decal(new THREE.PlaneGeometry(0.24, 0.016), 0x1a3a22, sx * 0.125, 0.04, 0.052)); } break;
+    case 'manga': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(0.115, 18), 0x14141c, sx * 0.125, 0.02, 0.035)); face.add(decal(new THREE.CircleGeometry(0.097, 18), 0xffffff, sx * 0.125, 0.02, 0.037)); const e = decal(new THREE.CircleGeometry(0.05, 14), 0x14141c, sx * 0.125 - sx * 0.01, 0.02, 0.041); e.userData.by = 0.05; face.add(e); blink.push(e); face.add(decal(new THREE.CircleGeometry(0.014, 8), 0xffffff, sx * 0.125 - sx * 0.025, 0.04, 0.045)); const br = decal(new THREE.PlaneGeometry(0.17, 0.035), 0x14141c, sx * 0.125, 0.15, 0.04); br.rotation.z = -sx * 0.42; face.add(br); } break;
+    case 'anime': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(0.12, 18), 0x3a2a6a, sx * 0.13, 0.025, 0.035, 0.85, 1.05)); face.add(decal(new THREE.CircleGeometry(0.105, 18), 0xffffff, sx * 0.13, 0.025, 0.037, 0.85, 1.05)); const e = decal(new THREE.CircleGeometry(0.075, 16), ec, sx * 0.13, 0.015, 0.041, 0.9, 1.15); e.userData.by = 1.15 * 0.075; face.add(e); blink.push(e); face.add(decal(new THREE.CircleGeometry(0.03, 10), 0x2a2060, sx * 0.13, 0.015, 0.044)); face.add(decal(new THREE.CircleGeometry(0.022, 8), 0xffffff, sx * 0.13 - 0.03, 0.07, 0.047)); const br = decal(new THREE.PlaneGeometry(0.18, 0.025), 0x3a2a6a, sx * 0.13, 0.15, 0.04); br.rotation.z = -sx * 0.18; face.add(br); } break;
+    case 'goldeye': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(0.1, 18), 0x6a3a08, sx * 0.125, 0.02, 0.035, 0.85, 1.05)); const e = decal(new THREE.CircleGeometry(0.088, 18), ec, sx * 0.125, 0.02, 0.037, 0.85, 1.05); e.userData.by = 1.05 * 0.088; face.add(e); blink.push(e); face.add(decal(new THREE.CircleGeometry(0.03, 10), 0xffffff, sx * 0.125 - 0.025, 0.07, 0.045)); face.add(decal(new THREE.CircleGeometry(0.014, 8), 0xffffff, sx * 0.125 + 0.03, -0.02, 0.045)); } break;
     case 'white': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(1, 18), 0x7a2a88, sx * 0.125, 0.02, 0.035, 0.085, 0.11)); const e = decal(new THREE.CircleGeometry(1, 18), fill ?? 0xffffff, sx * 0.125, 0.02, 0.037, 0.068, 0.092); e.userData.by = 0.092; face.add(e); blink.push(e); } brows(0.1); break;
     case 'happy': for (const sx of [-1, 1]) face.add(arcDecal(0.06, 0.013, DARK, sx * 0.125, 0.0, 0.037, true)); brows(0.05, 0.15); break;
     case 'closed': for (const sx of [-1, 1]) face.add(arcDecal(0.06, 0.013, DARK, sx * 0.125, 0.045, 0.037, false)); brows(0.1); break;
@@ -80,6 +88,11 @@ function chogMouth(face, o) {
     case 'lipbite': smile(-0.12, 0.055); face.add(decal(new THREE.PlaneGeometry(0.03, 0.03), 0xffffff, 0.05, -0.135, 0.04)); break;
     case 'coin': { const c = cm(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 12), o.mouthColor ?? 0xf0a030, X, -0.12, 0.07); c.rotation.x = Math.PI / 2; c.userData.noOutline = true; face.add(c); face.add(decal(new THREE.CircleGeometry(0.045, 10), 0xffffff, X, -0.12, 0.086)); break; }
     case 'clown': face.add(arcDecal(0.1, 0.024, 0xd8202a, X, -0.1, 0.037, false, 0.7)); break;
+    case 'oval': face.add(decal(new THREE.CircleGeometry(1, 16), 0x6a3a28, X, -0.15, 0.036, 0.05, 0.085)); face.add(decal(new THREE.CircleGeometry(1, 16), 0x3a1a14, X, -0.16, 0.038, 0.036, 0.065)); break;
+    case 'zomb': face.add(decal(new THREE.PlaneGeometry(0.27, 0.13), 0x3a1020, X, -0.14, 0.036)); for (let i = -3; i <= 3; i++) { const t = decal(new THREE.CircleGeometry(0.03, 3), 0xf4f4e0, X + i * 0.037, -0.09, 0.04); t.rotation.z = Math.PI / 2 * 3 + Math.PI / 2; face.add(t); const u = decal(new THREE.CircleGeometry(0.026, 3), 0xf4f4e0, X + i * 0.037 + 0.018, -0.2, 0.04); u.rotation.z = Math.PI / 2; face.add(u); }
+      for (const [x, len] of [[-0.06, 0.2], [0.05, 0.28], [0.1, 0.16]]) { face.add(decal(new THREE.PlaneGeometry(0.03, len), 0x9ae04a, x, -0.2 - len / 2, 0.042)); face.add(decal(new THREE.CircleGeometry(0.02, 8), 0x9ae04a, x, -0.2 - len, 0.042)); } break;
+    case 'frog': face.add(arcDecal(0.11, 0.028, 0xe86a8a, X, -0.14, 0.037, true, 0.55)); face.add(arcDecal(0.1, 0.014, 0x8a2a4a, X, -0.17, 0.039, true, 0.55)); break;
+    case 'fangs': smile(-0.115, 0.07); for (const sx of [-1, 1]) { const f = decal(new THREE.CircleGeometry(0.022, 3), 0xffffff, X + sx * 0.06, -0.14, 0.04); f.rotation.z = Math.PI / 2; face.add(f); } break;
     case 'teeth': face.add(decal(new THREE.PlaneGeometry(0.22, 0.06), 0xf0eedc, X, -0.14, 0.037)); for (let i = -2; i <= 2; i++) face.add(decal(new THREE.PlaneGeometry(0.008, 0.06), ink, X + i * 0.04, -0.14, 0.039)); break;
     default: smile();
   }
@@ -104,6 +117,8 @@ function chogHead(head, o, trim) {
     case 'helmet': { dome(0.4, 0.26, 0xb8bcc8, 0.95); add(cm(new THREE.BoxGeometry(0.09, 0.22, 0.7), 0xd8302a, 0, 0.66, -0.1)); for (const sx of [-1, 1]) add(cm(new THREE.BoxGeometry(0.06, 0.34, 0.26), 0xb8bcc8, sx * 0.5, 0.0, 0.0)); break; }
     case 'ushanka': dome(0.39, 0.28, c); for (const sx of [-1, 1]) add(cm(new THREE.BoxGeometry(0.1, 0.32, 0.32), c, sx * 0.52, 0.04, -0.08)); break;
     case 'thorn': for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(cm(new THREE.ConeGeometry(0.055, 0.24, 5), 0xa8a8b8, Math.cos(a) * 0.2, 0.52, Math.sin(a) * 0.2 - 0.06)); } break;
+    case 'horns': for (const sx of [-1, 1]) { const h = add(cm(new THREE.ConeGeometry(0.1, 0.5, 6), c, sx * 0.3, 0.62, -0.1)); h.rotation.z = -sx * 0.5; h.rotation.x = -0.15; const b = add(cm(new THREE.CylinderGeometry(0.11, 0.13, 0.08, 6), new THREE.Color(c).multiplyScalar(0.75).getHex(), sx * 0.24, 0.42, -0.1)); b.rotation.z = -sx * 0.5; } break;
+    case 'seal': { const d = add(cm(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 10), 0xf0c040, 0, 0.72, -0.1)); d.rotation.x = Math.PI / 2; d.userData.noOutline = false; const g2 = glowM(new THREE.CircleGeometry(0.22, 10), 0xffe080, 0.5); g2.position.set(0, 0.72, -0.07); head.add(g2); break; }
     case 'plumber': add(cm(new THREE.CylinderGeometry(0.3, 0.34, 0.18, 8), 0xd8302a, 0, 0.42, -0.02)); add(cm(new THREE.BoxGeometry(0.4, 0.04, 0.26), 0xd8302a, 0, 0.36, 0.34)); add(decal(new THREE.CircleGeometry(0.08, 12), 0xffffff, 0, 0.43, 0.33)); break;
     case 'robber': dome(0.37, 0.3, 0x24222e); ring(0.36, 0.05, 0.32, 0x24222e); break;
     default: dome(0.37, 0.3, c);                            // unknown hat: a plain dome in the trait colour

@@ -6,8 +6,15 @@ const COLOR_WORDS = {
   gold: 0xf0b030, green: 0x3ac85a, mint: 0x6ae0b0, aqua: 0x30c8d8, cyan: 0x30c8d8, blue: 0x3a70e0, navy: 0x24367a, purple: 0x7a3ac8,
   violet: 0x8a4aff, pink: 0xff6aa8, brown: 0x7a4a2a, cream: 0xf0e4c4, rose: 0xff7a98, royal: 0x4a4ad8, army: 0x5a6a3a,
 };
+// colours read from the official art, per Head / Body value (data/trait_colors.json, tools/build_trait_colors.py; filled by WALLET.loadData). The keyword guesses below are the fallback.
+const TRAIT_COLORS = { Head: {}, Body: {} };
+const fromArt = (kind, name) => { const h = TRAIT_COLORS[kind] && TRAIT_COLORS[kind][name]; return h ? parseInt(h.slice(1), 16) : undefined; };
 const FALLBACK_PALETTE = [0xd8323c, 0x3a70e0, 0x3ac85a, 0xf08a30, 0x7a3ac8, 0x30c8d8, 0xf4c82c, 0xff6aa8];
 const hashStr = s => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+function keywordColor(name) {                              // a colour named in the trait value, or undefined
+  const s = name.toLowerCase(); for (const k of ['gray', 'grey']) if (s.includes(k)) return COLOR_WORDS.gr;
+  for (const k in COLOR_WORDS) if (k !== 'gr' && s.includes(k)) return COLOR_WORDS[k];
+}
 function colorOf(name, fallback) {
   const s = name.toLowerCase();
   for (const k of ['gray', 'grey']) if (s.includes(k)) return COLOR_WORDS.gr;
@@ -22,6 +29,11 @@ const BG_COLORS = {
   'Lemon Yellow': 0xf4f060, 'Light Magenta': 0xe890d8, 'Light Purple': 0xc8b0f0, 'Lime Green': 0xa8e040, Mint: 0x98e8c0, Mon: 0x836ef9, 'Noble Blue': 0x4868c8,
   'Peach Pink': 0xf8b8a0, Radioactive: 0x80e040, Rosie: 0xf4a0b8, 'Rosy Pink': 0xf090a8, 'Sky Blue': 0x90c8f0, 'Soft Lavender': 0xd8c8f0, Sunlight: 0xf8d890,
 };
+// the face tone each Skin gives on the three bases (checked against the official art, tools/compare_portraits.py):
+// Chog base: Skin is the hair, the face stays cream, except Black (a dark face). Skull base: Skin is the colour of the bare skull. Radioactive base: Skin is the glowing colour of the whole head.
+const FACE_DARK = 0x5a3626;
+const SKULL_TONE = { White: 0xf0ece0, Grey: 0x8c8c98, Metal: 0x5e6676, Purple: 0x8a74cc, Jade: 0x80c8ae, Beige: 0xf0e6cc, Red: 0xb05a4a, Blue: 0x44c8e0, Green: 0x82d474, Yellow: 0xf0d860, Black: 0x3e3a48, Pink: 0xf08ab8, Origin: 0xf0e6cc };
+const RADIO_TONE = { Red: 0xff5aa8, Blue: 0x38c8e8, Green: 0x84d840, 'Multi Colored': 0xf6dcec, Pink: 0xff7ac0, Yellow: 0xf8e840, Purple: 0xb070f0, Origin: 0xa0e060 };
 const TIER_COLORS = { Common: 0x9aa0aa, Uncommon: 0x4ac86a, Rare: 0x4a8aff, Epic: 0xb04aff, Legendary: 0xffc030 };
 
 // ---- Body -> { kind, cloth, ... }
@@ -38,17 +50,17 @@ const BODY_SPECIAL = [
   [/stripes/, { kind: 'shirt', cloth: 0xf2efe6, stripes: 0x24222e }],
 ];
 function bodyOptions(name) {
-  const s = name.toLowerCase();
+  const s = name.toLowerCase(), bc = (dflt) => keywordColor(s) ?? fromArt('Body', name) ?? (dflt !== undefined ? dflt : colorOf(s));       // a colour in the name, else the art, else a guess
   for (const [re, o] of BODY_SPECIAL) if (re.test(s)) return Object.assign({}, o);
-  if (has(s, 'yukata')) return { kind: 'robe', cloth: colorOf(s, 0xf4f0e4), robeTrim: 0xd8c890 };
-  if (has(s, 'chinese')) return { kind: 'robe', cloth: colorOf(s, 0x3a70e0), robeTrim: 0xf0c040 };
-  if (has(s, 'tux')) return { kind: 'tux', cloth: colorOf(s, 0x1c1c26), tie: s.includes('red') ? 0x1a1a24 : 0xd8323c };
-  if (has(s, 'hoodie')) return { kind: 'hoodie', cloth: colorOf(s, has(s, 'electro') ? 0x30c0e0 : has(s, 'glitch') ? 0x30e0a0 : has(s, 'mon') ? 0x7a3ac8 : undefined) };
-  if (has(s, 'trackset')) return { kind: 'suit', cloth: colorOf(s, 0x24222e), stripes: 0xf2efe6 };
-  if (has(s, 'vest')) return { kind: 'vest', cloth: has(s, 'ceo') ? 0x2a2a3a : colorOf(s, 0x2a2a3a) };
-  if (has(s, 'jacket')) return { kind: 'jacket', cloth: colorOf(s, 0x2a2a3a) };
-  if (has(s, 'jersey')) return { kind: 'shirt', cloth: colorOf(s, 0xd8323c) };
-  return { kind: 'shirt', cloth: colorOf(s) };                          // shirts, tees, tanks, polos, memes, unknown
+  if (has(s, 'yukata')) return { kind: 'robe', cloth: bc(0xf4f0e4), robeTrim: 0xd8c890 };
+  if (has(s, 'chinese')) return { kind: 'robe', cloth: bc(0x3a70e0), robeTrim: 0xf0c040 };
+  if (has(s, 'tux')) return { kind: 'tux', cloth: bc(0x1c1c26), tie: s.includes('red') ? 0x1a1a24 : 0xd8323c };
+  if (has(s, 'hoodie')) return { kind: 'hoodie', cloth: bc(has(s, 'electro') ? 0x30c0e0 : has(s, 'glitch') ? 0x30e0a0 : has(s, 'mon') ? 0x7a3ac8 : undefined) };
+  if (has(s, 'trackset')) return { kind: 'suit', cloth: bc(0x24222e), stripes: 0xf2efe6 };
+  if (has(s, 'vest')) return { kind: 'vest', cloth: has(s, 'ceo') ? 0x2a2a3a : bc(0x2a2a3a) };
+  if (has(s, 'jacket')) return { kind: 'jacket', cloth: bc(0x2a2a3a) };
+  if (has(s, 'jersey')) return { kind: 'shirt', cloth: bc(0xd8323c) };
+  return { kind: 'shirt', cloth: bc() };                          // shirts, tees, tanks, polos, memes, unknown
 }
 
 // ---- Head -> { head, headC, ... }
@@ -56,8 +68,10 @@ function headOptions(name) {
   const s = name.toLowerCase();
   const brand = has(s, 'btc', 'buttcoin') ? 0xf08a30 : has(s, 'mon ', 'mon', 'choggie', 'chog ', 'chog') ? 0x7a3ac8 : has(s, 'dollar') ? 0x3a9a5a : has(s, 'star') ? 0x24367a
     : has(s, 'cloud') ? 0xa8d0f0 : has(s, 'thunder') ? 0xf4d03a : has(s, 'peace') ? (s.includes('red') ? 0xd8323c : 0x5a6a4a) : has(s, 'jeet', 'retard', 'horny') ? 0xd8323c : has(s, 'wagmi', '10k') ? 0x3ac85a : undefined;
-  const c = colorOf(s, brand);
+  const c = fromArt('Head', name) ?? colorOf(s, brand);
   if (s.includes('crown')) return { head: 'crown' };
+  if (has(s, 'horn') && !s.includes('cap')) return { head: 'horns', headC: has(s, 'purple', 'void') ? 0x7a58c8 : has(s, 'demon', 'devil') ? 0xd8302a : 0x8a3a2a };      // Purple / Void / Red / Demon / devil horn ("Horny Cap" is a cap)
+  if (s.includes('holy seal')) return { head: 'seal' };
   if (s.includes('wizard beanie') || s.includes('wizard hat')) return { head: 'wizard', headC: 0x4a2a9a, headC2: 0xf0c040 };
   if (s.includes('bucket')) return { head: 'bucket', headC: c };
   if (s.includes('beanie')) return { head: 'beanie', headC: c, headC2: 0xf2efe6, pom: has(s, 'mon', 'choggie') };
@@ -126,15 +140,22 @@ function chogOptionsFromTraits(t) {
   const hair = SKIN_HAIR[t.Skin] ?? colorOf(String(t.Skin || ''), 0x5b35b0);
   o.hair = hair; o.suit = hair;
   if (t.Skin === 'Multi Colored') { o.hairMulti = true; o.hair = 0xd04ad0; o.suit = 0x9a5ad8; }
-  const skull = t.Base === 'Skull' || t.Form === 'Skull';
+  const skull = t.Base === 'Skull' || t.Form === 'Skull', radio = t.Base === 'Radioactive';
+  if (t.Skin === 'Black' && !skull && !radio) o.faceC = FACE_DARK;
   if (t.Naked !== 'Yes' && t.Body) Object.assign(o, bodyOptions(t.Body));
   if (t.Head) Object.assign(o, headOptions(t.Head));
   Object.assign(o, eyeOptions(t.Eyes || 'Round'));
   Object.assign(o, MOUTHS[(t.Mouth || 'smile').toLowerCase()] || { mouth: 'smile' });
   if (t.Aura) Object.assign(o, auraOptions(t.Aura));
   if (t.Accessory) Object.assign(o, ACCESSORIES[t.Accessory.toLowerCase()] || { acc: 'badge' });
-  if (t.Base === 'Radioactive') { o.faceC = 0xd0f088; if (o.aura === undefined) Object.assign(o, { aura: 0x60ff40, auraStyle: 'glow' }); }
-  if (skull) Object.assign(o, { faceC: 0xe6e4d4, eyeStyle: 'socket', mouth: 'teeth', tears: false });
+  if (radio) {                                                    // a glowing head in the Skin colour, spikes and face the same colour, bare jaw
+    const tone = RADIO_TONE[t.Skin] ?? 0xa0e060; Object.assign(o, { faceC: tone, hair: tone, mouth: 'teeth' }); if (t.Skin === 'Multi Colored') { o.hairMulti = true; o.faceGrad = [0xff6ad0, 0xffa8a0, 0xffd070, 0x78e040]; }
+    if (o.aura === undefined || t.Skin === 'Multi Colored') Object.assign(o, { aura: 0x60ff40, auraStyle: 'glow' });
+  }
+  if (skull) {                                                    // a bald skull in the Skin colour, the eyes of the Eyes trait in dark sockets
+    const tone = SKULL_TONE[t.Skin] ?? 0xf0ece0; Object.assign(o, { faceC: tone, hair: tone, bald: true, mouth: 'teeth', tears: false, hairMulti: false }); if (!o.eyeStyle || o.eyeStyle === 'round') o.eyeStyle = 'socket';
+  }
+  if (t.Legend && typeof LEGEND_OPTS !== 'undefined' && LEGEND_OPTS[t.Legend]) Object.assign(o, LEGEND_OPTS[t.Legend]);          // one of the ten one-of-one Chogs: its own look
   o.bg = BG_COLORS[t.Background] ?? 0xc8b0f0; o.tier = TIER_COLORS[t.Tier] ?? TIER_COLORS.Common;
   return o;
 }

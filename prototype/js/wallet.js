@@ -21,7 +21,7 @@ WALLET.loadData = async function () {
     } catch (e) { /* optional */ }
   }
 };
-WALLET.dataReady = WALLET.loadData();
+WALLET.dataReady = WALLET.loadData().then(() => { for (const t of Object.values(TOKENS)) { const m = / — (.+)$/.exec(t.name || ''); if (m && t.traits && t.traits.Base === '1:1') t.traits.Legend = m[1]; } }).then(async () => { try { const r = await fetch('data/trait_colors.json'); if (r.ok) { const j = await r.json(); Object.assign(TRAIT_COLORS.Head, j.Head || {}); Object.assign(TRAIT_COLORS.Body, j.Body || {}); } } catch (e) { /* optional: the keyword guesses stay */ } });
 // Venue license points: from the token's collection Tier trait; a wallet's venue tier from its total (0 = no Chog, no venue). Call after dataReady.
 WALLET.pointsOf = id => (TOKENS[id] && TOKENS[id].traits && TIERS.points[TOKENS[id].traits.Tier]) || 0;
 WALLET.venueTier = ids => {

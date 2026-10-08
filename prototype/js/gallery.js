@@ -8,6 +8,7 @@ const GAL = { ids: [], tokens: {} };
   const xhr = u => { const r = new XMLHttpRequest(); r.open('GET', u, false); try { r.send(); } catch (e) { return null; } return r.status === 200 ? JSON.parse(r.responseText) : null; };
   const manual = xhr('data/chogs.manual.json'), full = xhr('data/tokens.json');
   GAL.tokens = Object.assign({}, manual ? manual.tokens : {}, full ? full.tokens : {});
+  for (const t of Object.values(GAL.tokens)) { const m = / — (.+)$/.exec(t.name || ''); if (m && t.traits && t.traits.Base === '1:1') t.traits.Legend = m[1]; }      // the ten one-of-one Chogs (wallet.js does the same in the game)
   GAL.ids = req.filter(id => GAL.tokens[id]);
   const n = GAL.ids.length, gap = 1.45, cap = document.getElementById('cap');
   GAL.ids.forEach((id, i) => {

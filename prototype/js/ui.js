@@ -58,6 +58,11 @@ function portrait(traits) {
   return (portraits[key] = _pr.domElement.toDataURL('image/png'));
 }
 
+// ---- the profile picture: a holder sees their own NFT (the official art, kept as a small file per token: tools/fetch_portraits.py), everyone else a drawn guest Chog.
+// The 3D character is the game body, not the picture of who you are; it is only the fallback when a portrait file is missing.
+const GUEST_ART = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><defs><radialGradient id="b" cx=".35" cy=".25" r="1"><stop offset="0" stop-color="#e6d8ff"/><stop offset="1" stop-color="#b79cf0"/></radialGradient></defs><rect width="256" height="256" fill="url(#b)"/><g fill="#fff" opacity=".35"><circle cx="40" cy="48" r="26"/><circle cx="222" cy="86" r="16"/><circle cx="214" cy="210" r="30"/></g><g stroke="#2a1d3a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"><path d="M32 150 L18 104 L58 118 L52 70 L92 96 L112 44 L136 88 L170 50 L176 96 L218 76 L206 126 L238 148 L212 176 Z" fill="#5b35b0"/><path d="M38 256 Q46 212 128 206 Q210 212 218 256 Z" fill="#7a54d8"/><path d="M106 210 L104 236 M150 210 L152 236" fill="none" stroke-width="5"/><path d="M52 142 Q50 84 128 80 Q206 84 204 142 Q206 206 128 210 Q50 206 52 142 Z" fill="#f6ecd8"/></g><g stroke="#2a1d3a" stroke-width="6"><circle cx="96" cy="138" r="22" fill="#fff"/><circle cx="160" cy="138" r="22" fill="#fff"/></g><g fill="#1a1028"><circle cx="100" cy="140" r="13"/><circle cx="156" cy="140" r="13"/></g><g fill="#fff"><circle cx="105" cy="134" r="4.5"/><circle cx="161" cy="134" r="4.5"/></g><g fill="#f08ab8"><ellipse cx="72" cy="170" rx="13" ry="9"/><ellipse cx="184" cy="170" rx="13" ry="9"/><ellipse cx="128" cy="162" rx="6" ry="4"/></g><path d="M112 184 Q128 198 146 184" fill="none" stroke="#2a1d3a" stroke-width="5" stroke-linecap="round"/></svg>`).replace(/[()']/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+const artOf = id => (id && TOKENS[id] ? 'data/portraits/' + id + '.webp' : GUEST_ART);
+
 // ---- state -> Chog
 const traitsFor = id => (id && TOKENS[id] ? TOKENS[id].traits : null);
 async function chooseChog(id, demo = false) {
@@ -101,8 +106,9 @@ function card(onClose) {
   const tr = curTraits(), o = chogOptionsFromTraits(tr), holder = isHolder();
   const c = el('div', 'card hit' + (holder ? ' holder' : ''));
   const hero = el('div', 'hero'); hero.style.setProperty('--bg', hex(o.bg));
-  hero.innerHTML = `<img alt="" src="${portrait(tr)}"><span class="tier" style="--tier:${holder ? hex(o.tier) : '#6a5a8a'}">${holder ? tr.Tier || 'Common' : 'Guest'}</span>${onClose ? '<button class="x" aria-label="Close">×</button>' : ''}`;
+  hero.innerHTML = `<img alt="" src="${holder ? artOf(UI.sel) : GUEST_ART}"><span class="tier" style="--tier:${holder ? hex(o.tier) : '#6a5a8a'}">${holder ? tr.Tier || 'Common' : 'Guest'}</span>${onClose ? '<button class="x" aria-label="Close">×</button>' : ''}`;
   if (onClose) hero.querySelector('.x').onclick = onClose;
+  if (holder) hero.querySelector('img').onerror = e => { e.target.onerror = null; e.target.src = portrait(tr); };                // no portrait file for this token: the 3D head
   c.appendChild(hero);
   c.appendChild(el('h2', '', playerName()));
   if (WALLET.account && typeof NET !== 'undefined' && NET.status === 'online') c.appendChild(usernameRow());
@@ -115,13 +121,13 @@ function card(onClose) {
   if (WALLET.scanning > 0) c.appendChild(el('div', 'scan', `<i style="width:${Math.round(WALLET.scanning * 100)}%"></i>`));
   if (WALLET.owned.length > 1) {
     const d = el('div', 'demo', 'Your Chogs'), row = el('div', 'row');
-    for (const id of WALLET.owned) { const b = el('button', 'mini' + (UI.sel === id && !UI.demo ? ' on' : '')); const t = traitsFor(id); if (t) b.style.backgroundImage = `url(${portrait(t)})`; b.title = '#' + id; b.onclick = () => chooseChog(id); row.appendChild(b); }
+    for (const id of WALLET.owned) { const b = el('button', 'mini' + (UI.sel === id && !UI.demo ? ' on' : '')); const t = traitsFor(id); if (t) b.style.backgroundImage = `url(${artOf(id)}), url(${portrait(t)})`; b.title = '#' + id; b.onclick = () => chooseChog(id); row.appendChild(b); }
     d.appendChild(row); c.appendChild(d);
   }
   if (!WALLET.owned.length) {
     const d = el('div', 'demo', 'No Chog? Preview what holders get'), row = el('div', 'row');
     const g = el('button', 'mini guest' + (!UI.sel ? ' on' : ''), 'Guest'); g.onclick = () => chooseChog(null); row.appendChild(g);
-    for (const id of DEMO_IDS) { const t = traitsFor(id); if (!t) continue; const b = el('button', 'mini' + (UI.sel === id && UI.demo ? ' on' : '')); b.style.backgroundImage = `url(${portrait(t)})`; b.title = '#' + id; b.onclick = () => chooseChog(id, true); row.appendChild(b); }
+    for (const id of DEMO_IDS) { const t = traitsFor(id); if (!t) continue; const b = el('button', 'mini' + (UI.sel === id && UI.demo ? ' on' : '')); b.style.backgroundImage = `url(${artOf(id)}), url(${portrait(t)})`; b.title = '#' + id; b.onclick = () => chooseChog(id, true); row.appendChild(b); }
     d.appendChild(row); c.appendChild(d);
   }
   const act = el('div', 'actions');
@@ -276,7 +282,8 @@ function chatBox() {
 function playerCard() {
   const r = NET.remotes.get(NET.card); if (!r) return null;
   const c = el('div', 'pcard paper hit', '<button class="x" aria-label="Close">×</button><h3></h3><small></small><div class="acts"></div>');
-  c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = r.token ? 'Chog holder' : 'Free Chog';
+  c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = r.token ? 'Chog holder · #' + r.token : 'Free Chog';
+  const im = el('img', 'art'); im.alt = ''; im.src = artOf(r.token); im.onerror = () => { im.onerror = null; im.src = GUEST_ART; }; c.insertBefore(im, c.firstChild.nextSibling);      // their NFT (or the guest drawing) beside the name
   c.querySelector('.x').onclick = () => NET.closeCard();
   const acts = c.querySelector('.acts'), muted = NET.isMuted(r);
   const vb = el('button', 'btn ghost', 'Invite home'); vb.title = 'Invite this player to your Home'; vb.onclick = () => { NET.invite(r.id); NET.closeCard(); }; acts.appendChild(vb);
@@ -312,7 +319,7 @@ const dock = (cls, withLabels) => { const d = el('div', cls); for (const m of ME
 const closeWin = () => { UI.open = null; render(); };
 function meBadge() {
   const tr = curTraits(), o = chogOptionsFromTraits(tr), lt = isHolder() ? WALLET.venueTier(licenseIds()).tier : 0;
-  const b = el('button', 'me hit', `<span class="av" style="background-image:url(${portrait(tr)});--bg:${hex(o.bg)}"></span><span class="nm"><b>${playerName()}</b><small>${playerSub()}</small></span>${lt ? tierPill(lt) : ''}`);
+  const b = el('button', 'me hit', `<span class="av" style="background-image:url(${isHolder() ? artOf(UI.sel) : GUEST_ART})${isHolder() ? ', url(' + portrait(tr) + ')' : ''};--bg:${hex(o.bg)}"></span><span class="nm"><b>${playerName()}</b><small>${playerSub()}</small></span>${lt ? tierPill(lt) : ''}`);
   b.onclick = () => menuClick(MENU[0]); return b;
 }
 function render() {
