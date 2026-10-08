@@ -49,7 +49,8 @@ const BODY_SPECIAL = [
   [/gojo/, { kind: 'jacket', cloth: 0x1c1c2c }], [/guko/, { kind: 'suit', cloth: 0xf07a20, belly: 0x3a6ad8 }],
   [/stripes/, { kind: 'shirt', cloth: 0xf2efe6, stripes: 0x24222e }],
 ];
-function bodyOptions(name) {
+function bodyOptions(name) { return Object.assign(bodyOptionsOld(name), { bodyName: name }); }
+function bodyOptionsOld(name) {
   const s = name.toLowerCase(), bc = (dflt) => keywordColor(s) ?? fromArt('Body', name) ?? (dflt !== undefined ? dflt : colorOf(s));       // a colour in the name, else the art, else a guess
   for (const [re, o] of BODY_SPECIAL) if (re.test(s)) return Object.assign({}, o);
   if (has(s, 'yukata')) return { kind: 'robe', cloth: bc(0xf4f0e4), robeTrim: 0xd8c890 };
@@ -122,7 +123,8 @@ const MOUTHS = { 'btc coin': { mouth: 'coin', mouthColor: 0xf0a030 }, 'mon coin'
   sad: { mouth: 'sad' }, smile: { mouth: 'smile' }, 'normal smile': { mouth: 'smile' }, worried: { mouth: 'worried' }, wo: { mouth: 'wavy' } };
 
 // ---- Aura (value "Clean" means no aura)
-function auraOptions(name) {
+function auraOptions(name) { return Object.assign(auraOptionsOld(name), { auraName: name }); }
+function auraOptionsOld(name) {
   const s = name.toLowerCase();
   if (s === 'clean') return {};
   if (has(s, 'burning', 'fiery', 'fire')) return { aura: 0xff6a20, auraStyle: 'fire' };
@@ -149,7 +151,7 @@ function chogOptionsFromTraits(t) {
   Object.assign(o, eyeOptions(t.Eyes || 'Round'));
   Object.assign(o, MOUTHS[(t.Mouth || 'smile').toLowerCase()] || { mouth: 'smile' });
   if (t.Aura) Object.assign(o, auraOptions(t.Aura));
-  if (t.Accessory) Object.assign(o, ACCESSORIES[t.Accessory.toLowerCase()] || { acc: 'badge' });
+  if (t.Accessory) Object.assign(o, ACCESSORIES[t.Accessory.toLowerCase()] || { acc: 'badge' }, { accName: t.Accessory, cigar: false });          // chog_items.js models every value; the older single shapes stay as the fallback
   if (radio) {                                                    // a glowing head in the Skin colour, spikes and face the same colour, bare jaw
     const tone = RADIO_TONE[t.Skin] ?? 0xa0e060; Object.assign(o, { faceC: tone, hair: tone, mouth: 'teeth' }); if (t.Skin === 'Multi Colored') { o.hairMulti = true; o.faceGrad = [0xff6ad0, 0xffa8a0, 0xffd070, 0x78e040]; }
     if (o.aura === undefined || t.Skin === 'Multi Colored') Object.assign(o, { aura: 0x60ff40, auraStyle: 'glow' });

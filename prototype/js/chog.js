@@ -4,7 +4,10 @@ const inkMat = new THREE.MeshBasicMaterial({ color: INK, side: THREE.BackSide })
 const inkMatDS = new THREE.MeshBasicMaterial({ color: INK, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 3, polygonOffsetUnits: 3 });
 const CHOG_SCALE = 0.74;
 
-function cm(geo, c, x = 0, y = 0, z = 0, ds = false) { return M(geo, tmat(c, { ds, em: 0.2 }), x, y, z); }
+// The scene's light makes a lit toon colour about 1.7x brighter than its value, so colours read from the art (hats, clothes) are built at EXPO of their value: CM_K is set
+// around those parts. Fur and the older hand-tuned parts keep their values.
+const EXPO = 0.6; let CM_K = 1;
+function cm(geo, c, x = 0, y = 0, z = 0, ds = false) { return M(geo, tmat(CM_K === 1 ? c : new THREE.Color(c).multiplyScalar(CM_K).getHex(), { ds, em: 0.2 }), x, y, z); }
 function decal(geo, c, x, y, z, sx = 1, sy = 1) { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: c })); m.position.set(x, y, z); m.scale.set(sx, sy, 1); m.userData.noOutline = true; return m; }
 function blade(L, W, T, bend, segs = 5) {
   const pos = [], idx = [];
@@ -56,6 +59,13 @@ function tagChogLayers(root, face) {
   root.traverse(m => { if (m.isMesh && !(m.userData && (m.userData.isHull || m.userData.noNormal))) m.layers.enable(1); });
   face.traverse(m => { if (m.isMesh && !(m.userData && m.userData.noNormal)) m.layers.enable(2); });
 }
+// a Multi Colored radioactive skull: the whole head is a diagonal rainbow (blue and pink above, orange, then green at the jaw), as in the art
+const SKULL_RAINBOW = {};
+function skullRainbow(stops) {
+  const key = stops.join(',');
+  if (!SKULL_RAINBOW[key]) { const cv = document.createElement('canvas'); cv.width = cv.height = 128; const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, 128, 128); const cs = ['#38c8f0', '#ff6ad0', '#ffb070', '#ffe060', '#84d840']; cs.forEach((c, i) => gr.addColorStop(i / (cs.length - 1), c)); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); SKULL_RAINBOW[key] = new THREE.CanvasTexture(cv); }
+  return SKULL_RAINBOW[key];
+}
 const scarfTex = paint(32, 16, (g, w, h) => { for (let y = 0; y < h; y += 4) for (let x = 0; x < w; x += 4) { g.fillStyle = ((x + y) / 4) % 2 ? '#d83a9a' : '#a02470'; g.fillRect(x, y, 4, 4); } }, 6, 1);
 
 function chog(o = {}) {
@@ -65,10 +75,12 @@ function chog(o = {}) {
   const hatLook = o.hatName && typeof HAT_LOOK !== 'undefined' && HAT_LOOK[o.hatName];                 // chog_hats.js: every Head value has its own hat
   const hasHat = (!!o.head && o.head !== 'none' && !['headset', 'clownnose', 'thirdeye', 'thorn', 'wig'].includes(o.head)) || (!!hatLook && typeof HAT_COVERS !== 'undefined' && HAT_COVERS.has(o.hatName));
   // clothing from traits: kind = shirt|vest|jacket|tux|hoodie|robe|suit (see js/traits.js); fur colour is suitC
-  const kind = o.kind, cloth = o.cloth;
-  const torsoC = cloth !== undefined && kind && kind !== 'vest' ? cloth : suitC;
-  const armC = cloth !== undefined && ['jacket', 'tux', 'hoodie', 'robe', 'suit'].includes(kind) ? cloth : suitC;
-  const legC = cloth !== undefined && ['suit', 'tux'].includes(kind) ? (o.pants ?? cloth) : suitC;
+  const bl = typeof bodyLookOf !== 'undefined' && bodyLookOf(o);                                      // chog_bodies.js: every Body value has its own clothes
+  const kind = bl ? undefined : o.kind, cloth = bl ? undefined : o.cloth;
+  const ex = c => new THREE.Color(c).multiplyScalar(EXPO).getHex();
+  const torsoC = bl ? ex(bl.c) : cloth !== undefined && kind && kind !== 'vest' ? cloth : suitC;
+  const armC = bl ? (bl.long ? ex(bl.arm ?? bl.c) : suitC) : cloth !== undefined && ['jacket', 'tux', 'hoodie', 'robe', 'suit'].includes(kind) ? cloth : suitC;
+  const legC = bl ? (bl.pants !== undefined ? ex(bl.pants) : suitC) : cloth !== undefined && ['suit', 'tux'].includes(kind) ? (o.pants ?? cloth) : suitC;
   body.add(cm(new THREE.CylinderGeometry(0.235, 0.275, 0.46, 8), torsoC, 0, 0.5, 0));
   if (kind === 'vest') body.add(cm(new THREE.CylinderGeometry(0.25, 0.29, 0.32, 8), cloth, 0, 0.46, 0));
   if (kind === 'tux' || kind === 'jacket') {
@@ -115,7 +127,8 @@ function chog(o = {}) {
   const head = new THREE.Group(); head.position.y = 1.0; root.add(head);
   const hairG = new THREE.Group(); head.add(hairG);
   const mass = cm(new THREE.IcosahedronGeometry(0.44, 1), hairC, 0, 0.06, -0.12); mass.scale.set(1.08, 0.95, 0.98); hairG.add(mass);
-  if (o.bald) { hairG.remove(mass); const cr = cm(new THREE.SphereGeometry(0.43, 14, 10), CREAM, 0, 0.07, -0.06); cr.scale.set(1.12, 1.0, 1.0); hairG.add(cr); }                // a skull: a bare round head, no hair
+  if (o.faceGrad && !o.bald) mass.material = new THREE.MeshToonMaterial({ map: skullRainbow(o.faceGrad), gradientMap: toonGrad4, emissive: 0x303030 });                 // a Multi Colored radioactive head is rainbow all over
+  if (o.bald) { hairG.remove(mass); const cr = cm(new THREE.SphereGeometry(0.43, 14, 10), CREAM, 0, 0.07, -0.06); cr.scale.set(1.12, 1.0, 1.0); hairG.add(cr); if (o.faceGrad) cr.material = new THREE.MeshToonMaterial({ map: skullRainbow(o.faceGrad), gradientMap: toonGrad4, emissive: 0x303030 }); }                // a skull: a bare round head, no hair
   const hc = new THREE.Color(hairC), hsl = {}; hc.getHSL(hsl);
   const shadeC = k => new THREE.Color().setHSL(hsl.h, hsl.s, Math.min(0.85, Math.max(0.1, hsl.l * k))).getHex();
   const top = hasHat ? 0.55 : 1;
@@ -161,8 +174,10 @@ function chog(o = {}) {
   const nose = decal(new THREE.CircleGeometry(0.032, 3), o.noseC ?? 0xe0509a, 0, -0.055, 0.036); nose.rotation.z = Math.PI / 2 * 3 + Math.PI / 6; face.add(nose);
   if (o.mouth || o.cigar) chogMouth(face, o);
   else { const mo = decal(new THREE.TorusGeometry(0.065, 0.009, 4, 10, Math.PI), 0x2a1230, 0.015, -0.115, 0.036, 1, 0.55); mo.rotation.z = Math.PI; face.add(mo); }
-  if (o.head === 'clownnose') { const cn = cm(new THREE.SphereGeometry(0.065, 8, 6), 0xd8202a, 0, -0.055, 0.08); cn.userData.noOutline = true; face.add(cn); }
-  if (o.head === 'thirdeye') { face.add(decal(new THREE.CircleGeometry(0.05, 12), 0xffffff, 0, 0.14, 0.046)); face.add(decal(new THREE.CircleGeometry(0.026, 10), 0x120820, 0, 0.14, 0.048)); }
+  if (o.head === 'clownnose') { const cn = cm(new THREE.SphereGeometry(0.1, 12, 9), 0xe8202a, 0, -0.06, 0.1); cn.userData.noOutline = true; face.add(cn); face.add(decal(new THREE.CircleGeometry(0.026, 8), 0xffffff, -0.035, -0.02, 0.196, 1, 0.7)); }
+  if (o.head === 'thirdeye') { face.add(decal(new THREE.CircleGeometry(1, 16), 0x1a1030, 0, 0.115, 0.045, 0.1, 0.056)); face.add(decal(new THREE.CircleGeometry(1, 16), 0xffffff, 0, 0.115, 0.047, 0.088, 0.046)); face.add(decal(new THREE.CircleGeometry(0.026, 10), 0x1a1030, 0, 0.115, 0.049)); face.add(decal(new THREE.CircleGeometry(0.009, 6), 0xffffff, -0.01, 0.125, 0.05)); }
+  CM_K = EXPO;
+  if (bl) bodyBuild({ root, body, head, hairG, face, arms, legs, o, hasHat }, bl, o.bodyName);
   if (hatLook) hatLook(head, o);
   else if (o.head === 'straw') {
     head.add(cm(new THREE.CylinderGeometry(0.56, 0.56, 0.035, 12), 0xe8c46c, 0, 0.4, 0));
@@ -180,11 +195,13 @@ function chog(o = {}) {
     head.add(cm(new THREE.BoxGeometry(0.4, 0.04, 0.26), o.capC || 0x3a8ad6, 0, 0.36, 0.34));
     if (o.logoC !== undefined) head.add(decal(new THREE.CircleGeometry(0.07, 12), o.logoC, 0, 0.45, 0.285));
   } else if (o.head && o.head !== 'none' && !['clownnose', 'thirdeye', 'wig'].includes(o.head)) chogHead(head, o, trim);
+  CM_K = 1;
   if (o.item === 'mug') { const m = cm(new THREE.CylinderGeometry(0.07, 0.07, 0.12, 8), 0xe8d8b0, 0, 0, 0); m.position.set(0.17, -0.4, 0.14); arms[1].add(m); }
-  if (o.acc) chogAccessory(arms[1], face, o);
+  if (o.accName && typeof ITEM_LOOK !== 'undefined' && ITEM_LOOK[o.accName]) ITEM_LOOK[o.accName](arms[1], o);
+  else if (o.acc) chogAccessory(arms[1], face, o);
   if (o.special && typeof CHOG_SPECIAL !== 'undefined' && CHOG_SPECIAL[o.special]) CHOG_SPECIAL[o.special]({ root, body, head, face, hairG, arms, legs, o });      // one of the ten one-of-one Chogs (chog_legends.js)
   root.userData = { body, head, hairG, legs, arms, eyes, face };
-  if (o.aura !== undefined) chogAura(root, o);
+  if (typeof chogAuraLook !== 'undefined' && o.auraName && chogAuraLook(root, o)) { /* chog_auras.js: this Aura value has its own splash */ } else if (o.aura !== undefined) chogAura(root, o);
   addOutlines(root);
   tagChogLayers(root, face);
   root.scale.setScalar(o.scale || CHOG_SCALE);

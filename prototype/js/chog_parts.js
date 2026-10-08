@@ -119,7 +119,12 @@ function chogHead(head, o, trim) {
     case 'ushanka': dome(0.39, 0.28, c); for (const sx of [-1, 1]) add(cm(new THREE.BoxGeometry(0.1, 0.32, 0.32), c, sx * 0.52, 0.04, -0.08)); break;
     case 'thorn': for (let i = 0; i < 5; i++) { const a = (i / 5) * Math.PI * 2; add(cm(new THREE.ConeGeometry(0.055, 0.24, 5), 0xa8a8b8, Math.cos(a) * 0.2, 0.52, Math.sin(a) * 0.2 - 0.06)); } break;
     case 'horns': for (const sx of [-1, 1]) { const h = add(cm(new THREE.ConeGeometry(0.1, 0.5, 6), c, sx * 0.3, 0.62, -0.1)); h.rotation.z = -sx * 0.5; h.rotation.x = -0.15; const b = add(cm(new THREE.CylinderGeometry(0.11, 0.13, 0.08, 6), new THREE.Color(c).multiplyScalar(0.75).getHex(), sx * 0.24, 0.42, -0.1)); b.rotation.z = -sx * 0.5; } break;
-    case 'seal': { const d = add(cm(new THREE.CylinderGeometry(0.2, 0.2, 0.03, 10), 0xf0c040, 0, 0.72, -0.1)); d.rotation.x = Math.PI / 2; d.userData.noOutline = false; const g2 = glowM(new THREE.CircleGeometry(0.22, 10), 0xffe080, 0.5); g2.position.set(0, 0.72, -0.07); head.add(g2); break; }
+    case 'seal': {                                                    // the Holy Seal: a floating golden sun, a ring with twelve spikes round a lattice
+      const g = new THREE.Group(); g.position.set(0, 0.8, -0.04); head.add(g); const gold = 0xf4c030;
+      const r = cm(new THREE.TorusGeometry(0.15, 0.028, 6, 18), gold, 0, 0, 0); g.add(r);
+      for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2, s = cm(new THREE.ConeGeometry(0.03, 0.1, 5), gold, Math.cos(a) * 0.2, Math.sin(a) * 0.2, 0); s.rotation.z = a - Math.PI / 2; g.add(s); }
+      const lat = decal(new THREE.CircleGeometry(0.135, 14), 0xffe070, 0, 0, 0.004); g.add(lat); for (const k of [-0.09, -0.045, 0, 0.045, 0.09]) { g.add(decal(new THREE.PlaneGeometry(0.01, 0.26 * Math.sqrt(1 - (k / 0.135) ** 2)), 0xb07a10, k, 0, 0.008)); const h = decal(new THREE.PlaneGeometry(0.26 * Math.sqrt(1 - (k / 0.135) ** 2), 0.01), 0xb07a10, 0, k, 0.008); g.add(h); }
+      const g2 = glowM(new THREE.CircleGeometry(0.3, 16), 0xffe080, 0.4); g2.position.set(0, 0, -0.02); g.add(g2); break; }
     case 'plumber': add(cm(new THREE.CylinderGeometry(0.3, 0.34, 0.18, 8), 0xd8302a, 0, 0.42, -0.02)); add(cm(new THREE.BoxGeometry(0.4, 0.04, 0.26), 0xd8302a, 0, 0.36, 0.34)); add(decal(new THREE.CircleGeometry(0.08, 12), 0xffffff, 0, 0.43, 0.33)); break;
     case 'robber': dome(0.37, 0.3, 0x24222e); ring(0.36, 0.05, 0.32, 0x24222e); break;
     default: dome(0.37, 0.3, c);                            // unknown hat: a plain dome in the trait colour
