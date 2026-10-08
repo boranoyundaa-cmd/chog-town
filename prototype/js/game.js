@@ -77,6 +77,9 @@ GAME.walkTo = function (x, z, wasBlocked) {
 GAME.nameOf = root => (root === GAME.me ? (GAME.nameFn ? GAME.nameFn() : 'Chog') : root.userData.netName || 'Chog');
 GAME.extraRoots = () => [];                                                         // other players' Chogs (net.js replaces this)
 GAME.zoomMin = 7; GAME.zoomMax = 26; GAME.zoomT = 15; GAME.hoverChog = null;
+// every place (town, room, hotel floor) has its own default zoom; how far you zoomed in or out is kept as a ratio of that default, so changing place never resets it
+GAME.zoomBase = 15; GAME.townBase = 15;
+GAME.sceneZoom = def => { const k = GAME.zoomT / GAME.zoomBase; GAME.zoomBase = def; GAME.zoomT = Math.max(GAME.zoomMin, Math.min(GAME.zoomMax, def * k)); };
 (function () {
   const dom = renderer.domElement, ray = new THREE.Raycaster(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), pt = new THREE.Vector3(), ndc = new THREE.Vector2();
   const glow = (geo, col) => { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); m.rotation.x = -Math.PI / 2; m.userData.noNormal = true; world.add(m); hiddenInNormal.push(m); return m; };
@@ -195,4 +198,4 @@ animated.push((t, dt) => {
 
 // start: a default Chog, camera on it, a gameplay zoom that fits the screen shape
 GAME.setTraits(GAME.traits);
-GAME.zoomT = FW = ASPECT >= 1 ? 15 : 9.5; camTarget.set(GAME.me.position.x, 1.1, GAME.me.position.z); updateCam();
+GAME.zoomT = FW = GAME.zoomBase = GAME.townBase = ASPECT >= 1 ? 15 : 9.5; camTarget.set(GAME.me.position.x, 1.1, GAME.me.position.z); updateCam();

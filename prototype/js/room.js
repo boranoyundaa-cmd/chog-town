@@ -42,13 +42,13 @@ const ROOM = {
     const sc = sun.shadow.camera; prev = { zoom: GAME.zoomT, shadow: { l: sc.left, r: sc.right, t: sc.top, b: sc.bottom, f: sc.far } };
     DAY.pause(); for (const o of CITY_NODES) o.visible = false; doorMark.visible = false;
     GAME.room = { blocked: (x, z, r) => roomBlocked(x, z, r) }; ROOM.active = true; GAME.path = []; GAME.keys = {};
-    GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.zoomT = 13.5;
+    GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.sceneZoom(13.5);
   }
-  const fitZoom = () => { const [w, d] = dims(); GAME.zoomT = Math.min(GAME.zoomMax, 13.5 * Math.max(1, (w + d) / 16)); };      // a bigger floor needs a wider view
+  const fitZoom = () => { const [w, d] = dims(); GAME.sceneZoom(13.5 * Math.max(1, (w + d) / 16)); };      // a bigger floor needs a wider view
   ROOM.showTown = on => { for (const o of CITY_NODES) o.visible = on; doorMark.visible = on; };            // the hotel hides and shows the street the same way a room does
   function leaveScene(keepTown) {                                                          // keepTown: going from a venue back to the hotel, the street stays hidden
     SPACE.unload(); if (!keepTown) { ROOM.showTown(true); DAY.resume(); }
-    const sc = sun.shadow.camera; if (prev) { Object.assign(sc, { left: prev.shadow.l, right: prev.shadow.r, top: prev.shadow.t, bottom: prev.shadow.b, far: prev.shadow.f }); sc.updateProjectionMatrix(); GAME.zoomT = prev.zoom; }
+    const sc = sun.shadow.camera; if (prev) { Object.assign(sc, { left: prev.shadow.l, right: prev.shadow.r, top: prev.shadow.t, bottom: prev.shadow.b, far: prev.shadow.f }); sc.updateProjectionMatrix(); if (!keepTown) GAME.sceneZoom(GAME.townBase); }
     GAME.room = null; GAME.camFixed = null; GAME.editMode = false; GAME.dragUI = false; GAME.regrid(); ROOM.active = false; ROOM.mode = 'walk';
     if (!keepTown) { const me = GAME.me; me.position.set(CITY_OUT.x, 0, CITY_OUT.z); me.rotation.y = CITY_OUT.ry; GAME.path = []; }
     SPACE.refreshHidden(); document.body.classList.remove('inroom');

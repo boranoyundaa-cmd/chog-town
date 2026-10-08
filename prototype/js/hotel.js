@@ -210,7 +210,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     SPACE.applyView(SPACE.VIEWS[SPACE.viewKey(null)]); SPACE.refreshHidden();
     GAME.room = { blocked: (x, z, rr) => blocked(x, z, rr) }; GAME.path = []; GAME.keys = {}; GAME.regrid();
     me.position.set(a.x, 0, a.z); me.rotation.y = a.ry || 0; camTarget.set(a.x, 1.1, a.z);
-    if (floor === 0) { GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.zoomT = 16; } else { GAME.camFixed = null; GAME.zoomT = 14; }
+    if (floor === 0) { GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.sceneZoom(16); } else { GAME.camFixed = null; GAME.sceneZoom(14); }
     HOTEL.active = true; HOTEL.floor = floor; HOTEL.panel = null; document.body.classList.add('inhotel'); HOTEL.refreshUI(); if (typeof render === 'function') render();
     return true;
   }
@@ -241,12 +241,13 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   // drop the hotel scene (to show a venue, a Home or the street); the town stays hidden unless the caller shows it. The town's own camera values come back first.
   HOTEL.hideScene = function (keep) {
     clearScene(); HOTEL.active = false; HOTEL.panel = null; document.body.classList.remove('inhotel');
-    const sc = sun.shadow.camera; if (saved) { Object.assign(sc, { left: saved.shadow.l, right: saved.shadow.r, top: saved.shadow.t, bottom: saved.shadow.b, far: saved.shadow.f }); sc.updateProjectionMatrix(); GAME.zoomT = saved.zoom; if (!keep) saved = null; }
+    const sc = sun.shadow.camera; if (saved) { Object.assign(sc, { left: saved.shadow.l, right: saved.shadow.r, top: saved.shadow.t, bottom: saved.shadow.b, far: saved.shadow.f }); sc.updateProjectionMatrix(); GAME.sceneZoom(GAME.townBase); if (!keep) saved = null; }
     GAME.room = null; GAME.camFixed = null; GAME.regrid(); HOTEL.refreshUI();
   };
+  // by elevator you arrive at the elevator (in the lobby it is on the west wall, not by the street door)
   HOTEL.goFloor = async function (f, door) {                                           // the elevator, or "Go to room": the venue puts you right in front of its door
     if (HOTEL.busy || !HOTEL.active || f === HOTEL.floor && !door) return; HOTEL.busy = true; HOTEL.panel = null; HOTEL.refreshUI();
-    try { await fade(async () => { await loadInfo(); const d = door ? doorOf(door.no, door.span) : null; if (!await show(f, d ? d.stand : null)) toast('The elevator did not move. Try again.'); }); } finally { HOTEL.busy = false; }
+    try { await fade(async () => { await loadInfo(); const d = door ? doorOf(door.no, door.span) : null; if (!await show(f, d ? d.stand : f === 0 ? { x: -3.4, z: 0.6, ry: Math.PI / 2 } : null)) toast('The elevator did not move. Try again.'); }); } finally { HOTEL.busy = false; }
   };
   HOTEL.goTo = v => HOTEL.goFloor(v.floor, v);
   HOTEL.enterVenue = async function (v) {
