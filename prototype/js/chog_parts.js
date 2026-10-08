@@ -80,15 +80,15 @@ function chogMouth(face, o) {
   switch (m) {
     case 'sad': face.add(arcDecal(0.06, 0.009, ink, X, -0.15, 0.036, true, 0.5)); break;
     case 'flat': face.add(decal(new THREE.PlaneGeometry(0.11, 0.014), ink, X, -0.125, 0.036)); break;
-    case 'worried': { const l = decal(new THREE.PlaneGeometry(0.1, 0.014), ink, X, -0.125, 0.036); l.rotation.z = 0.12; face.add(l); face.add(decal(new THREE.CircleGeometry(0.02, 8), TEAR, 0.19, 0.1, 0.04)); break; }
+    case 'worried': case 'wavy': { for (let i = 0; i < 4; i++) { const l = decal(new THREE.PlaneGeometry(0.045, 0.013), ink, X - 0.07 + i * 0.047, -0.125 + (i % 2 ? 0.012 : -0.012), 0.036); l.rotation.z = i % 2 ? -0.5 : 0.5; face.add(l); } if (m === 'worried') face.add(decal(new THREE.CircleGeometry(0.02, 8), TEAR, 0.19, 0.1, 0.04)); break; }
     case 'drool': smile(); face.add(decal(new THREE.PlaneGeometry(0.035, 0.16), TEAR, 0.075, -0.2, 0.04)); face.add(decal(new THREE.CircleGeometry(0.022, 8), TEAR, 0.075, -0.28, 0.04)); break;
     case 'bubble': { smile(-0.13, 0.05); const b = cm(new THREE.SphereGeometry(0.075, 8, 6), 0xff7ab8, X, -0.115, 0.08); b.userData.noOutline = true; face.add(b); break; }
     case 'puke': { smile(-0.125, 0.05); ['#e83a3a', '#f08a30', '#f4d83a', '#4ac85a', '#3a8ae8', '#8a4ad8'].forEach((c, i) => face.add(decal(new THREE.PlaneGeometry(0.035, 0.3), parseInt(c.slice(1), 16), -0.0 + (i - 2.5) * 0.034, -0.27, 0.05))); break; }
-    case 'gold': smile(); face.add(decal(new THREE.PlaneGeometry(0.028, 0.034), 0xf0c040, 0.045, -0.135, 0.04)); break;
+    case 'gold': face.add(decal(new THREE.PlaneGeometry(0.17, 0.05), 0xffffff, X, -0.125, 0.036)); face.add(arcDecal(0.085, 0.012, ink, X, -0.1, 0.038, false, 0.6)); face.add(decal(new THREE.PlaneGeometry(0.03, 0.036), 0xf0c040, 0.05, -0.135, 0.041)); break;
     case 'grit': face.add(decal(new THREE.PlaneGeometry(0.15, 0.075), 0x2a1230, X, -0.125, 0.036)); face.add(decal(new THREE.PlaneGeometry(0.13, 0.055), 0xffffff, X, -0.125, 0.038)); for (const x of [-0.04, 0, 0.04]) face.add(decal(new THREE.PlaneGeometry(0.008, 0.055), ink, X + x, -0.125, 0.04)); break;
-    case 'lipbite': smile(-0.12, 0.055); face.add(decal(new THREE.PlaneGeometry(0.03, 0.03), 0xffffff, 0.05, -0.135, 0.04)); break;
+    case 'lipbite': smile(-0.12, 0.06); face.add(decal(new THREE.PlaneGeometry(0.1, 0.02), 0xffffff, X, -0.118, 0.038)); face.add(decal(new THREE.PlaneGeometry(0.02, 0.05), 0xe86a8a, 0.06, -0.14, 0.04)); break;
     case 'coin': { const c = cm(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 12), o.mouthColor ?? 0xf0a030, X, -0.12, 0.07); c.rotation.x = Math.PI / 2; c.userData.noOutline = true; face.add(c); face.add(decal(new THREE.CircleGeometry(0.045, 10), 0xffffff, X, -0.12, 0.086)); break; }
-    case 'clown': face.add(arcDecal(0.1, 0.024, 0xd8202a, X, -0.1, 0.037, false, 0.7)); break;
+    case 'clown': face.add(arcDecal(0.135, 0.03, 0xd8202a, X, -0.085, 0.037, false, 0.62)); face.add(arcDecal(0.12, 0.012, 0x7a1018, X, -0.115, 0.039, false, 0.55)); break;
     case 'oval': face.add(decal(new THREE.CircleGeometry(1, 16), 0x6a3a28, X, -0.15, 0.036, 0.05, 0.085)); face.add(decal(new THREE.CircleGeometry(1, 16), 0x3a1a14, X, -0.16, 0.038, 0.036, 0.065)); break;
     case 'zomb': face.add(decal(new THREE.PlaneGeometry(0.27, 0.13), 0x3a1020, X, -0.14, 0.036)); for (let i = -3; i <= 3; i++) { const t = decal(new THREE.CircleGeometry(0.03, 3), 0xf4f4e0, X + i * 0.037, -0.09, 0.04); t.rotation.z = Math.PI / 2 * 3 + Math.PI / 2; face.add(t); const u = decal(new THREE.CircleGeometry(0.026, 3), 0xf4f4e0, X + i * 0.037 + 0.018, -0.2, 0.04); u.rotation.z = Math.PI / 2; face.add(u); }
       for (const [x, len] of [[-0.06, 0.2], [0.05, 0.28], [0.1, 0.16]]) { face.add(decal(new THREE.PlaneGeometry(0.03, len), 0x9ae04a, x, -0.2 - len / 2, 0.042)); face.add(decal(new THREE.CircleGeometry(0.02, 8), 0x9ae04a, x, -0.2 - len, 0.042)); } break;

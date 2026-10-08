@@ -62,7 +62,8 @@ function chog(o = {}) {
   const hairC = o.hair || 0x5b35b0, suitC = o.suit || 0x5a32b0, trim = o.trim || 0xffd060;
   const MAG = o.hands || 0xd43d7c, MAGD = o.hands ? new THREE.Color(o.hands).multiplyScalar(0.72).getHex() : 0x9a2a68, CREAM = o.faceC || 0xfdf3cc;
   const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
-  const hasHat = !!o.head && o.head !== 'none' && !['headset', 'clownnose', 'thirdeye', 'thorn', 'wig'].includes(o.head);
+  const hatLook = o.hatName && typeof HAT_LOOK !== 'undefined' && HAT_LOOK[o.hatName];                 // chog_hats.js: every Head value has its own hat
+  const hasHat = (!!o.head && o.head !== 'none' && !['headset', 'clownnose', 'thirdeye', 'thorn', 'wig'].includes(o.head)) || (!!hatLook && typeof HAT_COVERS !== 'undefined' && HAT_COVERS.has(o.hatName));
   // clothing from traits: kind = shirt|vest|jacket|tux|hoodie|robe|suit (see js/traits.js); fur colour is suitC
   const kind = o.kind, cloth = o.cloth;
   const torsoC = cloth !== undefined && kind && kind !== 'vest' ? cloth : suitC;
@@ -162,7 +163,8 @@ function chog(o = {}) {
   else { const mo = decal(new THREE.TorusGeometry(0.065, 0.009, 4, 10, Math.PI), 0x2a1230, 0.015, -0.115, 0.036, 1, 0.55); mo.rotation.z = Math.PI; face.add(mo); }
   if (o.head === 'clownnose') { const cn = cm(new THREE.SphereGeometry(0.065, 8, 6), 0xd8202a, 0, -0.055, 0.08); cn.userData.noOutline = true; face.add(cn); }
   if (o.head === 'thirdeye') { face.add(decal(new THREE.CircleGeometry(0.05, 12), 0xffffff, 0, 0.14, 0.046)); face.add(decal(new THREE.CircleGeometry(0.026, 10), 0x120820, 0, 0.14, 0.048)); }
-  if (o.head === 'straw') {
+  if (hatLook) hatLook(head, o);
+  else if (o.head === 'straw') {
     head.add(cm(new THREE.CylinderGeometry(0.56, 0.56, 0.035, 12), 0xe8c46c, 0, 0.4, 0));
     head.add(cm(new THREE.CylinderGeometry(0.28, 0.31, 0.2, 10), 0xe8c46c, 0, 0.5, 0));
     head.add(cm(new THREE.CylinderGeometry(0.315, 0.315, 0.05, 10), 0xc04a4a, 0, 0.44, 0));

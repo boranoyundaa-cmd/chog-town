@@ -29,7 +29,7 @@ def one(tid):
 
 ids = [k for k in tokens if k.isdigit()]
 done = fail = 0
-with ThreadPoolExecutor(20) as ex:
+with ThreadPoolExecutor(8) as ex:
     for tid, st in ex.map(one, ids):
         done += 1
         if st.startswith('FAIL'): fail += 1; print(tid, st, flush=True)

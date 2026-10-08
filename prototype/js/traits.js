@@ -64,7 +64,8 @@ function bodyOptions(name) {
 }
 
 // ---- Head -> { head, headC, ... }
-function headOptions(name) {
+function headOptions(name) { return Object.assign(headOptionsOld(name), { hatName: name }); }
+function headOptionsOld(name) {
   const s = name.toLowerCase();
   const brand = has(s, 'btc', 'buttcoin') ? 0xf08a30 : has(s, 'mon ', 'mon', 'choggie', 'chog ', 'chog') ? 0x7a3ac8 : has(s, 'dollar') ? 0x3a9a5a : has(s, 'star') ? 0x24367a
     : has(s, 'cloud') ? 0xa8d0f0 : has(s, 'thunder') ? 0xf4d03a : has(s, 'peace') ? (s.includes('red') ? 0xd8323c : 0x5a6a4a) : has(s, 'jeet', 'retard', 'horny') ? 0xd8323c : has(s, 'wagmi', '10k') ? 0x3ac85a : undefined;
@@ -118,7 +119,7 @@ function eyeOptionsOld(name) {
 
 const MOUTHS = { 'btc coin': { mouth: 'coin', mouthColor: 0xf0a030 }, 'mon coin': { mouth: 'coin', mouthColor: 0x8a4ad8 }, bubblegum: { mouth: 'bubble' }, 'clown mouth': { mouth: 'clown' },
   drooling: { mouth: 'drool' }, flat: { mouth: 'flat' }, 'gold tooth': { mouth: 'gold' }, grit: { mouth: 'grit' }, 'lip bite': { mouth: 'lipbite' }, 'rainbow puke': { mouth: 'puke' },
-  sad: { mouth: 'sad' }, smile: { mouth: 'smile' }, 'normal smile': { mouth: 'smile' }, worried: { mouth: 'worried' }, wo: { mouth: 'worried' } };
+  sad: { mouth: 'sad' }, smile: { mouth: 'smile' }, 'normal smile': { mouth: 'smile' }, worried: { mouth: 'worried' }, wo: { mouth: 'wavy' } };
 
 // ---- Aura (value "Clean" means no aura)
 function auraOptions(name) {
