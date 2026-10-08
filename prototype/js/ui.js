@@ -195,7 +195,6 @@ function drawMinimap(cv) {
   const rect = (x, z, hw, hd, col) => poly([[x - hw, z - hd], [x + hw, z - hd], [x + hw, z + hd], [x - hw, z + hd]], col);
   rect(0, 0, HALF, HALF, N ? '#5a4a86' : '#d9cfc0'); rect(0, 0, RW, HALF, N ? '#2d2548' : '#8d8a9c'); rect(0, 0, HALF, RW, N ? '#2d2548' : '#8d8a9c');
   for (const b of CITY.buildings) rect(b.x, b.z, b.w / 2, b.d / 2, N ? '#' + new THREE.Color(b.color).multiplyScalar(0.8).getHexString() : b.color);
-  for (const w of walkers) { const [a, b] = P(w.c.position.x, w.c.position.z); g.beginPath(); g.arc(a, b, 2.2, 0, 7); g.fillStyle = N ? 'rgba(122,232,255,.9)' : 'rgba(255,255,255,.9)'; g.fill(); }
   if (typeof NET !== 'undefined') for (const r of NET.remotes.values()) if (r.root) { const [a, b] = P(r.root.position.x, r.root.position.z); g.beginPath(); g.arc(a, b, 3, 0, 7); g.fillStyle = '#7ad89a'; g.strokeStyle = '#1a0a2e'; g.lineWidth = 1.2; g.fill(); g.stroke(); }
   if (GAME.me) {                                                                    // the player: a gold arrow pointing the way it faces
     const [a, b] = P(GAME.me.position.x, GAME.me.position.z), ry = GAME.me.rotation.y, dx = Math.sin(ry), dz = Math.cos(ry), [ex, ey] = [(dx - dz) * R, (dx + dz) * R];
@@ -255,6 +254,16 @@ function playerCard() {
   acts.appendChild(mb); acts.appendChild(rb);
   return c;
 }
+// a small card for a resident: role, one line from them, and an action for service NPCs (Juno replays the tips)
+function npcCard() {
+  const r = typeof NPC !== 'undefined' && NPC.card; if (!r) return null;
+  const c = el('div', 'pcard npc paper hit', '<button class="x" aria-label="Close">×</button><h3></h3><small></small><p class="say"></p><div class="acts"></div>');
+  c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = (r.role || 'Resident') + ' · Chog Town resident'; c.querySelector('.say').textContent = '“' + r.cardLine + '”';
+  c.querySelector('.x').onclick = () => NPC.closeCard();
+  const a = NPC.actionFor(r), acts = c.querySelector('.acts'); if (a) { const b = el('button', 'btn', a.label); b.onclick = a.run; acts.appendChild(b); }
+  const cb = el('button', 'btn ghost', 'Bye'); cb.onclick = () => NPC.closeCard(); acts.appendChild(cb);
+  return c;
+}
 // an invitation to somebody's Home: go or not now (a Home is private, this is the way in)
 function inviteCards() {
   const now = Date.now(); NET.invites = NET.invites.filter(i => i.exp > now); if (!NET.invites.length) return null;
@@ -284,14 +293,14 @@ function render() {
   if (typeof TOUR !== 'undefined') root.appendChild(TOUR.hud());
   const w = el('div', 'win' + (['chog', 'settings', 'venues'].includes(UI.open) ? ' open' : '') + (UI.open === 'venues' ? ' venues' : ''));
   w.appendChild(UI.open === 'settings' ? settingsCard(closeWin) : UI.open === 'venues' ? venuesCard(closeWin) : card(closeWin)); root.appendChild(w);
-  const pc = playerCard(); if (pc) root.appendChild(pc);
+  const pc = playerCard() || npcCard(); if (pc) root.appendChild(pc);
   const iv = inviteCards(); if (iv) root.appendChild(iv);
   root.appendChild(toastEl());
 }
 // the HUD is laid out for a 1440x810 window and scaled with the window height
 function fitUI() { document.getElementById('ui').style.zoom = Math.max(0.8, Math.min(1.6, innerHeight / 810)); }
 addEventListener('resize', fitUI);
-addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (UI.open) { UI.open = null; render(); } }
+addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (typeof NPC !== 'undefined' && NPC.card) NPC.closeCard(); else if (UI.open) { UI.open = null; render(); } }
   if ((e.code === 'Enter' || e.code === 'NumpadEnter') && _chat) { const i = _chat.querySelector('input'); if (!i.disabled) { e.preventDefault(); i.focus(); } } });
 
 (async function initUI() {

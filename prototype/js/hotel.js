@@ -107,7 +107,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, bu
     block(0.2, -2.95, 1.7, 0.45);
     // the receptionist
     npc = chog({ hair: 0x5b35b0, outfit: 'vest', vest: 0x7a3ac8, head: 'headset', scale: CHOG_SCALE * 1.0 }); npc.position.set(0.2, 0, -3.62); npc.rotation.y = 0; g.add(npc); npc.userData.netName = 'Reception'; npc.userData.onClick = () => HOTEL.openPanel('dir');
-    npcPlate = PLATES.add(npc);
+    npcPlate = PLATES.add(npc, 'Staff');
     spots = [
       { x: 0.2, z: -1.9, r: 1.6, y: 2.2, label: 'Ask reception', run: () => HOTEL.openPanel('dir') },
       { x: -4.4, z: 0.6, r: 1.4, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-5.2, 2.7, 0.6] },

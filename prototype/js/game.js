@@ -74,8 +74,7 @@ GAME.walkTo = function (x, z, wasBlocked) {
 };
 
 // ---- input: click to move (a short press that did not drag), WASD / arrows, hover feedback
-const NPC_NAMES = ['Pip', 'Mochi', 'Biscuit', 'Nori', 'Waffle', 'Pepper', 'Olive', 'Maple', 'Sprout', 'Clover', 'Truffle', 'Pudding'];   // placeholder residents
-GAME.nameOf = root => (root === GAME.me ? (GAME.nameFn ? GAME.nameFn() : 'Chog') : root.userData.netName || NPC_NAMES[Math.max(0, walkers.findIndex(w => w.c === root)) % NPC_NAMES.length]);
+GAME.nameOf = root => (root === GAME.me ? (GAME.nameFn ? GAME.nameFn() : 'Chog') : root.userData.netName || 'Chog');
 GAME.extraRoots = () => [];                                                         // other players' Chogs (net.js replaces this)
 GAME.zoomMin = 7; GAME.zoomMax = 26; GAME.zoomT = 15; GAME.hoverChog = null;
 (function () {
@@ -86,7 +85,7 @@ GAME.zoomMin = 7; GAME.zoomMax = 26; GAME.zoomT = 15; GAME.hoverChog = null;
   let down = null, ptr = null;
   const toNdc = e => { const r = dom.getBoundingClientRect(); return ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); };
   const chogAt = () => {
-    const roots = [GAME.me, ...walkers.filter(w => w.c.visible).map(w => w.c), ...GAME.extraRoots()]; ray.setFromCamera(ndc, cam);
+    const roots = [GAME.me, ...walkers.filter(w => w.c.visible && w.c.parent && w.c.parent.visible).map(w => w.c), ...GAME.extraRoots()]; ray.setFromCamera(ndc, cam);
     const hit = ray.intersectObjects(roots, true).find(h => !(h.object.userData && (h.object.userData.isHull || h.object.userData.noNormal)) && h.object.isMesh);
     if (!hit) return null; let o = hit.object; while (o && !roots.includes(o)) o = o.parent; return o || null;
   };

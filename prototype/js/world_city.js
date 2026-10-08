@@ -1,5 +1,5 @@
 // ===== world: the modern city district (replaces the medieval island). One kit, one block, walkable =====
-// Exports for the rest of the game: HALF, world, WORLD_BLOCKERS (walk collision), occluders (see-through), walkers (NPC residents), CITY (names for the HUD), hiddenInNormal.
+// Exports for the rest of the game: HALF, world, WORLD_BLOCKERS (walk collision), occluders (see-through), walkers (NPC residents, filled by npc.js), CITY (names for the HUD), hiddenInNormal.
 // Windows are InstancedMesh (one draw call per building); daycycle.js recolours them (lit or dark) and drives lamps/neon.
 const HALF = 10.4;                                          // half size of the slab; walking limit is HALF - 0.45 (the server keeps the same number: CFG.half)
 const world = new THREE.Group(); scene.add(world);
@@ -220,37 +220,7 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
   }
   world.add(plight(0xff3aa8, 0.9, 7, 4.2, 2.2, -2.4)); world.add(plight(0x3ad8ff, 0.7, 7, -4.4, 2.2, 2.4)); world.add(plight(0xffc23a, 0.8, 7, 4.4, 2.2, 2.6));   // colour pools from the neon
 
-  // ---------- residents (NPC): a few walk the avenues, the rest stand around and talk
-  const NPC_LOOKS = [
-    [{ hair: 0xe0283a, outfit: 'jacket', trim: 0xffd060 }, { kind: 'walk', ax: 'x', fixed: 0.2, a: -7, b: 7, speed: 0.9 }],
-    [{ hair: 0x2fb58a, outfit: 'vest', vest: 0x3a8a6a }, { kind: 'walk', ax: 'z', fixed: -0.2, a: -4.9, b: 7, speed: 0.7 }],
-    [{ hair: 0xb06aff, outfit: 'vest', vest: 0xe86a7a, scale: CHOG_SCALE * 0.78 }, { kind: 'walk', ax: 'x', fixed: -0.2, a: -2.4, b: 2.4, speed: 1.2 }],
-    [{ hair: 0xff4a98, outfit: 'jacket', trim: 0x60e0f0, head: 'headset' }, { kind: 'idle', x: 6.4, z: 2.35, ry: 2.4 }],
-    [{ hair: 0xf48a3a, outfit: 'jacket', trim: 0x7a4ab0 }, { kind: 'idle', x: 2.4, z: -2.2, ry: 0.8 }],
-    [{ hair: 0xf4c82c, outfit: 'apron', head: 'cap', capC: 0x3a6a5c }, { kind: 'wave', x: -2.4, z: 5.4, ry: 1.2 }],
-    [{ hair: 0x5b35b0, outfit: 'vest' }, { kind: 'chat', x: -0.95, z: -2.45, ry: 1.2, mate: 1 }],
-    [{ hair: 0xff4a98, outfit: 'jacket', trim: 0xff7aa8, head: 'cap', capC: 0x2a2050 }, { kind: 'chat', x: -0.35, z: -2.6, ry: -1.9, mate: -1 }],
-    [{ hair: 0x4a7ab8, outfit: 'vest', vest: 0xffd060 }, { kind: 'idle', x: -5.3, z: 1.9, ry: 0.4 }],
-  ];
-  for (const [o, w] of NPC_LOOKS) { const c = chog(o); c.position.set(w.x ?? 0, 0, w.z ?? 0); if (w.ry !== undefined) c.rotation.y = w.ry; world.add(c); walkers.push(Object.assign({ c, p: rnd() * 2, t0: rnd() * 6 }, w)); }
-  animated.push((t, dt) => {
-    for (const w of walkers) {
-      const u = w.c.userData; let moving = false;
-      if (w.kind === 'walk') {
-        w.p += dt * w.speed / (w.b - w.a); const q = w.p % 2, f = q < 1 ? q : 2 - q, dirv = q < 1 ? 1 : -1, pos = w.a + (w.b - w.a) * f; moving = true;
-        if (w.ax === 'z') { w.c.position.set(w.fixed, 0, pos); w.c.rotation.y = dirv > 0 ? 0 : Math.PI; } else { w.c.position.set(pos, 0, w.fixed); w.c.rotation.y = dirv > 0 ? Math.PI / 2 : -Math.PI / 2; }
-      }
-      const ph = t * 9 + w.t0, sw = Math.sin(ph);
-      if (moving) { u.legs[0].rotation.x = sw * 0.65; u.legs[1].rotation.x = -sw * 0.65; u.arms[0].rotation.x = -sw * 0.7; u.arms[1].rotation.x = sw * 0.7; u.body.position.y = Math.abs(sw) * 0.05; u.head.position.y = 1.0 + Math.abs(sw) * 0.05; u.hairG.rotation.x = Math.sin(ph + 1) * 0.05; }
-      else {
-        const b = Math.sin(t * 2 + w.t0) * 0.015; u.body.position.y = b; u.head.position.y = 1.0 + b * 1.4; u.legs.forEach(l => l.rotation.x = 0);
-        if (w.kind === 'wave') { u.arms[1].rotation.z = 2.7 + Math.sin(t * 7) * 0.4; u.arms[1].rotation.x = 0; u.arms[0].rotation.x = 0; }
-        else if (w.kind === 'chat') { u.head.rotation.x = Math.sin(t * 5 + w.t0 * 2) * 0.05; u.arms[w.mate > 0 ? 1 : 0].rotation.z = w.mate * (0.7 + Math.sin(t * 4 + w.t0) * 0.4); u.arms[w.mate > 0 ? 1 : 0].rotation.x = -0.3; }
-        else u.arms.forEach(a => { a.rotation.x = Math.sin(t * 2 + w.t0) * 0.05; });
-      }
-      const blink = Math.sin(t * 0.9 + w.t0 * 5) > 0.985 ? 0.12 : 1; u.eyes.forEach(e => e.scale.y = e.userData.by * blink);
-    }
-  });
+  // residents (NPC) are built by npc.js: schedules by the real clock, not fixed spots
   sun.shadow.camera.left = sun.shadow.camera.bottom = -20; sun.shadow.camera.right = sun.shadow.camera.top = 20; sun.shadow.camera.far = 70; sun.shadow.camera.updateProjectionMatrix();
 })();
 scene.traverse(o => { if (o.userData && (o.userData.isHull || o.userData.noNormal)) hiddenInNormal.push(o); });

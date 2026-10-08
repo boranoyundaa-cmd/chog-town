@@ -62,6 +62,7 @@ Entry is one door for all; the server puts you in your own Home. **Visits are by
 - **Daily cycle without a simulation:** a resident's position is a pure function of its id and the real time (morning café, noon plaza, evening arcade or club, night they go inside). Every client computes the same, so the server holds no NPC state. This keeps the earlier "no deep offline simulation" decision.
 - **Adaptive crowd:** aim for about 12 visible people; the NPC count is that target minus the players online. A lone judge sees 12 residents, a busy town shows few.
 - **Never counted** in rankings, visitor counts or "N inside" (wash trading).
+- **Built (2026-10-08, `js/npc.js`):** 15 residents (3 service, 12 ambient), schedules as `[hour, place]` lists, paths computed on the walk grid, residents go inside a door and disappear, the crowd cap (`NPC.target` 12), muted plates with a role, a click card with one line and an action for Juno, no minimap dots. Night: about 4 to 6 outside, day: 10 to 11. Not built: challenges, hired staff.
 - **Dialogue** is written lines by time and place. No LLM chat (cost, moderation, time).
 - **Telling NPCs from players:** nameplate (players: name and tier pill; NPCs: muted plate with a "resident" icon and role), minimap (players are bright dots, NPCs have none), click card (player: invite, mute, report; NPC: role and action), movement on routes, a role costume (apron, cap, headset). NPCs never copy a real token's traits.
 - **No offline holder Chogs** in town (decided): only fictional NPCs.

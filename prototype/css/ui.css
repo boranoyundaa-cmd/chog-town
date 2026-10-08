@@ -253,3 +253,9 @@ body.neon #hotelp { background: rgba(20, 10, 44, .9); color: #f2eaff; border-col
 #ui .hf b { min-width: 30px; text-align: center; font: var(--hw) 22px var(--hf); } #ui .hf span { font-size: 13px; opacity: .85; } #ui .hf:hover:not(:disabled) { background: var(--sel, #7a3ac8); color: #fff; } #ui .hf.here { background: color-mix(in srgb, var(--sel, #7a3ac8) 25%, transparent); cursor: default; }
 #ui .hp.lift { bottom: auto; max-height: calc(100% - 210px); }
 #hfade { position: fixed; inset: 0; z-index: 9; pointer-events: none; opacity: 0; transition: opacity .34s ease; background: radial-gradient(ellipse at 50% 45%, #3a2468, #120a26 75%); } #hfade.on { opacity: 1; pointer-events: auto; }
+
+/* NPCs: a muted plate with a hollow diamond and the role, and a small card (players have a round dot and bright plates) */
+#plates .plate.npc { filter: saturate(.5); opacity: .93; font-weight: 600; }
+#plates .plate.npc .dot { width: 8px; height: 8px; border-radius: 2px; transform: rotate(45deg); background: transparent !important; border: 2px solid currentColor; box-shadow: none !important; opacity: .55; }
+#plates .plate.npc em { font-style: normal; font-weight: 600; font-size: 11px; opacity: .6; }
+#ui .pcard.npc .say { margin: 0 0 10px; font-style: italic; line-height: 1.3; }
