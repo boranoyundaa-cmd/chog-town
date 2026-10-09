@@ -14,7 +14,7 @@ Ideas that **solve several problems at once, live inside the world, and are fun*
 
 ## Audience and platform
 
-- **Everyone**, not Turkish-first. The core is the Chog community plus the Roblox / Fortnite Creative generation. Not nostalgia-led: nostalgia alone does not retain (Habbo Origins reviews) and that audience is not in web3.
+- **Crypto Twitter / crypto-native people first** (decided 2026-10-09, `docs/game/culture.md`), not Turkish-first, not "everyone". Holders are the supply side, non-holder crypto people the volume. Not nostalgia-led: nostalgia alone does not retain (Habbo Origins reviews) and that audience is not in web3.
 - **PC (desktop browser) first.** Mobile is a later companion (view the Chog, inventory, revenue and venue stats, notifications, and the security-camera view below). The game is not played on mobile; do not design play around touch.
 
 ## Creator freedom (decided 2026-10-08)

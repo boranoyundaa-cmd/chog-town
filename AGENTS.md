@@ -18,6 +18,7 @@ The owner speaks Turkish. Reply in Turkish unless asked otherwise.
 ## Read before working
 
 - What we are building and what is next: `docs/project/overview.md`
+- Theme and audience (crypto culture, Crypto Twitter; decided 2026-10-09): `docs/game/culture.md`
 - World structure (town, Home, Hotel, NPCs, light, mini-games): `docs/game/world.md`
 - Hackathon rules and judging: `docs/project/hackathon.md`
 - Visual rules (do not drift from these): `docs/art/art-direction.md`
