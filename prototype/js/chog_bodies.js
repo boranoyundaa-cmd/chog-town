@@ -70,7 +70,7 @@ function hoodUp(ctx, c, s = {}) {
   if (s.fringe) {
     const hc = new THREE.Color(ctx.o.hair || 0x5b35b0).multiplyScalar(0.95), R2 = 0.345, RY = 0.31, cy = -0.01, y0 = 0.1, a1 = Math.asin((y0 - cy) / RY), sh = new THREE.Shape();
     for (let i = 0; i <= 20; i++) { const a = (Math.PI - a1) - (Math.PI - 2 * a1) * (i / 20), px = R2 * Math.cos(a), py = cy + RY * Math.sin(a); i ? sh.lineTo(px, py) : sh.moveTo(px, py); }
-    for (const [px, py] of [[0.2, 0.1], [0.16, 0.035], [0.11, 0.095], [0.05, 0.01], [-0.005, 0.1], [-0.06, 0.03], [-0.115, 0.1], [-0.17, 0.045], [-0.22, 0.1]]) sh.lineTo(px, py);
+    for (const [px, py] of [[0.215, 0.1], [0.19, 0.055], [0.165, 0.098], [0.12, -0.01], [0.085, 0.09], [0.06, 0.05], [0.025, 0.11], [-0.02, -0.03], [-0.05, 0.08], [-0.085, 0.04], [-0.12, 0.115], [-0.16, 0.0], [-0.19, 0.085], [-0.225, 0.04]]) sh.lineTo(px, py);
     const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: hc })); m.position.z = 0.043; m.userData.noOutline = true; ctx.face.add(m);
   }
   return { top, side, rim };
@@ -188,7 +188,13 @@ Object.assign(BODY_LOOK, {
   'Dragon suit': { c: 0xe8402a, long: true, pants: 0xe8402a, draw: g => { BD.disc(g, '#f4b070', 0, 0.06, 0.15, 0.18); for (const v of [-0.06, 0.0, 0.06, 0.12]) BD.arc(g, '#d88a50', 4, 0, v, 0.13, 0.03, 0.2, Math.PI - 0.2); },
     build: ctx => animalHood(ctx, 0xe8402a, 0xf06a3a, () => { for (const sx of [-1, 1]) { const h = add(ctx.head, GEO.cone(0.075, 0.24, 6), 0xf4c88a, sx * 0.3, 0.52, 0.0); h.rotation.z = -sx * 0.4; } for (let i = 0; i < 3; i++) add(ctx.head, GEO.cone(0.045, 0.1, 5), 0xf4c88a, 0, 0.55 - i * 0.1, -0.08 - i * 0.14).rotation.x = -0.3 - i * 0.3; for (const sx of [-1, 1]) { const w = add(ctx.body, GEO.cone(0.12, 0.34, 3), 0xc02a1a, sx * 0.22, 0.6, -0.3, true); w.rotation.set(0.1, 0, -sx * 1.0); w.scale.set(1, 1, 0.25); } }) },
   'Shark Suit': { c: 0x3a8ad0, long: true, pants: 0x3a8ad0, draw: g => { BD.disc(g, '#eaf4fa', 0, 0.06, 0.15, 0.19); },
-    build: ctx => animalHood(ctx, 0x3a8ad0, 0xdceefa, () => { for (let i = 0; i < 13; i++) { const a = -0.45 + (i / 12) * (Math.PI + 0.9), x = Math.cos(a) * 0.3, y = -0.03 + Math.sin(a) * 0.3 * 1.04; const t = add(ctx.head, GEO.cone(0.035, 0.09, 4), 0xffffff, x, y, 0.33); t.rotation.z = a + Math.PI / 2 + Math.PI; } const fin = add(ctx.head, GEO.cone(0.12, 0.26, 3), 0x2e74b8, 0, 0.58, -0.22); fin.scale.set(0.3, 1, 1); fin.rotation.x = -0.35; }) },
+    build: ctx => animalHood(ctx, 0x3a8ad0, 0xdceefa, () => {
+      const N = 17; for (let k = 0; k < N; k++) {                                          // a ring of white teeth pointing inward round the opening, each with a dark edge
+        const a = (k + 0.5) / N * Math.PI * 2, ex = Math.cos(a), ey = Math.sin(a), cx = ex * 0.34, cy = -0.03 + ey * 0.312, len = 0.07 + (k % 2) * 0.025, w = 0.042;
+        const tooth = (s, col, z) => { const sh = new THREE.Shape(); sh.moveTo(-w * s, 0.012); sh.lineTo(w * s, 0.012); sh.lineTo(0, -len * s + 0.012 * (s > 1 ? -1 : 1)); sh.closePath(); const m = decal(new THREE.ShapeGeometry(sh), col, cx, cy, z); m.rotation.z = a - Math.PI / 2; ctx.head.add(m); };
+        tooth(1.22, 0x1a0a2e, 0.4045); tooth(1, 0xffffff, 0.4055);
+      }
+      const fin = add(ctx.head, GEO.cone(0.12, 0.26, 3), 0x2e74b8, 0, 0.58, -0.22); fin.scale.set(0.3, 1, 1); fin.rotation.x = -0.35; }) },
   'toad blue suit': toad(0x3a78e0, 0xa8d8f8, 0x90e030, '#a8f0d8'), 'Toad green Suit': toad(0x28c890, 0xb8f0b0, 0xf08a28, '#a8f4d8'), 'Toad pink suit': toad(0xe8508c, 0xf8a8c8, 0x30c0f0, '#f8a0c0'),
   'Gangster suit': { c: 0x2a2a44, long: true, draw: BODY_HOODIE_DRAW(0x2a2a44), build: ctx => { hoodUp(ctx, 0x2a2a44, { rim: 0x3a3a58 }); bandana(ctx); } },
   // robes
