@@ -53,10 +53,15 @@ function ringAt(body, c, r, tube, y, z = 0, sz = 1) { const m = add(body, GEO.to
 function hoodDown(ctx, c) { ringAt(ctx.body, c, 0.2, 0.07, 0.775, -0.04); const b = add(ctx.body, GEO.sph(0.14, 8, 6), c, 0, 0.74, -0.17); b.scale.set(1.25, 0.8, 0.8); }
 function collar(ctx, c, r = 0.2, tube = 0.05, y = 0.75) { ringAt(ctx.body, c, r, tube, y); }
 function hairUnder(ctx) { ctx.hairG.children.forEach((m, i) => { if (i) m.visible = false; }); }          // under a hood only the hair mass shows; the blades hide
+const HOOD_FACE_GEO = (() => {
+  const s = new THREE.Shape(); s.absellipse(0, -0.012, 0.33, 0.305, 0, Math.PI * 2, false, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.008, bevelSegments: 2, curveSegments: 32 }); g.translate(0, 0, -0.1); return g;
+})();
 // a hood that is up: a dome over the head and a back/side shell, a funnel from the shell to the rim (so no gap shows between hood and rim), the rim in front of the face plate,
 // and optionally the hair showing at the forehead: a flat piece with a spiky lower edge, built wider than the opening and tucked behind the rim, so it can leave no gap
 function hoodUp(ctx, c, s = {}) {
   const head = ctx.head, R = ctx.hasHat ? 0.56 : 0.5, y = 0.06, z = -0.1; hairUnder(ctx); ctx.hairG.scale.setScalar(0.84);         // under a hood the hair mass shrinks so neither it nor its ink hull reaches through the shell
+  { const pl = ctx.face.children[0]; if (pl && pl.geometry) { pl.geometry = HOOD_FACE_GEO; pl.userData.noOutline = true; } }          // inside a hood the face plate is an ellipse that fits the rim: no corners poke out, no ink hull outside the rim
   const top = cm(new THREE.SphereGeometry(R, 16, 8, 0, Math.PI * 2, 0, 1.1), c, 0, y, z, true); top.scale.set(1.04, 1, 1); top.userData.noOutline = true; head.add(top);
   const side = cm(new THREE.SphereGeometry(R, 16, 10, 2.18, 5.06, 1.1, Math.PI - 1.1), c, 0, y, z, true); side.scale.set(1.04, 1, 1); side.userData.noOutline = true; head.add(side);
   const fn = cm(new THREE.CylinderGeometry(0.35, 0.49, 0.42, 28, 1, true), c, 0, -0.03, 0.19, true); fn.rotation.x = Math.PI / 2; fn.scale.set(1, 1, 0.92); fn.userData.noOutline = true; head.add(fn);
