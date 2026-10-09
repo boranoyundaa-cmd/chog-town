@@ -48,11 +48,15 @@ function faceGradient(stops) {
   const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.9 })); m.position.z = 0.032; m.userData.noOutline = true; return m;
 }
 // the hair's bangs inside an open hood or helmet: a rounded cap of hair colour following the opening, zigzag lower edge, so it reads as sitting behind the hood's rim
-function hairFringe(c) {
-  const sh = new THREE.Shape(), R = 0.255, cy = -0.005, y0 = 0.115, a1 = Math.asin((y0 - cy) / R);
-  for (let i = 0; i <= 16; i++) { const a = (Math.PI - a1) - (Math.PI - 2 * a1) * (i / 16), x = R * Math.cos(a), y = cy + R * Math.sin(a); i ? sh.lineTo(x, y) : sh.moveTo(x, y); }
-  for (const [x, y] of [[0.19, 0.115], [0.145, 0.045], [0.1, 0.11], [0.04, 0.025], [-0.01, 0.11], [-0.065, 0.04], [-0.115, 0.11], [-0.16, 0.06]]) sh.lineTo(x, y);
-  sh.lineTo(-R * Math.cos(a1), y0);
+function hairFringe(c) {                                        // bangs that fill the whole top of the face plate (same outline as the plate, a hair larger), so no cream gap shows at the top or the sides; the lower edge is spiky
+  const V = THREE.Vector2, y0 = 0.115, side = new THREE.CubicBezierCurve(new V(0.27, 0.21), new V(0.325, 0.12), new V(0.33, -0.06), new V(0.285, -0.15));
+  const right = []; for (let i = 0; i <= 24; i++) { const p = side.getPoint(i / 24); if (p.y >= y0) right.push([p.x + 0.006, p.y + (i === 0 ? 0.032 : 0)]); }
+  const sh = new THREE.Shape(); sh.moveTo(-0.276, 0.222);
+  for (const [x, y] of [[-0.14, 0.248], [-0.05, 0.218], [0.06, 0.258], [0.15, 0.223]]) sh.lineTo(x, y);
+  right.forEach(([x, y]) => sh.lineTo(x, y));
+  const xr = right[right.length - 1][0];
+  for (const [x, y] of [[0.2, 0.125], [0.15, 0.06], [0.105, 0.12], [0.045, 0.045], [-0.01, 0.12], [-0.07, 0.055], [-0.12, 0.12], [-0.18, 0.07]]) sh.lineTo(x, y);
+  sh.lineTo(-xr, 0.115); for (let i = right.length - 2; i >= 1; i--) sh.lineTo(-right[i][0], right[i][1]);
   const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: c })); m.position.z = 0.043; m.userData.noOutline = true; return m;
 }
 function bladeHull(L, W, T, bend, m, segs = 5) {                      // the blade() shape grown by m on every side, from m below its base to m past its tip
