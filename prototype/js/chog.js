@@ -48,17 +48,6 @@ function faceGradient(stops) {
   const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cv), transparent: true, opacity: 0.9 })); m.position.z = 0.032; m.userData.noOutline = true; return m;
 }
 // the hair's bangs inside an open hood or helmet: a rounded cap of hair colour following the opening, zigzag lower edge, so it reads as sitting behind the hood's rim
-function hairFringe(c) {                                        // bangs that fill the whole top of the face plate (same outline as the plate, a hair larger), so no cream gap shows at the top or the sides; the lower edge is spiky
-  const V = THREE.Vector2, y0 = 0.115, side = new THREE.CubicBezierCurve(new V(0.27, 0.21), new V(0.325, 0.12), new V(0.33, -0.06), new V(0.285, -0.15));
-  const right = []; for (let i = 0; i <= 24; i++) { const p = side.getPoint(i / 24); if (p.y >= y0) right.push([p.x + 0.006, p.y + (i === 0 ? 0.032 : 0)]); }
-  const sh = new THREE.Shape(); sh.moveTo(-0.276, 0.222);
-  for (const [x, y] of [[-0.14, 0.248], [-0.05, 0.218], [0.06, 0.258], [0.15, 0.223]]) sh.lineTo(x, y);
-  right.forEach(([x, y]) => sh.lineTo(x, y));
-  const xr = right[right.length - 1][0];
-  for (const [x, y] of [[0.2, 0.125], [0.15, 0.06], [0.105, 0.12], [0.045, 0.045], [-0.01, 0.12], [-0.07, 0.055], [-0.12, 0.12], [-0.18, 0.07]]) sh.lineTo(x, y);
-  sh.lineTo(-xr, 0.115); for (let i = right.length - 2; i >= 1; i--) sh.lineTo(-right[i][0], right[i][1]);
-  const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: c })); m.position.z = 0.043; m.userData.noOutline = true; return m;
-}
 function bladeHull(L, W, T, bend, m, segs = 5) {                      // the blade() shape grown by m on every side, from m below its base to m past its tip
   const pos = [], idx = [];
   for (let i = 0; i <= segs; i++) {
@@ -193,7 +182,6 @@ function chog(o = {}) {
   { const fm = cm(hasHat ? FACE_GEO_HAT : FACE_GEO, o.bald ? new THREE.Color(FACEL).multiplyScalar(0.84).getHex() : FACEL); fm.receiveShadow = false; if (o.bald) fm.userData.noOutline = true; face.add(fm); }          // a bald skull's face plate has no ink line of its own: it sits in the round skull          // the face never sits in the hair's shadow
   if (o.faceGrad) face.add(faceGradient(o.faceGrad));
   const hl = shadeC(0.95);
-  if ((o.fringe || (bl && bl.fringe)) && !hasHat && !o.bald) face.add(hairFringe(hl));          // bangs only where headwear leaves the forehead open (hoods, helmet, toad suits); under a cap the art shows none
   let eyes = [];
   if (o.eyeStyle) eyes = chogEyes(face, o);
   else for (const sx of [-1, 1]) {
@@ -209,7 +197,6 @@ function chog(o = {}) {
   if (o.head === 'clownnose') { const cn = cm(new THREE.SphereGeometry(0.1, 12, 9), 0xe8202a, 0, -0.06, 0.1); cn.userData.noOutline = true; face.add(cn); face.add(decal(new THREE.CircleGeometry(0.026, 8), 0xffffff, -0.035, -0.02, 0.196, 1, 0.7)); }
   if (o.head === 'thirdeye') { face.add(decal(new THREE.CircleGeometry(1, 16), 0x1a1030, 0, 0.115, 0.045, 0.1, 0.056)); face.add(decal(new THREE.CircleGeometry(1, 16), 0xffffff, 0, 0.115, 0.047, 0.088, 0.046)); face.add(decal(new THREE.CircleGeometry(0.026, 10), 0x1a1030, 0, 0.115, 0.049)); face.add(decal(new THREE.CircleGeometry(0.009, 6), 0xffffff, -0.01, 0.125, 0.05)); }
   CM_K = EXPO;
-  if (bl && bl.fringe && !hatLook) { /* fringe is added below the face block; see o.fringe */ }
   if (bl) bodyBuild({ root, body, head, hairG, face, arms, legs, o, hasHat }, bl, o.bodyName);
   if (hatLook) hatLook(head, o);
   else if (o.head === 'straw') {
