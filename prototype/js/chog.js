@@ -32,6 +32,14 @@ const FACE_GEO = (() => {
   const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.018, bevelSegments: 2, curveSegments: 10 });
   g.translate(0, 0, -0.1); return g;
 })();
+// under a hat the plate stops at the hat's rim: the full plate's top corners (x = +-0.3, y = 0.2) reach past the crown and showed as cream bumps beside the cap
+const FACE_GEO_HAT = (() => {
+  const s = new THREE.Shape();
+  s.moveTo(-0.285, 0.16); s.lineTo(0.285, 0.16); s.bezierCurveTo(0.33, 0.08, 0.33, -0.06, 0.285, -0.15); s.bezierCurveTo(0.24, -0.245, 0.14, -0.262, 0, -0.262);
+  s.bezierCurveTo(-0.14, -0.262, -0.24, -0.245, -0.285, -0.15); s.bezierCurveTo(-0.33, -0.06, -0.33, 0.08, -0.285, 0.16);
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.018, bevelSegments: 2, curveSegments: 10 });
+  g.translate(0, 0, -0.1); return g;
+})();
 // a vertical colour gradient laid over the face (Multi Colored skin: pink at the top, green at the jaw)
 function faceGradient(stops) {
   const cv = document.createElement('canvas'); cv.width = 4; cv.height = 64; const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
@@ -41,12 +49,24 @@ function faceGradient(stops) {
 }
 // the hair's bangs inside an open hood or helmet: a rounded cap of hair colour following the opening, zigzag lower edge, so it reads as sitting behind the hood's rim
 function hairFringe(c) {
-  const sh = new THREE.Shape(), cx = 0, cy = -0.03, rx = 0.26, ry = 0.27, a0 = 0.56;
-  for (let i = 0; i <= 14; i++) { const a = Math.PI - a0 - (Math.PI - 2 * a0) * (1 - i / 14), x = cx + rx * Math.cos(a), y = cy + ry * Math.sin(a); i ? sh.lineTo(x, y) : sh.moveTo(x, y); }
-  const tips = [-0.2, -0.1, 0, 0.1, 0.2], valleys = [-0.15, -0.05, 0.05, 0.15];
-  sh.lineTo(-0.22, 0.13); tips.forEach((x, i) => { sh.lineTo(x, 0.12 + (i % 2) * 0.012); if (i < 4) sh.lineTo(valleys[i], 0.19); }); sh.lineTo(0.22, 0.13);
+  const sh = new THREE.Shape(), R = 0.255, cy = -0.005, y0 = 0.115, a1 = Math.asin((y0 - cy) / R);
+  for (let i = 0; i <= 16; i++) { const a = (Math.PI - a1) - (Math.PI - 2 * a1) * (i / 16), x = R * Math.cos(a), y = cy + R * Math.sin(a); i ? sh.lineTo(x, y) : sh.moveTo(x, y); }
+  for (const [x, y] of [[0.19, 0.115], [0.145, 0.045], [0.1, 0.11], [0.04, 0.025], [-0.01, 0.11], [-0.065, 0.04], [-0.115, 0.11], [-0.16, 0.06]]) sh.lineTo(x, y);
+  sh.lineTo(-R * Math.cos(a1), y0);
   const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: c })); m.position.z = 0.043; m.userData.noOutline = true; return m;
 }
+function bladeHull(L, W, T, bend, m, segs = 5) {                      // the blade() shape grown by m on every side, from m below its base to m past its tip
+  const pos = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const t = i / segs, w = W * Math.pow(1 - t, 0.8) * 0.5 + 0.003 + m, th = T * (1 - t) * 0.5 + 0.003 + m * 0.6;
+    const y = t * (L + m) - m * (1 - t), z = bend * t * t * L;
+    pos.push(-w, y, z - th, w, y, z - th, w, y, z + th, -w, y, z + th);
+  }
+  for (let i = 0; i < segs; i++) { const a = i * 4, b = (i + 1) * 4; for (let k = 0; k < 4; k++) { const k2 = (k + 1) % 4; idx.push(a + k, a + k2, b + k, a + k2, b + k2, b + k); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx);
+  const ng = g.toNonIndexed(); ng.computeVertexNormals(); return ng;
+}
+function addBladeHull(parent, b, L, W, T, bend) { const h = new THREE.Mesh(bladeHull(L, W, T, bend, HULL_T * 0.2), inkMat); h.userData.isHull = true; h.userData.noOutline = true; h.position.copy(b.position); h.quaternion.copy(b.quaternion); h.castShadow = false; h.receiveShadow = false; parent.add(h); }
 function orientBlade(mesh, d) {
   const Y = d.clone().normalize(); const Z = new THREE.Vector3(0, 0.25, 1); Z.addScaledVector(Y, -Z.dot(Y));
   if (Z.lengthSq() < 1e-3) Z.set(0, 1, 0); Z.normalize();
@@ -158,15 +178,15 @@ function chog(o = {}) {
   if (!o.bald) for (const [p, d, L, W, bend, k] of blades) {
     const b = cm(blade(L * hk, W * 1.15 * (hk > 1 ? 1.15 : 1), 0.16, bend), o.hairMulti ? rainbow() : o.hairPalette ? palette() : shadeC(0.92 + (k - 0.8) * 0.4), p[0], p[1], p[2], true); b.userData.noOutline = true;
     orientBlade(b, new THREE.Vector3(d[0], d[1], d[2]));
-    hairG.add(b);
+    hairG.add(b); addBladeHull(hairG, b, L * hk, W * 1.15 * (hk > 1 ? 1.15 : 1), 0.16, bend);
   }
   if (!o.bald) for (let i = 0; i < 9; i++) {
     const a = (i / 9) * Math.PI * 2, dxh = Math.sin(a), dzh = Math.cos(a); if (dzh > 0.3) continue;
     const b = cm(blade(0.42 * hk, 0.34, 0.16, -0.3), o.hairMulti ? rainbow() : o.hairPalette ? palette() : shadeC(0.9 + 0.2 * Math.abs(Math.sin(i * 2.3))), dxh * 0.4, 0.12 + 0.12 * Math.sin(i * 1.7), dzh * 0.36 - 0.12, true); b.userData.noOutline = true;
-    orientBlade(b, new THREE.Vector3(dxh, 0.4, dzh * 0.8 - 0.25)); hairG.add(b);
+    orientBlade(b, new THREE.Vector3(dxh, 0.4, dzh * 0.8 - 0.25)); hairG.add(b); addBladeHull(hairG, b, 0.42 * hk, 0.34, 0.16, -0.3);
   }
   const face = new THREE.Group(); face.position.set(0, -0.02, 0.35); head.add(face);
-  { const fm = cm(FACE_GEO, o.bald ? new THREE.Color(FACEL).multiplyScalar(0.84).getHex() : FACEL); fm.receiveShadow = false; if (o.bald) fm.userData.noOutline = true; face.add(fm); }          // a bald skull's face plate has no ink line of its own: it sits in the round skull          // the face never sits in the hair's shadow
+  { const fm = cm(hasHat ? FACE_GEO_HAT : FACE_GEO, o.bald ? new THREE.Color(FACEL).multiplyScalar(0.84).getHex() : FACEL); fm.receiveShadow = false; if (o.bald) fm.userData.noOutline = true; face.add(fm); }          // a bald skull's face plate has no ink line of its own: it sits in the round skull          // the face never sits in the hair's shadow
   if (o.faceGrad) face.add(faceGradient(o.faceGrad));
   const hl = shadeC(0.95);
   if ((o.fringe || (bl && bl.fringe)) && !hasHat && !o.bald) face.add(hairFringe(hl));          // bangs only where headwear leaves the forehead open (hoods, helmet, toad suits); under a cap the art shows none
