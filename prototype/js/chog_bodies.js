@@ -53,12 +53,20 @@ function ringAt(body, c, r, tube, y, z = 0, sz = 1) { const m = add(body, GEO.to
 function hoodDown(ctx, c) { ringAt(ctx.body, c, 0.2, 0.07, 0.775, -0.04); const b = add(ctx.body, GEO.sph(0.14, 8, 6), c, 0, 0.74, -0.17); b.scale.set(1.25, 0.8, 0.8); }
 function collar(ctx, c, r = 0.2, tube = 0.05, y = 0.75) { ringAt(ctx.body, c, r, tube, y); }
 function hairUnder(ctx) { ctx.hairG.children.forEach((m, i) => { if (i) m.visible = false; }); }          // under a hood only the hair mass shows; the blades hide
-// a hood that is up: a dome over the head and a back/side shell with the front left open around the face
+// a hood that is up: a dome over the head and a back/side shell, a funnel from the shell to the rim (so no gap shows between hood and rim), the rim in front of the face plate,
+// and optionally the hair showing at the forehead: a flat piece with a spiky lower edge, built wider than the opening and tucked behind the rim, so it can leave no gap
 function hoodUp(ctx, c, s = {}) {
   const head = ctx.head, R = ctx.hasHat ? 0.56 : 0.5, y = 0.06, z = -0.1; hairUnder(ctx); ctx.hairG.scale.setScalar(0.84);         // under a hood the hair mass shrinks so neither it nor its ink hull reaches through the shell
   const top = cm(new THREE.SphereGeometry(R, 16, 8, 0, Math.PI * 2, 0, 1.1), c, 0, y, z, true); top.scale.set(1.04, 1, 1); top.userData.noOutline = true; head.add(top);
   const side = cm(new THREE.SphereGeometry(R, 16, 10, 2.18, 5.06, 1.1, Math.PI - 1.1), c, 0, y, z, true); side.scale.set(1.04, 1, 1); side.userData.noOutline = true; head.add(side);
-  const rim = add(head, GEO.tor(0.305, 0.02, 6, 26), s.rim ?? shade(c, 1.12), 0, -0.03, 0.4); rim.scale.set(1, 1.0, 1); rim.userData.hullT = 0.02;      // in front of the face plate (its front is at z = 0.39), so the plate's edge sits behind the rim, not over it
+  const fn = cm(new THREE.CylinderGeometry(0.31, 0.47, 0.42, 28, 1, true), c, 0, -0.03, 0.19, true); fn.rotation.x = Math.PI / 2; fn.userData.noOutline = true; head.add(fn);
+  const rim = add(head, GEO.tor(0.305, s.tube ?? 0.02, 6, 26), s.rim ?? shade(c, 1.12), 0, -0.03, 0.4); rim.userData.hullT = 0.02;      // in front of the face plate (its front is at z = 0.39), so the plate's edge sits behind the rim, not over it
+  if (s.fringe) {
+    const hc = new THREE.Color(ctx.o.hair || 0x5b35b0).multiplyScalar(0.95), R2 = 0.31, cy = -0.01, y0 = 0.1, a1 = Math.asin((y0 - cy) / R2), sh = new THREE.Shape();
+    for (let i = 0; i <= 20; i++) { const a = (Math.PI - a1) - (Math.PI - 2 * a1) * (i / 20), px = R2 * Math.cos(a), py = cy + R2 * Math.sin(a); i ? sh.lineTo(px, py) : sh.moveTo(px, py); }
+    for (const [px, py] of [[0.2, 0.1], [0.16, 0.035], [0.11, 0.095], [0.05, 0.01], [-0.005, 0.1], [-0.06, 0.03], [-0.115, 0.1], [-0.17, 0.045], [-0.22, 0.1]]) sh.lineTo(px, py);
+    const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: hc })); m.position.z = 0.043; m.userData.noOutline = true; ctx.face.add(m);
+  }
   return { top, side, rim };
 }
 
@@ -77,7 +85,7 @@ const hoodie = (c, o = {}) => Object.assign({ c, long: true, draw: g => {
   BD.poly(g, shade(c, 0.88), [[-0.15, 0.03], [0.15, 0.03], [0.21, 0.2], [-0.21, 0.2]], shade(c, 0.66), 5);
   for (const sx of [-1, 1]) { BD.path(g, '#f4f0e8', 5, [[sx * 0.045, -0.21], [sx * 0.05, 0.0]]); BD.disc(g, '#f4f0e8', sx * 0.05, 0.015, 0.012, 0.018); }
   BD.rect(g, shade(c, 0.8), -0.3, 0.205, 0.3, 0.23); o.print && o.print(g);
-}, build: ctx => { if (!o.up) hoodDown(ctx, c); else hoodUp(ctx, c); } }, o);
+}, build: ctx => { if (!o.up) hoodDown(ctx, c); else hoodUp(ctx, c, { fringe: true }); } }, o);
 const track = (c, stripe = '#ffffff', o = {}) => Object.assign({ c, long: true, draw: g => {
   BD.rect(g, shade(c, 0.84), -0.3, -0.23, 0.3, -0.185); BD.rect(g, stripe, -0.3, -0.21, 0.3, -0.195);
   for (const sx of [-1, 1]) { BD.rect(g, stripe, sx * 0.205, -0.23, sx * 0.225, 0.2); BD.rect(g, stripe, sx * 0.235, -0.23, sx * 0.25, 0.2); }
@@ -155,16 +163,16 @@ const chinese = c => ({ c, long: true, draw: g => {
   for (const v of [-0.06, 0.02, 0.1]) { BD.path(g, '#f0c040', 5, [[-0.07, v], [-0.016, v]]); BD.path(g, '#f0c040', 5, [[0.016, v], [0.07, v]]); BD.disc(g, '#f0c040', 0, v, 0.014, 0.02); }
   BD.rect(g, '#f0c040', -0.3, 0.2, 0.3, 0.23);
 }, build: ctx => { add(ctx.body, new THREE.CylinderGeometry(0.17, 0.19, 0.1, 10, 1, true), c, 0, 0.78, 0, true); ringAt(ctx.body, 0xf0c040, 0.18, 0.016, 0.83); } });
-const animalHood = (ctx, c, rim, extra) => { const h = hoodUp(ctx, c, { rim }); extra && extra(ctx, h); };
+const animalHood = (ctx, c, rim, extra, fringe) => { const h = hoodUp(ctx, c, { rim, fringe }); extra && extra(ctx, h); };
 const toad = (c, rim, patch, belly) => ({ c, long: true, pants: c, draw: g => { BD.disc(g, belly, 0, 0.07, 0.16, 0.17); BD.arc(g, shade(belly, 0.8), 4, 0, 0.0, 0.1, 0.03, 0.2, Math.PI - 0.2); },
-  build: ctx => animalHood(ctx, c, rim, ctx2 => { for (const sx of [-1, 1]) { const b = add(ctx.head, GEO.sph(0.16, 10, 8), c, sx * 0.3, 0.46, 0.0); b.scale.set(1, 0.9, 0.9); add(ctx.head, GEO.sph(0.16, 10, 8), rim, sx * 0.3, 0.46, 0.0).scale.set(0.8, 0.72, 1.0); const p = add(ctx.head, GEO.box(0.15, 0.08, 0.03), patch, sx * 0.3, 0.5, 0.16); p.rotation.z = -sx * 0.25; } }) });
+  build: ctx => animalHood(ctx, c, rim, ctx2 => { for (const sx of [-1, 1]) { const b = add(ctx.head, GEO.sph(0.16, 10, 8), c, sx * 0.3, 0.46, 0.0); b.scale.set(1, 0.9, 0.9); add(ctx.head, GEO.sph(0.16, 10, 8), rim, sx * 0.3, 0.46, 0.0).scale.set(0.8, 0.72, 1.0); const p = add(ctx.head, GEO.box(0.15, 0.08, 0.03), patch, sx * 0.3, 0.5, 0.16); p.rotation.z = -sx * 0.25; } }, true) });
 Object.assign(BODY_LOOK, {
   'Blue Chinese': chinese(0x2a52d0), 'Red Chinese': chinese(0xd02838),
   Gojo: { c: 0x1e1e34, long: true, pants: 0x1e1e34, draw: g => { BD.rect(g, '#2c2c4c', -0.3, -0.23, 0.3, -0.17); BD.path(g, '#3a3a5a', 3, [[0, -0.17], [0, 0.23]]); for (const v of [-0.1, 0.0, 0.1, 0.19]) BD.disc(g, '#d8b040', 0, v, 0.013, 0.019); BD.rect(g, '#2c2c4c', -0.3, 0.205, 0.3, 0.23); }, build: ctx => add(ctx.body, new THREE.CylinderGeometry(0.18, 0.2, 0.12, 10, 1, true), 0x2c2c4c, 0, 0.79, 0, true) },
   Guko: { c: 0xf08020, long: true, arm: 0x2a50c0, pants: 0xf08020, draw: g => { BD.poly(g, '#2a50c0', [[-0.12, -0.23], [0.12, -0.23], [0.0, -0.02]]); BD.poly(g, '#f08020', [[-0.07, -0.23], [0.07, -0.23], [0.0, -0.1]]); BD.rect(g, '#2a50c0', -0.3, 0.13, 0.3, 0.2); BD.rect(g, '#1a3080', -0.3, 0.19, 0.3, 0.205); BD.disc(g, '#f8f4e8', 0.13, 0.02, 0.05, 0.07, '#222', 3); BD.disc(g, '#222', 0.13, 0.02, 0.022, 0.03); } },
   'Sci Fi': { c: 0xd88a1c, draw: g => { for (const sx of [-1, 1]) BD.path(g, '#2c2c34', 12, [[sx * 0.2, -0.23], [-sx * 0.05, 0.14]]); BD.rect(g, '#2c2c34', -0.3, 0.12, 0.3, 0.2); BD.disc(g, '#30e8f8', 0, 0.16, 0.04, 0.03, '#0a3a40', 3); BD.disc(g, '#30e8f8', 0, -0.0, 0.03, 0.04, '#0a3a40', 3); BD.poly(g, '#a86a10', [[0.12, 0.0], [0.2, 0.0], [0.2, 0.08], [0.12, 0.08]], '#5a3808', 3); BD.poly(g, '#a86a10', [[-0.2, 0.0], [-0.12, 0.0], [-0.12, 0.08], [-0.2, 0.08]], '#5a3808', 3); }, build: ctx => { for (const sx of [-1, 1]) { const p = add(ctx.arms[sx > 0 ? 1 : 0], GEO.sph(0.14, 8, 6), 0x2c2c34, 0, 0.02, 0); p.scale.set(1.1, 0.6, 1.1); } } },
   'Astro Suit': { c: 0xeceff4, long: true, pants: 0xeceff4, draw: g => { BD.rect(g, '#a8aebc', -0.12, -0.12, 0.12, 0.04); for (const [u, c] of [[-0.07, '#d83030'], [-0.02, '#30a8f0'], [0.03, '#f4d03a'], [0.08, '#30d060']]) BD.disc(g, c, u, -0.07, 0.014, 0.02); BD.rect(g, '#2c2c34', -0.1, -0.02, 0.1, 0.01); BD.rect(g, '#f4f4f4', -0.2, 0.0, -0.1, 0.05); for (const v of [0.01, 0.025, 0.04]) BD.rect(g, '#d83030', -0.2, v, -0.1, v + 0.005); BD.rect(g, '#2a4aa8', -0.2, 0.0, -0.16, 0.025); BD.path(g, '#b8bcc8', 4, [[0, 0.04], [0, 0.23]]); BD.rect(g, '#a8aebc', -0.3, 0.2, 0.3, 0.23); },
-    build: ctx => { ringAt(ctx.body, 0xb8bcc8, 0.24, 0.075, 0.74); const rg = add(ctx.head, GEO.tor(0.31, 0.03, 6, 26), 0xc8ccd6, 0, -0.03, 0.4); rg.userData.hullT = 0.025; hairUnder(ctx); rg.scale.set(1, 1.05, 1); for (const sx of [-1, 1]) { const l = add(ctx.head, GEO.cyl(0.07, 0.07, 0.1, 8), 0x9aa0b0, sx * 0.43, 0.02, 0.0); l.rotation.z = Math.PI / 2; } } },
+    build: ctx => { ringAt(ctx.body, 0xb8bcc8, 0.24, 0.075, 0.74); hoodUp(ctx, 0xe8ecf3, { rim: 0xb4bac8, tube: 0.05, fringe: true }); for (const sx of [-1, 1]) { const l = add(ctx.head, GEO.cyl(0.07, 0.07, 0.1, 8), 0x9aa0b0, sx * 0.45, 0.02, 0.05); l.rotation.z = Math.PI / 2; } } },
   Mummy: { c: 0xe8dcb8, long: true, pants: 0xe8dcb8, draw: g => { const r = rng(3); for (let i = 0; i < 16; i++) { const v = -0.24 + i * 0.03; BD.path(g, '#a89868', 4, [[-0.6, v + 0.04], [0.6, v - 0.04 + r() * 0.02]]); } BD.path(g, '#c8b888', 3, [[-0.6, 0.0], [0.6, -0.06]]); } },
   'Golden Armor': { c: 0xe0b040, draw: g => { BD.poly(g, '#f4d060', [[-0.2, -0.23], [0.2, -0.23], [0.16, 0.12], [0.0, 0.17], [-0.16, 0.12]], '#8a5a10', 5); BD.path(g, '#a87818', 4, [[0, -0.22], [0, 0.16]]); for (const sx of [-1, 1]) BD.path(g, '#a87818', 3, [[sx * 0.06, -0.1], [sx * 0.15, -0.04]]); BD.rect(g, '#8a5a10', -0.3, 0.14, 0.3, 0.21); BD.disc(g, '#f8e888', 0, 0.175, 0.04, 0.03, '#6a4208', 3); },
     build: ctx => { for (let i = 0; i < 2; i++) { const a = ctx.arms[i], sx = i ? 1 : -1; const p = add(a, GEO.sph(0.17, 10, 7), 0xe0b040, sx * 0.02, 0.03, 0); p.scale.set(1.1, 0.72, 1.12); const q = add(a, GEO.sph(0.15, 10, 7), 0xf0c860, sx * 0.03, 0.0, 0); q.scale.set(1.1, 0.5, 1.08); ringAt(a, 0x8a5a10, 0.15, 0.012, 0.04).scale.set(1, 1, 0.6); } } },
