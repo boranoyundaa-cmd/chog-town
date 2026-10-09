@@ -59,11 +59,12 @@ function hoodUp(ctx, c, s = {}) {
   const head = ctx.head, R = ctx.hasHat ? 0.56 : 0.5, y = 0.06, z = -0.1; hairUnder(ctx); ctx.hairG.scale.setScalar(0.84);         // under a hood the hair mass shrinks so neither it nor its ink hull reaches through the shell
   const top = cm(new THREE.SphereGeometry(R, 16, 8, 0, Math.PI * 2, 0, 1.1), c, 0, y, z, true); top.scale.set(1.04, 1, 1); top.userData.noOutline = true; head.add(top);
   const side = cm(new THREE.SphereGeometry(R, 16, 10, 2.18, 5.06, 1.1, Math.PI - 1.1), c, 0, y, z, true); side.scale.set(1.04, 1, 1); side.userData.noOutline = true; head.add(side);
-  const fn = cm(new THREE.CylinderGeometry(0.31, 0.47, 0.42, 28, 1, true), c, 0, -0.03, 0.19, true); fn.rotation.x = Math.PI / 2; fn.userData.noOutline = true; head.add(fn);
-  const rim = add(head, GEO.tor(0.305, s.tube ?? 0.02, 6, 26), s.rim ?? shade(c, 1.12), 0, -0.03, 0.4); rim.userData.hullT = 0.02;      // in front of the face plate (its front is at z = 0.39), so the plate's edge sits behind the rim, not over it
+  const fn = cm(new THREE.CylinderGeometry(0.35, 0.49, 0.42, 28, 1, true), c, 0, -0.03, 0.19, true); fn.rotation.x = Math.PI / 2; fn.scale.set(1, 1, 0.92); fn.userData.noOutline = true; head.add(fn);
+  const rim = add(head, GEO.tor(0.35, s.tube ?? 0.02, 6, 26), s.rim ?? shade(c, 1.12), 0, -0.03, 0.4); rim.scale.set(1, 0.92, 1); rim.userData.hullT = 0.02;      // wide enough that the face plate's edge (half-width 0.33 + its hull) hides under the rim: no skin shows between rim and hood
+        // in front of the face plate (its front is at z = 0.39), so the plate's edge sits behind the rim, not over it
   if (s.fringe) {
-    const hc = new THREE.Color(ctx.o.hair || 0x5b35b0).multiplyScalar(0.95), R2 = 0.31, cy = -0.01, y0 = 0.1, a1 = Math.asin((y0 - cy) / R2), sh = new THREE.Shape();
-    for (let i = 0; i <= 20; i++) { const a = (Math.PI - a1) - (Math.PI - 2 * a1) * (i / 20), px = R2 * Math.cos(a), py = cy + R2 * Math.sin(a); i ? sh.lineTo(px, py) : sh.moveTo(px, py); }
+    const hc = new THREE.Color(ctx.o.hair || 0x5b35b0).multiplyScalar(0.95), R2 = 0.345, RY = 0.31, cy = -0.01, y0 = 0.1, a1 = Math.asin((y0 - cy) / RY), sh = new THREE.Shape();
+    for (let i = 0; i <= 20; i++) { const a = (Math.PI - a1) - (Math.PI - 2 * a1) * (i / 20), px = R2 * Math.cos(a), py = cy + RY * Math.sin(a); i ? sh.lineTo(px, py) : sh.moveTo(px, py); }
     for (const [px, py] of [[0.2, 0.1], [0.16, 0.035], [0.11, 0.095], [0.05, 0.01], [-0.005, 0.1], [-0.06, 0.03], [-0.115, 0.1], [-0.17, 0.045], [-0.22, 0.1]]) sh.lineTo(px, py);
     const m = new THREE.Mesh(new THREE.ShapeGeometry(sh), new THREE.MeshBasicMaterial({ color: hc })); m.position.z = 0.043; m.userData.noOutline = true; ctx.face.add(m);
   }
