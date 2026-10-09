@@ -76,7 +76,7 @@ GAME.walkTo = function (x, z, wasBlocked) {
 // ---- input: click to move (a short press that did not drag), WASD / arrows, hover feedback
 GAME.nameOf = root => (root === GAME.me ? (GAME.nameFn ? GAME.nameFn() : 'Chog') : root.userData.netName || 'Chog');
 GAME.extraRoots = () => [];                                                         // other players' Chogs (net.js replaces this)
-GAME.zoomMin = 7; GAME.zoomMax = 26; GAME.zoomT = 15; GAME.hoverChog = null;
+GAME.zoomMin = 7; GAME.zoomMax = 26; GAME.zoomT = 15; GAME.hoverChog = null; GAME.camFollowAt = 0;
 // every place (town, room, hotel floor) has its own default zoom; how far you zoomed in or out is kept as a ratio of that default, so changing place never resets it
 GAME.zoomBase = 15; GAME.townBase = 15;
 GAME.sceneZoom = def => { const k = GAME.zoomT / GAME.zoomBase; GAME.zoomBase = def; GAME.zoomT = Math.max(GAME.zoomMin, Math.min(GAME.zoomMax, def * k)); };
@@ -188,7 +188,10 @@ animated.push((t, dt) => {
   GAME.ring.position.set(me.position.x, 0.04, me.position.z); GAME.ring.material.opacity = 0.55 + 0.2 * Math.sin(t * 3);
   if (GAME.markT > 0) { GAME.markT = Math.max(0, GAME.markT - dt * 1.4); GAME.mark.material.opacity = GAME.markT; GAME.mark.scale.setScalar(1 + (1 - GAME.markT) * 0.8); }
   // follow camera
-  if (GAME.camFixed) _want.copy(GAME.camFixed);
+  if (GAME.camFixed) {                                                          // a room: the whole floor stays in view; zoomed in beyond that the camera follows you
+    _want.copy(GAME.camFixed);
+    if (GAME.camFollowAt) { const t = Math.max(0, Math.min(1, (GAME.camFollowAt * 0.97 - GAME.zoomT) / (GAME.camFollowAt * 0.3))); if (t > 0) _want.lerp(_p.set(me.position.x + GAME.camFixed.x, 1.1, me.position.z + GAME.camFixed.z), t); }
+  }
   else { _want.set(me.position.x, 1.1, me.position.z); _want.x = Math.max(-HALF - 1, Math.min(HALF + 1, _want.x)); _want.z = Math.max(-HALF - 1, Math.min(HALF + 1, _want.z)); }
   camTarget.lerp(_want, 1 - Math.exp(-dt * 5));
   FW += (GAME.zoomT - FW) * (1 - Math.exp(-dt * 10)); updateCam();

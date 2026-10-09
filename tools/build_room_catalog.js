@@ -18,7 +18,6 @@ for (const [id, d] of Object.entries(SPACE.PIECES)) {
   if (d.kit === 'nft' || d.kit === 'hotel') continue;                                                     // frames need the wallet feed first
   pieces[id] = { fp: d.fp, cat: d.cat, kit: d.kit, wall: WALLED(d), edit: d.parts.some(p => p.t === 'text' && p.edit) };
 }
-const out = { themes: Object.keys(SPACE.THEMES), views: Object.keys(SPACE.VIEWS), walls: names('WALL'), floors: names('FLOOR'), pieces,
-  windows: Object.fromEntries(Object.entries(SPACE.THEMES).map(([k, t]) => [k, (t.windows || []).map(w => ({ wall: w.wall, u: w.u, w: w.w }))])) };
+const out = { themes: Object.keys(SPACE.THEMES), views: Object.keys(SPACE.VIEWS), walls: names('WALL'), floors: names('FLOOR'), pieces };
 fs.writeFileSync(path.join(__dirname, '..', 'server', 'room_catalog.json'), JSON.stringify(out));
 console.log('room_catalog.json:', out.themes.length, 'themes,', Object.keys(pieces).length, 'pieces,', out.walls.length, 'wall and', out.floors.length, 'floor patterns');

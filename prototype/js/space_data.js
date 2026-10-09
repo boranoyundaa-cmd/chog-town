@@ -8,8 +8,17 @@
 
   // scenery helper: a world position that lands at screen offset (r right, u up) from the room centre, d units behind it (camera looks along -(1,1,1))
   const at = (r, u, d = 40) => { const k = d / Math.sqrt(3); return [r * 0.7071 - u * 0.4082 - k, u * 0.8165 - k, -r * 0.7071 - u * 0.4082 - k]; };
-  // windows sit above the furniture line (bottom edge at 1.6): two on the back wall, one over the desk
-  const wins = (w, h, shape) => [{ wall: 'z', u: -1.3, y: 2.15, w, h, shape }, { wall: 'z', u: 1.2, y: 2.15, w, h, shape }, { wall: 'x', u: -1.8, y: 2.15, w, h, shape }];
+  // windows sit above the furniture line (bottom edge at 1.6). A theme holds a window TEMPLATE (size and shape); SPACE.windowsFor(theme, W, D) lays the windows out for the room:
+  // one every 4.4 m along each back wall, none over the door (z wall, right end) and none in the first 2.2 m of the wall that would crowd the corner
+  const wins = (w, h, shape) => ({ w, h, shape, y: 2.15 });
+  SPACE.stairsU = W => W / 2 - 4.8;                                       // where the stairs stand on the north wall of a room with an upper level (3.2 m left of the door)
+  SPACE.windowsFor = (th, W, D, stairs) => {
+    const t = th.windows; if (!t || !t.w) return Array.isArray(t) ? t : [];
+    const out = [], end = (stairs ? SPACE.stairsU(W) - 1.3 : W / 2 - 1.6 - 0.9), gap = 4.4;
+    for (let u = -W / 2 + 2.4; u + t.w / 2 + 0.6 < end; u += gap) out.push({ wall: 'z', u: +u.toFixed(2), y: t.y, w: t.w, h: t.h, shape: t.shape });
+    for (let u = -D / 2 + 2.4; u + t.w / 2 + 0.6 < D / 2 - 0.4; u += gap) out.push({ wall: 'x', u: +u.toFixed(2), y: t.y, w: t.w, h: t.h, shape: t.shape });
+    return out;
+  };
   // ---------------------------------------------------------------- themes = asset kits: a palette, a default wall and floor, window shape, scenery. NO render style, NO lighting (light comes only from the pieces placed in a space).
   const T = SPACE.THEMES;
   T.studio = {
@@ -67,7 +76,7 @@
   def('floorLamp', 'Floor lamp', 'light', [0.5, 0.5], [Cy([0.2, 0.22, 0.05, 10], [0, 0.03, 0], '$trim'), Cy([0.025, 0.025, 1.7, 6], [0, 0.9, 0], '$trim'), Cy([0.22, 0.3, 0.42, 12], [0, 1.85, 0], '$glow', { e: 1, o: 0.95, g: 1.8 }), Li([0, 1.8, 0], '$glow', 0.6, 6)]);
   def('tableLamp', 'Table lamp', 'light', [0.4, 0.4], [Cy([0.12, 0.14, 0.04, 10], [0, 0.02, 0], '$trim'), Cy([0.02, 0.02, 0.3, 6], [0, 0.18, 0], '$trim'), Cy([0.1, 0.16, 0.2, 10], [0, 0.42, 0], '$glow', { e: 1, g: 1 }), Li([0, 0.5, 0], '$glow', 0.4, 4)]);
   def('pendantLamp', 'Pendant lamp', 'ceiling', [0.5, 0.5], [Cy([0.012, 0.012, 0.7, 4], [0, 2.95, 0], '$trim'), Cy([0.05, 0.3, 0.26, 14], [0, 2.52, 0], '$trim'), Cy([0.2, 0.2, 0.05, 14], [0, 2.38, 0], '$glow', { e: 1, g: 2.6 }), Li([0, 2.3, 0], '$glow', 0.85, 8.5)]);
-  def('ceilingNeon', 'Ceiling neon', 'ceiling', [1.6, 0.3], [B([1.7, 0.05, 0.1], [0, 3.1, 0], '$trim'), B([1.6, 0.06, 0.12], [0, 3.03, 0], '$accent', { e: 1, g: 2.4 }), Li([0, 2.8, 0], '$accent', 0.8, 7)]);
+  def('ceilingNeon', 'Ceiling neon', 'ceiling', [1.6, 0.3], [Cy([0.012, 0.012, 0.3, 4], [-0.7, 3.15, 0], '$trim'), Cy([0.012, 0.012, 0.3, 4], [0.7, 3.15, 0], '$trim'), B([1.7, 0.05, 0.1], [0, 3.0, 0], '$trim'), B([1.6, 0.06, 0.12], [0, 2.94, 0], '$accent', { e: 1, g: 2.4 }), Li([0, 2.7, 0], '$accent', 0.8, 7)]);
   def('plant', 'Plant', 'deco', [0.6, 0.6], [Cy([0.22, 0.17, 0.34, 10], [0, 0.17, 0], '$accent2'), Cy([0.03, 0.03, 0.5, 5], [0, 0.55, 0], '$plant'), Sp([0.26], [0, 0.85, 0], '$plant', { k: [1, 0.9, 1] }), Sp([0.2], [0.2, 0.7, 0.05], '$plant'), Sp([0.2], [-0.18, 0.72, -0.05], '$plant')]);
   def('tallPlant', 'Tall plant', 'deco', [0.7, 0.7], [Cy([0.26, 0.2, 0.42, 10], [0, 0.21, 0], '$trim'), Cy([0.04, 0.05, 1.3, 5], [0, 1.0, 0], '$wood'), Sp([0.4], [0, 1.85, 0], '$plant', { k: [1, 0.8, 1] }), Sp([0.3], [0.3, 1.5, 0.1], '$plant'), Sp([0.3], [-0.3, 1.55, -0.1], '$plant')]);
   def('rug', 'Rug', 'floor', [3.0, 2.0], [B([3.0, 0.03, 2.0], [0, 0.015, 0], '$fabric2'), B([2.6, 0.035, 1.6], [0, 0.017, 0], '$fabric1'), B([2.2, 0.04, 1.2], [0, 0.02, 0], '$fabric2')]);
@@ -78,12 +87,14 @@
   def('fridge', 'Fridge', 'kitchen', [0.9, 0.8], [B([0.85, 1.9, 0.75], [0, 0.95, 0], '$metal'), B([0.04, 0.5, 0.04], [0.32, 1.2, 0.4], '$trim'), B([0.8, 0.03, 0.02], [0, 1.15, 0.38], '$trim')]);
   def('beanbag', 'Bean bag', 'seat', [1.1, 1.1], [Sp([0.55], [0, 0.38, 0], '$fabric2', { k: [1, 0.7, 1] }), Sp([0.3], [0, 0.6, -0.2], '$fabric2', { k: [1, 0.6, 1] })]);
   def('neonOpen', 'Neon sign', 'wall', [1.4, 0.1], [Tx('OPEN', [1.2, 0.42], [0, 1.9, 0.04], '$accent', { glow: '$accent' }), Pl([1.6, 0.8], [0, 1.9, 0.03], '$accent', { e: 1, o: 0.12 })]);
+  def('lampTable', 'Lamp table', 'light', [0.6, 0.6], [Cy([0.3, 0.3, 0.05, 14], [0, 0.55, 0], '$wood'), Cy([0.04, 0.04, 0.55, 6], [0, 0.28, 0], '$trim'), Cy([0.2, 0.22, 0.05, 12], [0, 0.03, 0], '$trim'), Cy([0.1, 0.12, 0.04, 10], [0, 0.61, 0], '$trim'), Cy([0.02, 0.02, 0.26, 6], [0, 0.76, 0], '$trim'), Cy([0.1, 0.16, 0.2, 10], [0, 0.98, 0], '$glow', { e: 1, g: 1 }), Li([0, 1.0, 0], '$glow', 0.4, 4)]);
+  def('bench', 'Bench', 'seat', [1.6, 0.5], [B([1.6, 0.08, 0.5], [0, 0.45, 0], '$wood'), B([0.1, 0.42, 0.44], [-0.68, 0.21, 0], '$trim'), B([0.1, 0.42, 0.44], [0.68, 0.21, 0], '$trim'), B([1.3, 0.05, 0.38], [0, 0.49, 0], '$fabric1')]);
 
   // cyberpunk kit
   kit = 'cyberpunk';
   def('neonTube', 'Neon tube', 'wall', [2.2, 0.1], [Cy([0.04, 0.04, 2.2, 8], [0, 1.6, 0.06], '$accent', { r: [0, 0, 90], e: 1, g: 3.2 })]);
   def('neonTubeBlue', 'Neon tube (blue)', 'wall', [2.2, 0.1], [Cy([0.04, 0.04, 2.2, 8], [0, 1.2, 0.06], '$accent2', { r: [0, 0, 90], e: 1, g: 3.2 })]);
-  def('holoScreen', 'Hologram screen', 'media', [1.4, 0.5], [Cy([0.15, 0.2, 0.06, 10], [0, 0.03, 0], '$trim'), Cy([0.02, 0.02, 0.8, 5], [0, 0.4, 0], '$metal'), Pl([1.2, 0.8], [0, 1.4, 0], '$accent2', { e: 1, o: 0.38, a: 'pulse' }), B([1.24, 0.03, 0.03], [0, 1.82, 0], '$accent2', { e: 1 }), B([1.24, 0.03, 0.03], [0, 0.98, 0], '$accent2', { e: 1 }), Li([0, 1.4, 0.5], '$accent2', 0.5, 5)]);
+  def('holoScreen', 'Display stand', 'media', [1.4, 0.5], [B([0.9, 0.08, 0.5], [0, 0.04, 0], '$trim'), B([0.12, 1.0, 0.12], [0, 0.55, -0.04], '$metal'), B([1.34, 0.92, 0.07], [0, 1.5, -0.04], '$trim'), Pl([1.2, 0.78], [0, 1.5, 0.0], '$accent2', { e: 1, o: 0.55, a: 'pulse' }), B([1.24, 0.03, 0.03], [0, 1.99, 0.0], '$accent2', { e: 1 }), B([1.24, 0.03, 0.03], [0, 1.01, 0.0], '$accent2', { e: 1 }), Li([0, 1.5, 0.5], '$accent2', 0.5, 5)]);
   const rackLights = []; for (let i = 0; i < 12; i++) rackLights.push(B([0.07, 0.04, 0.03], [-0.25 + (i % 4) * 0.15, 0.4 + Math.floor(i / 4) * 0.5, 0.36], i % 3 ? '$accent2' : '$accent', { e: 1, a: 'blink' }));
   def('serverRack', 'Server rack', 'tech', [0.9, 0.8], [B([0.8, 1.9, 0.7], [0, 0.95, 0], '$trim'), B([0.7, 1.7, 0.02], [0, 0.95, 0.36], '#05040c'), ...rackLights]);
   def('vending', 'Vending machine', 'tech', [1.0, 0.85], [B([0.95, 1.9, 0.75], [0, 0.95, 0], '$trim'), Pl([0.72, 1.3], [0, 1.1, 0.39], '$accent2', { e: 1, o: 0.9 }), ...[0.2, 0.55, 0.9, 1.25].map(y => B([0.6, 0.04, 0.03], [0, y + 0.55, 0.4], '$accent', { e: 1 })), B([0.5, 0.2, 0.03], [0, 0.22, 0.38], '#05040c'), Li([0, 1.2, 0.8], '$accent2', 0.5, 4)]);
@@ -91,7 +102,7 @@
   def('gamingChair', 'Gaming chair', 'seat', [0.8, 0.8], [Cy([0.3, 0.3, 0.08, 10], [0, 0.5, 0], '$trim'), B([0.55, 0.9, 0.12], [0, 0.98, -0.28], '$trim'), B([0.5, 0.06, 0.1], [0, 1.25, -0.22], '$accent', { e: 1 }), Cy([0.04, 0.04, 0.4, 6], [0, 0.25, 0], '$metal'), Cy([0.3, 0.3, 0.04, 5], [0, 0.04, 0], '$trim')]);
   // retro 80s kit
   kit = 'retro80s';
-  def('arcadeCab', 'Arcade cabinet', 'tech', [1.0, 0.9], [B([0.9, 1.85, 0.75], [0, 0.93, -0.05], '$accent'), B([0.88, 0.1, 0.5], [0, 1.0, 0.33], '$trim', { r: [-12, 0, 0] }), Pl([0.7, 0.55], [0, 1.45, 0.34], '$screen', { e: 1, r: [-8, 0, 0] }), B([0.88, 0.25, 0.1], [0, 1.82, 0.3], '$glow', { e: 1 }), Cy([0.02, 0.02, 0.18, 5], [-0.15, 1.1, 0.4], '$trim'), Sp([0.04], [-0.15, 1.2, 0.4], '#ff3030'), Li([0, 1.4, 0.9], '$screen', 0.5, 4)]);
+  def('arcadeCab', 'Arcade cabinet', 'tech', [1.0, 0.9], [B([0.9, 1.85, 0.75], [0, 0.93, -0.05], '$accent'), B([0.88, 0.1, 0.5], [0, 1.0, 0.33], '$trim', { r: [-12, 0, 0] }), Pl([0.7, 0.55], [0, 1.45, 0.34], '$screen', { e: 1, r: [-8, 0, 0] }), B([0.88, 0.25, 0.1], [0, 1.82, 0.3], '$glow', { e: 1 }), Cy([0.02, 0.02, 0.18, 5], [-0.15, 1.1, 0.4], '$trim'), Sp([0.04], [-0.15, 1.2, 0.4], '#ff3030')]);
   def('boombox', 'Boombox', 'media', [1.0, 0.4], [B([1.0, 0.5, 0.28], [0, 0.25, 0], '$trim'), Cy([0.17, 0.17, 0.05, 14], [-0.28, 0.25, 0.15], '$metal', { r: [90, 0, 0] }), Cy([0.17, 0.17, 0.05, 14], [0.28, 0.25, 0.15], '$metal', { r: [90, 0, 0] }), B([0.22, 0.12, 0.03], [0, 0.34, 0.15], '$accent2', { e: 1 }), B([0.7, 0.04, 0.04], [0, 0.55, 0], '$metal')]);
   def('palm', 'Palm plant', 'deco', [0.8, 0.8], [Cy([0.24, 0.2, 0.36, 8], [0, 0.18, 0], '$accent2'), Cy([0.05, 0.07, 1.0, 6], [0, 0.85, 0], '$wood', { r: [0, 0, 5] }), ...[0, 60, 120, 180, 240, 300].map(a => Cn([0.1, 0.8, 4], [Math.sin(a * Math.PI / 180) * 0.35, 1.45, Math.cos(a * Math.PI / 180) * 0.35], '$plant', { r: [Math.cos(a * Math.PI / 180) * 70, 0, -Math.sin(a * Math.PI / 180) * 70] }))]);
   def('sunPoster', 'Sunset poster', 'wall', [1.4, 0.1], [B([1.5, 1.1, 0.05], [0, 1.9, 0.03], '$trim'), Cy([0.4, 0.4, 0.02, 20], [0, 2.0, 0.07], '$glow', { r: [90, 0, 0], e: 1 }), ...[0.08, 0.2, 0.32].map(y => B([1.4, 0.05, 0.03], [0, 1.66 + y, 0.09], '$accent', { e: 1 })), B([1.4, 0.2, 0.03], [0, 1.5, 0.09], '$accent2', { e: 1 })]);
@@ -137,32 +148,6 @@
   // a creator-made piece lives inside the space document itself, in this same format (here: a little robot made of 11 shapes)
   SPACE.DEMO_ROBOT = { name: 'Robo', cat: 'custom', fp: [0.8, 0.8], parts: [Cy([0.3, 0.3, 0.6, 10], [0, 0.4, 0], '#e8d84a'), B([0.34, 0.18, 0.34], [0, 0.8, 0], '#e8d84a'), Sp([0.26], [0, 1.0, 0], '#e8d84a'), Sp([0.07], [-0.1, 1.04, 0.22], '#ffffff', { e: 1 }), Sp([0.07], [0.1, 1.04, 0.22], '#ffffff', { e: 1 }), Cy([0.015, 0.015, 0.3, 4], [0, 1.4, 0], '#444444'), Sp([0.05], [0, 1.58, 0], '#ff4a4a', { e: 1, a: 'blink', g: 1 }), B([0.12, 0.5, 0.12], [-0.42, 0.45, 0], '#d8c83a', { r: [0, 0, 10] }), B([0.12, 0.5, 0.12], [0.42, 0.45, 0], '#d8c83a', { r: [0, 0, -10] }), B([0.14, 0.3, 0.2], [-0.15, 0.1, 0], '#444444'), B([0.14, 0.3, 0.2], [0.15, 0.1, 0], '#444444')] };
 
-  // ---------------------------------------------------------------- demo layouts: the same studio floor plan; each theme brings its own assets (the window view is picked separately: ?view=day|evening|night|neon, default the real clock)
-  const base = [
-    { p: 'rug', x: 0.6, z: 0.6 }, { p: 'bed', x: -3.2, z: 1.9, ry: 90 }, { p: 'sofa', x: 0.7, z: 1.5, ry: 180 }, { p: 'coffeeTable', x: 0.7, z: 0.1 },
-    { p: 'tvUnit', x: 0.7, z: -3.15 }, { p: 'bookshelf', x: -3.3, z: -3.15 }, { p: 'desk', x: -4.05, z: -1.8, ry: 90 }, { p: 'chair', x: -3.15, z: -1.8, ry: -90 },
-    { p: 'floorLamp', x: 2.2, z: -3.0 }, { p: 'plant', x: 4.1, z: -2.9 }, { p: 'wallArt', x: -4.5, z: 0.3, ry: 90 },
-  ];
-  const L = SPACE.LAYOUTS;
-  L.studio = { name: 'Studio', theme: 'studio', pieces: base.concat([{ p: 'sideTable', x: -1.6, z: 1.9 }, { p: 'tableLamp', x: -1.6, y: 0.58, z: 1.9 }, { p: 'tallPlant', x: -4.1, z: 3.0 }, { p: 'armchair', x: -1.0, z: -1.1, ry: 40 }, { p: 'speaker', x: 1.9, z: -3.1 }]) };
-  L.cyberpunk = { name: 'Neon loft', theme: 'cyberpunk', pieces: base.filter(b => !['wallArt', 'plant', 'bookshelf'].includes(b.p)).map(b => b.p === 'chair' ? { ...b, p: 'gamingChair' } : b).concat([{ p: 'neonTube', x: -1.3, y: -0.75, z: -3.5 }, { p: 'neonTubeBlue', x: -1.3, y: -1.1, z: -3.5 }, { p: 'neonOpen', x: -4.5, z: 0.3, ry: 90 }, { p: 'serverRack', x: 4.0, z: -2.9 }, { p: 'holoScreen', x: -1.2, z: 3.0, ry: 160 }, { p: 'vending', x: -4.05, z: -3.0, ry: 90 }, { p: 'cityModel', x: -1.6, y: 0, z: 1.9 }, { p: 'speaker', x: 1.9, z: -3.1 }]) };
-  L.retro80s = { name: 'Arcade apartment', theme: 'retro80s', pieces: base.filter(b => !['bookshelf', 'wallArt', 'tvUnit'].includes(b.p)).concat([{ p: 'retroTv', x: 0.7, z: -3.1 }, { p: 'arcadeCab', x: -1.7, z: -3.0 }, { p: 'arcadeCab', x: -0.7, z: -3.0 }, { p: 'sunPoster', x: -4.5, z: 0.3, ry: 90 }, { p: 'triangleNeon', x: 2.4, z: -3.5 }, { p: 'boombox', x: -1.6, z: 1.9 }, { p: 'palm', x: -4.0, z: 3.0 }, { p: 'discoBall', x: 0.6, z: 0.6 }, { p: 'beanbag', x: -1.3, z: -0.9 }]) };
-  L.space = { name: 'Orbital quarters', theme: 'space', pieces: base.filter(b => !['bed', 'bookshelf', 'wallArt', 'plant', 'tvUnit', 'sofa', 'desk', 'chair', 'floorLamp'].includes(b.p)).concat([{ p: 'capsuleBed', x: -3.4, z: 2.2, ry: 90 }, { p: 'sofa', x: 0.7, z: 1.5, ry: 180 }, { p: 'consoleDesk', x: 0.7, z: -3.0 }, { p: 'consoleDesk', x: -2.6, z: -3.0 }, { p: 'spaceChair', x: -2.6, z: -1.9 }, { p: 'holoGlobe', x: 3.0, z: -2.6 }, { p: 'crystal', x: -1.5, z: 1.9 }, { p: 'oxygenTube', x: -4.0, z: -0.6 }, { p: 'oxygenTube', x: 4.0, z: -0.2 }]) };
-  L.halloween = { name: 'Haunted house', theme: 'halloween', pieces: base.filter(b => !['bed', 'wallArt', 'plant', 'tvUnit'].includes(b.p)).concat([{ p: 'coffinBed', x: -3.4, z: 1.9, ry: 90 }, { p: 'cauldron', x: 3.0, z: 0.6 }, { p: 'pumpkin', x: 2.4, z: -2.9 }, { p: 'bigPumpkin', x: 3.8, z: 2.9 }, { p: 'gravestone', x: -1.4, z: 2.8, ry: 25 }, { p: 'ghost', x: 1.8, z: 2.4 }, { p: 'candles', x: -1.6, z: 1.9 }, { p: 'cobweb', x: -4.45, z: -3.4, ry: 45 }, { p: 'bat', x: 0.7, z: -3.5 }, { p: 'bat', x: -1.4, z: -3.5 }, { p: 'witchHat', x: -3.6, z: -0.6 }, { p: 'tvUnit', x: 0.7, z: -3.15 }]) };
-  // the free room every player starts with (small, cosy, themed by the studio kit; the player redecorates it in the room editor)
-  SPACE.starterRoom = (theme = 'studio') => ({
-    name: 'My Home', theme,
-    pieces: [{ p: 'pendantLamp', x: 0, z: 0.5 }, { p: 'rug', x: 0, z: 0.5 }, { p: 'sofa', x: 0, z: 1.5, ry: 180 }, { p: 'coffeeTable', x: 0, z: 0 }, { p: 'tvUnit', x: 0, z: -3.225 }, { p: 'bed', x: -3.45, z: 2, ry: 90 },
-      { p: 'bookshelf', x: -3.3, z: -3.275 }, { p: 'plant', x: 4.1, z: -3.2 }, { p: 'floorLamp', x: 2.5, z: 1.5 }, { p: 'wallArt', x: -4.5, z: 0, ry: 90 }],
-  });
-  // a gallery: your own wall colour and floor pattern, text on the wall, NFT frames (the pictures are the owner's tokens; here demo images), and a piece the creator built from shapes
-  L.gallery = {
-    name: 'My gallery', theme: 'studio', windows: false, wall: { c: '#f4efe6', pat: 'subway' }, floor: { c: '#c9b8a0', pat: 'herringbone' }, custom: { robo: SPACE.DEMO_ROBOT },
-    pieces: [
-      { p: 'wallText', x: -3.4, z: -3.5, txt: 'MY CHOGS', c: '#7a3ac8' }, { p: 'nftFrame', x: -1.6, z: -3.5, img: 'data/nft_demo_1700.png' }, { p: 'nftFrameWide', x: 0.0, z: -3.5, img: 'data/nft_demo_1700.png' }, { p: 'nftFrame', x: 1.6, z: -3.5, img: 'data/nft_demo_1700.png' },
-      { p: 'nftFrame', x: -4.5, z: -2.6, ry: 90, img: 'data/nft_demo_1700.png' }, { p: 'nftFrameWide', x: -4.5, z: -0.2, ry: 90, img: 'data/nft_demo_1700.png' }, { p: 'wallTextSoft', x: -4.5, z: 2.4, ry: 90, txt: 'welcome', c: '#3f3850' },
-      { p: 'nftEasel', x: 1.2, z: 0.8, ry: -30, img: 'data/nft_demo_1700.png' }, { p: 'nftPlinth', x: -1.8, z: 1.2, ry: 20, img: 'data/nft_demo_1700.png' }, { p: 'robo', x: 3.4, z: -1.6, ry: -40 },
-      { p: 'sofa', x: 0.3, z: 2.7, ry: 180, k: 0.9 }, { p: 'rug', x: 0.2, z: 1.0 }, { p: 'tallPlant', x: -4.0, z: 3.0 }, { p: 'tallPlant', x: 4.0, z: -2.9 }, { p: 'floorLamp', x: 4.0, z: 0.4 },
-    ],
-  };
+  // the room every player starts with: bare walls, floor and windows, nothing inside. The editor offers ready-made rooms (js/space_layouts.js) and the whole catalog.
+  SPACE.starterRoom = (theme = 'studio') => ({ name: 'My Home', theme, pieces: [] });
 })();

@@ -6,16 +6,24 @@ canvas{display:block;width:100vw;height:100vh;object-fit:contain;touch-action:no
 <link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-<!-- Space viewer: ?layout=studio|cyberpunk|retro80s|space|halloween|gallery  ?view=day|evening|night|neon (default: the real clock)  (the render style is fixed, always) -->
+<!-- Space viewer: ?ready=<ready-made room id> (js/space_layouts.js)  ?seed=<hotel venue id>  ?size=15x11  ?stairs=1  ?view=day|evening|night|neon (default: the real clock)  (the render style is fixed, always) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/common.js"></script><script src="js/chog.js"></script><script src="js/chog_parts.js"></script><script src="js/core.js"></script>
 <script>const world = new THREE.Group(); scene.add(world);</script>
-<script src="js/space.js"></script><script src="js/space_data.js"></script><script src="js/styles.js"></script><script src="js/main.js"></script>
+<script src="js/space.js"></script><script src="js/space_data.js"></script><script src="js/space_layouts.js"></script><script src="js/styles.js"></script><script src="js/main.js"></script>
 <script>
-  { const d = Object.assign({}, SPACE.LAYOUTS[QS.get('layout') || 'studio']); if (QS.get('view')) d.view = QS.get('view'); SPACE.build(d); }
+  // ?ready=<id> shows a ready-made room at ?size=WxD (default 13x10, the Home); ?seed=<venue id> a hotel venue from shots/seed_preview.json (written by tools/build_seed_venues.js)
+  window.showSpace = async () => {
+    let d, sz = QS.get('size') ? QS.get('size').split('x').map(Number) : null;
+    if (QS.get('seed')) { const v = (await (await fetch('shots/seed_preview.json?r=' + Date.now())).json()).find(x => x.id === QS.get('seed')); d = Object.assign({}, v.doc); sz = sz || v.size; }
+    else { sz = sz || [13, 10]; d = SPACE.READY[QS.get('ready') || 'cafe'].make(sz[0], sz[1], { stairs: QS.has('stairs') }); }
+    SPACE.size = sz || [13, 10]; if (QS.get('view')) d.view = QS.get('view'); SPACE.build(d); SPACE.refreshHidden();
+  };
+  // await shoot('cafe', 15, 11, { stairs: false, view: 'day', zoom: 28, name: 'file' }) renders a ready-made room at that floor size and saves a full-resolution PNG to shots/
+  window.shoot = async (id, W, D, o = {}) => { const doc = SPACE.READY[id].make(W, D, { stairs: !!o.stairs }); SPACE.size = [W, D]; SPACE.level = o.stairs ? { n: 1, of: 2 } : null; if (o.view) doc.view = o.view; SPACE.build(doc); SPACE.refreshHidden(); FW = o.zoom || (W + D) * 0.92; camTarget.set(0.2, 0.9, 0.4); updateCam(); step(4); return capture((o.name || 'ready_' + id + '_' + W + 'x' + D + (o.stairs ? 's' : '')) + '.png'); };
   const people = [[{ hair: 0x5b35b0 }, 2.9, -2.2, 0.4, 1.08], [{ hair: 0xff4a98, outfit: 'jacket', trim: 0x60e0f0, head: 'headset' }, 1.6, 2.7, -2.4, 1], [{ hair: 0xf4c82c, outfit: 'vest', vest: 0x3a8a6a }, -1.2, 0.2, 0.8, 1]];
   for (const [o, x, z, ry, s] of people) { const c = chog(Object.assign({ scale: CHOG_SCALE * s }, o)); c.position.set(x, 0, z); c.rotation.y = ry; world.add(c); }
   SPACE.refreshHidden();
-  FW = +(QS.get('zoom') || 20); camTarget.set(0.2, 0.9, 0.2); updateCam();
+  showSpace().then(() => { FW = +(QS.get('zoom') || 20); camTarget.set(0.2, 0.9, 0.2); updateCam(); window.__spaceReady = true; });
 </script>
 </body></html>

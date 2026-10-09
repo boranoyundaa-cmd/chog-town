@@ -1,5 +1,5 @@
 // ===== venue: your own venue in the Chog Hotel (docs/game/world.md) =====
-// A holder activates a venue from the license (the server reads the wallet's Chogs on chain and gives the tier's room). It starts CLOSED: its door in the corridor
+// A holder activates a venue from the license (the server reads the wallet's Chogs on chain and gives the tier's room). It starts CLOSED: its door in the hotel hall
 // shows "closed" and only the owner can walk in. The owner decorates it with the same editor as the Home (room.js, bigger budget), saves it (wallet signature) and
 // presses "Open venue". This file holds the state the server reports (VENUE.info, VENUE.mine) and the card in the Venues window. Loaded after hotel.js.
 const VENUE = { info: null, mine: null, busy: false, tried: false, draft: { name: '', cat: 'Lounge', desc: '' }, err: '' };
@@ -47,14 +47,14 @@ const VENUE = { info: null, mine: null, busy: false, tried: false, draft: { name
     const m = VENUE.mine;
     if (!m) {
       box.appendChild(el('h3', '', 'Open your venue'));
-      if (t) box.appendChild(el('p', 'vnote', 'Your license gives a room of ' + t.size[0] + ' × ' + t.size[1] + ' m with ' + t.pieces + ' pieces, and a facade ' + t.span + ' door' + (t.span > 1 ? 's' : '') + ' wide (' + t.facade + ' pieces).'));
+      if (t) box.appendChild(el('p', 'vnote', 'Your license gives a room of ' + t.size[0] + ' × ' + t.size[1] + ' m with ' + t.pieces + ' pieces' + (t.levels > 1 ? ' on each of its 2 levels (joined by stairs)' : '') + ', and ' + (t.span === 1 ? 'a segment of wall' : t.span === 2 ? 'a whole wall' : 'a whole floor') + ' in the hotel hall to decorate as its front (' + t.facade + ' pieces).'));
       box.appendChild(field('Name', input('name', 32, 'e.g. Skyline Club'))); box.appendChild(field('Kind', catSel())); box.appendChild(field('Description', input('desc', 120, 'One line for the directory')));
       const b = el('button', 'btn', VENUE.busy ? 'Working…' : 'Activate venue'); b.disabled = VENUE.busy; b.onclick = () => VENUE.make(); box.appendChild(b);
       box.appendChild(el('p', 'vnote', 'It starts closed: the door shows "Closed" and only you can go in. Decorate it, then press Open venue.'));
     } else {
       const open = m.state === 'open', head = el('div', 'vhead'); head.innerHTML = '<b></b><span></span>'; head.querySelector('b').textContent = m.name;
       const sp = head.querySelector('span'); sp.textContent = (open ? 'Open' : 'Closed') + ' · Room ' + m.no + ' · Floor ' + m.floor; sp.className = open ? 'on' : 'off'; box.appendChild(head);
-      box.appendChild(el('p', 'vnote', m.size[0] + ' × ' + m.size[1] + ' m room · ' + (m.template ? m.template.pieces : '') + ' pieces · ' + (m.hasDoc ? 'room saved' : 'room not decorated yet')));
+      box.appendChild(el('p', 'vnote', m.size[0] + ' × ' + m.size[1] + ' m room' + (m.levels > 1 ? ' on 2 levels' : '') + ' · ' + (m.template ? m.template.pieces : '') + ' pieces' + (m.levels > 1 ? ' each' : '') + ' · ' + (m.hasDoc ? 'room saved' : 'room not decorated yet')));
       const row = el('div', 'actions');
       const go = el('button', 'btn', 'Go to my venue'); go.onclick = () => VENUE.goToDoor(); row.appendChild(go);
       const tg = el('button', 'btn ' + (open ? 'ghost' : ''), open ? 'Close venue' : 'Open venue'); tg.disabled = VENUE.busy || (!open && !m.hasDoc); tg.title = !open && !m.hasDoc ? 'Decorate and save the room first' : ''; tg.onclick = () => VENUE.toggleOpen(); row.appendChild(tg); box.appendChild(row);

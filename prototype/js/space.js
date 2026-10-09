@@ -101,7 +101,7 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
 
   // ---- window view: the background only (sky, fog, sun or moon, stars, window glass). It never lights the room: interiors get a small fixed light floor (SPACE.INTERIOR) plus the lights placed in them.
   // The default view follows the real clock; a space may pin one (doc.view). Not an art style: rendering never changes.
-  SPACE.size = [9, 7]; SPACE.H = 3.3; SPACE.door = null;
+  SPACE.size = [13, 10]; SPACE.H = 3.3; SPACE.door = null; SPACE.stairs = null; SPACE.level = null; SPACE.windows = [];       // the free Home is 13 x 10 m; level = {n, of} in a venue with two levels (stairs on the north wall)
   let stars = null;
   let shellHalos = [];
   const dropHalos = list => { for (const h of list) { const i = noNormalPass.indexOf(h); if (i >= 0) noNormalPass.splice(i, 1); } };
@@ -138,6 +138,7 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
     clear(); viewNow = SPACE.viewKey(doc); const th = SPACE.THEMES[doc.theme] || SPACE.THEMES.studio, amb = SPACE.VIEWS[viewNow], pal = th.pal; SPACE.doc = doc; SPACE.theme = th;
     const [W, D] = SPACE.size, H = SPACE.H, grp = new THREE.Group(); SPACE.group = grp; world.add(grp); const sh = (c, k) => new THREE.Color(c).multiplyScalar(k).getHex();
     applyView(amb);
+    const sc = sun.shadow.camera, sr = Math.max(14, (W + D) * 0.55 + 2); sc.left = sc.bottom = -sr; sc.right = sc.top = sr; sc.updateProjectionMatrix();      // a bigger floor needs a bigger shadow box
     // the creator's wall and floor: any colour, a pattern from the list
     const wallC = doc.wall && doc.wall.c !== undefined ? colorOf(doc.wall.c, pal) : pal.wall, wallPat = (doc.wall && WALL[doc.wall.pat]) ? doc.wall.pat : th.wallTex || 'plaster';
     const floorC = doc.floor && doc.floor.c !== undefined ? colorOf(doc.floor.c, pal) : pal.floor, floorPat = (doc.floor && FLOOR[doc.floor.pat]) ? doc.floor.pat : th.floorTex || 'wood';
@@ -150,7 +151,8 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
     grp.add(BOX(W, 0.16, 0.06, tmat(pal.trim), 0, 0.08, -D / 2 + 0.03)); grp.add(BOX(0.06, 0.16, D, tmat(pal.trim), -W / 2 + 0.03, 0.08, 0));
     grp.add(BOX(W + 0.25, 0.14, 0.32, tmat(pal.trim), -0.125, H + 0.07, -D / 2 - 0.125)); grp.add(BOX(0.32, 0.14, D, tmat(pal.trim), -W / 2 - 0.125, H + 0.07, 0));
     const onWall = (wall, u, y, mesh, off = 0.02) => { if (wall === 'z') mesh.position.set(u, y, -D / 2 + off); else { mesh.position.set(-W / 2 + off, y, u); mesh.rotation.y = Math.PI / 2; } grp.add(mesh); return mesh; };
-    for (const w of doc.windows === false ? [] : th.windows || []) {            // a creator can clear the windows to get free wall space
+    SPACE.windows = doc.windows === false ? [] : SPACE.windowsFor(th, W, D, !!(SPACE.level && SPACE.level.of > 1 && !SPACE.doorAt));      // laid out for this floor; a creator can clear them to get free wall space
+    for (const w of SPACE.windows) {
       const round = w.shape === 'round', gl = new THREE.Mesh(round ? new THREE.CircleGeometry(w.w / 2, 24) : new THREE.PlaneGeometry(w.w, w.h), new THREE.MeshBasicMaterial({ color: amb.window ?? 0xcfe8ff })); onWall(w.wall, w.u, w.y, gl, 0.03);
       if (round) onWall(w.wall, w.u, w.y, M(new THREE.TorusGeometry(w.w / 2, 0.08, 8, 28), tmat(pal.trim)), 0.05);
       else { onWall(w.wall, w.u, w.y + w.h / 2 + 0.05, BOX(w.w + 0.2, 0.1, 0.1, tmat(pal.trim)), 0.05); onWall(w.wall, w.u, w.y - w.h / 2 - 0.05, BOX(w.w + 0.3, 0.12, 0.2, tmat(pal.trim)), 0.08); for (const s of [-1, 1]) onWall(w.wall, w.u + s * (w.w / 2 + 0.05), w.y, BOX(0.1, w.h + 0.2, 0.1, tmat(pal.trim)), 0.05); onWall(w.wall, w.u, w.y, BOX(0.05, w.h, 0.05, tmat(pal.trim)), 0.05); onWall(w.wall, w.u, w.y, BOX(w.w, 0.05, 0.05, tmat(pal.trim)), 0.05); }
@@ -158,6 +160,14 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
     const dr = SPACE.doorAt || th.door || { wall: 'z', u: W / 2 - 1.6 }; SPACE.door = dr;                         // doorAt: a facade strip puts the venue's door in the middle
     onWall(dr.wall, dr.u, 1.0, BOX(1.1, 2.0, 0.12, tmat(pal.accent2 ?? pal.accent)), 0.06); onWall(dr.wall, dr.u, 1.0, BOX(1.3, 2.15, 0.08, tmat(pal.trim)), 0.03);
     onWall(dr.wall, dr.u + 0.34, 1.0, SPH(0.06, tmat(0xf0d070)), 0.16); onWall(dr.wall, dr.u, 2.35, textMesh(SPACE.doorAt ? 'DOOR' : 'EXIT', 0.8, 0.22, '#ffffff', null, amb.neon ? '#5ad8ff' : null), 0.1);
+    SPACE.stairs = null;
+    if (SPACE.level && SPACE.level.of > 1 && !SPACE.doorAt) {                       // a room with an upper level: a stair door beside the exit, a short flight in front of it
+      const su = SPACE.stairsU(W), up = SPACE.level.n < SPACE.level.of; SPACE.stairs = { u: su, up };
+      onWall('z', su, 1.15, BOX(1.7, 2.3, 0.1, tmat(pal.trim)), 0.05); onWall('z', su, 1.05, BOX(1.4, 2.1, 0.12, tmat(0x120c24)), 0.09);
+      for (let i = 0; i < 4; i++) { const h = 0.15 * (i + 1), st = BOX(1.5, h, 0.34, tmat(i % 2 ? sh(pal.floor, 1.1) : sh(pal.floor, 1.3))); st.position.set(su, h / 2, -D / 2 + 0.17 + (3 - i) * 0.34); st.castShadow = st.receiveShadow = true; grp.add(st); }
+      for (const sd of [-1, 1]) { const rl = BOX(0.06, 0.7, 1.36, tmat(pal.trim)); rl.position.set(su + sd * 0.78, 0.45, -D / 2 + 0.68); grp.add(rl); }
+      onWall('z', su, 2.55, textMesh(up ? 'UPSTAIRS' : 'DOWNSTAIRS', 1.3, 0.24, '#ffffff', null, amb.neon ? '#ff5ad8' : '#ffb03a'), 0.1);
+    }
     if (th.outside && amb.outside) { const n0 = noNormalPass.length; grp.add(buildParts(th.outside, pal)); shellHalos = noNormalPass.slice(n0); }                       // scenery beyond the window, only when the sky is dark enough to show it
     SPACE.lights = [];                                                                  // the only room lights are the placed pieces' (SPACE.addEntry)
     // pieces: any piece in the catalog or in the document's own `custom` table; per item: tint, scale, text, image

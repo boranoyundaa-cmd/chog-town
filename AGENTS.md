@@ -1,7 +1,7 @@
 # Chog Town
 
 A browser MMO built around the 1,969 Chog Genesis NFTs on Monad, for the Chogathon hackathon. Goal: win it.
-Current phase: **modern city world with a real-clock day cycle, walking, wallet, multiplayer chat, trait characters and free rooms (decorate, signed save, visits) are built; the world architecture is decided (town, Home house, Hotel for venues, NPC schedules; `docs/game/world.md`); next is building it.**
+Current phase: **modern city world with a real-clock day cycle, walking, wallet, multiplayer chat, trait characters and free rooms (decorate, signed save, visits) are built; the world architecture is decided (town, Home house, Hotel for venues, NPC schedules; `docs/game/world.md`); hotel floors are square halls with four wall slots, rooms start empty, 12 ready-made rooms exist (2026-10-09); next is the culture pass and the rest of the build order in `docs/project/overview.md`.**
 
 The owner speaks Turkish. Reply in Turkish unless asked otherwise.
 
