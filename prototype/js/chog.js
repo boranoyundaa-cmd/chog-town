@@ -71,7 +71,7 @@ function addOutlines(root, t = HULL_T) {
   for (const m of list) {
     m.geometry.computeBoundingSphere(); const r = Math.max(m.geometry.boundingSphere.radius, 0.06);
     const h = new THREE.Mesh(m.geometry, m.material.side === THREE.DoubleSide ? inkMatDS : inkMat); h.userData.isHull = true;
-    h.position.copy(m.position); h.quaternion.copy(m.quaternion); h.scale.copy(m.scale).multiplyScalar(1 + t / r);
+    h.position.copy(m.position); h.quaternion.copy(m.quaternion); h.scale.copy(m.scale).multiplyScalar(1 + (m.userData.hullT ?? t) / r);
     h.castShadow = false; h.receiveShadow = false; m.parent.add(h);
   }
 }
