@@ -3,6 +3,7 @@
 | Category | File | Contents |
 |---|---|---|
 | Project | [overview.md](project/overview.md) | Vision, status, decisions, next steps |
+| Project | [build-plan.md](project/build-plan.md) | Owner decisions of 2026-10-15 and what the next build session makes |
 | Project | [hackathon.md](project/hackathon.md) | Chogathon rules, prizes, judging criteria |
 | Game | [design.md](game/design.md) | Venue-based social sandbox, NFT license tiers, economy rules, architecture |
 | Game | [core-loop-research.md](game/core-loop-research.md) | Why web3 games and MMOs fail, what worked, candidate core loops |

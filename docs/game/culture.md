@@ -27,9 +27,10 @@ NPC roster (CT archetypes and a few caricatures of public figures, with their sc
 - **Insider voice.** The owner writes or approves the jokes. A generic "crypto bro" stereotype is worse than none.
 - **Real people (cameos) say only what they really said** (owner decision 2026-10-09): their own public posts, with source and date kept in the data entry and shown in small print. No invented lines, no parody. A post that only works as a tweet may be reshaped to be spoken, using that post's own content (marked "adapted" in the draft). Every quote is re-copied from the original before shipping; a person who asks to be removed is removed. The dead, victims and private people are never characters. Invented archetypes (no real person) are written freely by us.
 - **Dialogue plays only on click** (owner decision 2026-10-09). Nothing is said because a player walked close. A click shows one random line of that character, never the same twice in a row. **Conflict to resolve:** `js/npc.js` currently has resident bubble lines that appear when a player is near; remove or turn them into click lines when the culture pass is built.
-- **Reference hunt:** every reference is a data entry (id, place, text, source). A found-counter in My Chog ("17 of 42") rewards walking around: it is the tour, the reason to return and the shareable screenshot. Rewards are cosmetic only.
+- **No reference hunt** (dropped by the owner, 2026-10-15).
+- **Cameos appear under a nickname** with our own original design that only nods to their profile picture, no real name, handle or face; only their real posts, dated "X post" in small print (owner, 2026-10-15, to avoid legal risk).
 - Players can add their own jokes through wall text, frames and kits (the room tools in `docs/game/spaces.md`).
 
 ## Open
 
-First ~40 references and who writes them; how far to go with public-figure NPCs; hunt UI; whether the hunt has a daily rotating set tied to the real clock.
+Decided 2026-10-15 (`docs/project/build-plan.md`): all archetypes (best 6 to 8 lines each), all cameos in the nickname form, Claude writes the Monad voice, all world content goes in. Open: the owner's corrections after seeing it in the game.

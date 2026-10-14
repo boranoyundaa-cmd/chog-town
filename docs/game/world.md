@@ -81,7 +81,7 @@ Entry is one door for all; the server puts you in your own Home. **Visits are by
 - **Telling NPCs from players:** nameplate (players: name and tier pill; NPCs: muted plate with a "resident" icon and role), minimap (players are bright dots, NPCs have none), click card (player: invite, mute, report; NPC: role and action), movement on routes, a role costume (apron, cap, headset). NPCs never copy a real token's traits.
 - **No offline holder Chogs** in town (decided): only fictional NPCs.
 
-## Mini-games (not decided, the owner will pick)
+## Mini-games (picked 2026-10-15, list in `docs/project/build-plan.md`)
 
 Two groups. **Record games** run in the client and send only the result, so latency does not matter. **Two-player games** are turn-based or simultaneous choices; a few small messages over the existing WebSocket. Real-time action duels are out (latency, cost).
 
@@ -102,10 +102,9 @@ NPC residents accept challenges (their opponent is labelled), so a lone judge ca
 
 ## Open
 
-- Which mini-games enter the first slice.
+Decided 2026-10-15 (`docs/project/build-plan.md`): the mini-games, the name (**Chog Hotel**), the Exhibition floor (one signed vote per wallet, no self-vote, winner tops the floor for a week), tier perks (capacity, stage and DJ booth, VIP room, game tables, tier-locked shop items).
+
 - **Camera (owner, 2026-10-09):** a free or rotating camera is **dropped for now** (the whole game, the art and the editor assume one fixed isometric angle). If it ever comes back, the idea is 90-degree steps (Q and E) inside rooms and the Home only, never in the hotel or the town.
-- Final name: Chog Town or Chog Hotel (a "Hotel" invites the Habbo comparison; the NFT license and the physical halls carry the novelty).
-- Exhibition floor: voting, anti-abuse, how long a winner stays.
-- Dress code for the guard (not planned), and what each tier adds beyond size, facade width and budgets (capacity, VIP room, stage).
+- Dress code for the guard (not planned).
 - Invite link: assumed revocable and expiring.
 - Window view: assumed to follow the clock by default with a pin option.

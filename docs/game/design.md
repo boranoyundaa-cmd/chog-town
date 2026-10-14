@@ -25,7 +25,7 @@ The game has **one art style**; player freedom is in **assets**: themed kits (mo
 
 1. **Living town:** shared walkable map, other players, chat. Fictional NPC residents with real-clock routines keep it from ever being empty (judges test alone); they never copy a real token. Details: `docs/game/world.md`.
 2. **Venues:** a place of your own, a wall with an editable facade in the **Hotel**, from **templates plus settings** (decor, music, entry rule, VIP area, shelves). Not free scripting: it fits 14 days and keeps the set of allowed venue types controllable. The permanent public address is what the license unlocks; free players keep a private Home and contests (`docs/game/world.md`).
-3. **Items and market:** cosmetic items as NFTs, published by creators, bought by everyone. Free players need things to buy.
+3. **Items:** an official shop only (owner, 2026-10-15): soulbound ERC-1155 items paid in $CHOG or MON, no player market, no creator publishing. `docs/project/build-plan.md`.
 
 Later: mini-games in venues, NPC daily events, mobile companion.
 
@@ -44,11 +44,11 @@ Later: mini-games in venues, NPC daily events, mobile companion.
 | 4 | 12 | the whole floor and the one above (penthouse), two 22 x 15 m levels | 27 |
 
 - **Why this shape:** splitting NFTs across wallets must not pay. Tier 4 must be worth more than ten tier 1 venues (capacity, VIP room, stage, shelves, not just size), so holders consolidate instead of farming wallets.
-- **Anti-rental:** tier is computed from NFTs held for a minimum period (e.g. 7 days); a venue freezes if holdings fall below its tier. Allow delegation from a cold wallet to a play wallet.
+- **No anti-rental rule** (owner, 2026-10-15: no holding period, no delegation). A venue **freezes** if holdings fall below its tier and is freed after 7 days (`docs/project/build-plan.md`).
 - **Pyramid:** target ~20-30 tier 4, 60-80 tier 3, 150-200 tier 2, rest tier 1; the table above lands on it, except tier 2 (99, lower than target, acceptable). By holding count alone (1 / 3 / 5 / 10) the split would be 867 / 81 / 45 / 19.
 - **Rarity source:** the collection's own `Tier` trait, not OpenSea's coloured rank badge (rank badges cannot be read from chain). Distribution: Common 1,279, Uncommon 590, Rare 60, Epic 30, Legendary 10. Giving Uncommon 2 points inflates the top (45 wallets in tier 4 at the old 10-point threshold). Rank-band schemes (e.g. top 20 / 100 / 500 by trait-rarity score) overshoot tier 4 (56 wallets), so the on-chain trait is both simpler and more verifiable. **Approved by the owner 2026-10-08 and embedded in the client** (`prototype/data/tokens.json`, built by `tools/build_tokens.py`).
 - **Anti-farm check:** the 10 Legendary tokens sit in 10 distinct wallets, Epic in 29 of 30, Rare in 50 of 60. 14 single-token wallets already reach tier 3 or 4 through one Epic or Legendary, which is the intended reward for owning a rare and means high-tier venues are not only whale venues.
-- **How the license shows in the game (built 2026-10-08):** a "Tier N" pill under the player frame and a license card in My Chog, both for holders only; the Venues window shows the four-tier ladder with wallet counts for everyone (free players see it locked, with "Get a Chog"). The license counts all Chogs of the connected wallet. Tier names (Stall / Shop / Mansion / Landmark) are placeholders and the ladder lists only sizes, no perks, until venue v0 defines what each tier really gets. Wallet counts are a snapshot (dated in the window) refreshed by `tools/fetch_owners.py` and a rebuild.
+- **How the license shows in the game (built 2026-10-08):** a "Tier N" pill under the player frame and a license card in My Chog, both for holders only; the Venues window shows the four-tier ladder with wallet counts for everyone (free players see it locked, with "Get a Chog"). The license counts all Chogs of the connected wallet. Tier names are **Ser / Fren / Whale / Legend**, their venues **Room / Suite / Floor / Penthouse** (owner, 2026-10-15); perks in `docs/project/build-plan.md`. Wallet counts are a snapshot (dated in the window) refreshed by `tools/fetch_owners.py` and a rebuild.
 
 ## Economy rules
 
@@ -56,12 +56,12 @@ The aim is a host economy, not play-to-earn. Axie died because the game printed 
 
 1. The game **never mints rewards** for playing.
 2. Income comes from **running** a venue, never from holding. Never market it as "passive income": most venues earn near zero (Roblox, Second Life payouts are top-heavy).
-3. **Town and venue entry are free by default.** Owners may charge for VIP areas, tickets or memberships (in MON). Paywalling the core hurts participation.
+3. **Town and venue entry are free.** Visitors may tip an owner in $CHOG (100 % to the owner). Paywalling the core hurts participation.
 4. Customers must exist: free players buy cosmetics, tickets, events.
 5. **Discoverability:** directory, featured venues, ratings, so new venues get visitors.
 6. Block wash trading (visiting your own venue to inflate rankings).
-7. **`$CHOG` burn is optional, never access:** item publishing fee (creator burns to publish a design, anti-spam), featured placement in the directory (marked sponsored), festivals / events, venue customization such as security cameras. No mandatory upkeep. **No developer share and no protocol fee in v1**: a cut of an economy that does not exist yet reads as extraction.
-8. **Gambling:** not part of v1. The decision (and any demo use) depends on remaining time and legal review (Roblox faces a gambling class action; Second Life banned casinos in 2007). Keep venue types as templates so a type can be switched on or off.
+7. **Every shop spend: 90 % burned as $CHOG, 10 % to the team wallet as $CHOG** (owner, 2026-10-15; replaces "no developer share"). Prices are fixed $CHOG amounts, payable in MON through a swap. Details `docs/project/build-plan.md`.
+8. **Gambling:** not in v1 (owner, 2026-10-15). Roblox faces a gambling class action; Second Life banned casinos in 2007.
 
 ## Venue customization and the security camera (idea, 2026-10-08)
 

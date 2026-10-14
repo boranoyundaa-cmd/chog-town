@@ -2,7 +2,7 @@
 
 ## Vision
 
-**Chog Town**: a living, shared 3D town where all 1,969 Chog Genesis NFTs exist at once and players run their own places: clubs, shops, galleries, arcades. Anyone can play (default purple Chog); Chog holders play as their own Chog and hold venue licenses (higher tier with more or rarer Chogs). Runs on Monad (single shard).
+**Chog Hotel** (named Chog Town until 2026-10-15): a living, shared 3D town where all 1,969 Chog Genesis NFTs exist at once and players run their own places: clubs, shops, galleries, arcades. Anyone can play (default purple Chog); Chog holders play as their own Chog and hold venue licenses (higher tier with more or rarer Chogs). Runs on Monad (single shard).
 
 **The game is played on PC.** Mobile is a companion, added later. Everything is built and polished for the desktop browser first.
 
@@ -10,7 +10,8 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 
 ## Status (update every session)
 
-- **Direction (2026-10-09, owner):** the problem was "Habbo on blockchain: nobody has a reason to play". Decided answer: **culture**. The town is full of Crypto Twitter references and jokes only CT gets (NPC caricatures, lobby quotes, venue names, a reference-hunt counter); the target audience is CT / crypto-native people, holders are the supply side. Name stays Chog Town. Everything else (mini-games, items) follows the theme. `docs/game/culture.md`.
+- **All open decisions taken (2026-10-15, owner):** name **Chog Hotel**, tiers Ser / Fren / Whale / Legend, official $CHOG shop (90 % burn, 10 % team, soulbound items, MON via swap), tips, all picked mini-games with leaderboards, Exhibition contest, synthesized music, full culture pass with cameos under nicknames, no reference hunt, no gambling. **Everything in `docs/project/build-plan.md` is to be built in one long session, deployed at its end.**
+- **Direction (2026-10-09, owner):** the problem was "Habbo on blockchain: nobody has a reason to play". Decided answer: **culture**. The town is full of Crypto Twitter references and jokes only CT gets (NPC caricatures, lobby quotes, venue names); the target audience is CT / crypto-native people, holders are the supply side. Everything else (mini-games, items) follows the theme. `docs/game/culture.md`.
 
 - **Rooms and floors rework (2026-10-09, owner, built and tested locally with a mock chain and wallet):** every hotel floor is now a square 16 x 16 m hall with **four 6.5 m wall slots on the two back walls** (the camera only draws those); a tier holds a wall segment (1), a whole wall (2), a whole wall on two floors (3, two-level venue joined by stairs) or the whole floor and the one above (4, penthouse); rooms are about twice as big (**Home 13 x 10 m, 80 pieces**; venues 15 x 11 up to 22 x 15 m); **every new room comes bare**; the editor offers **12 ready-made rooms** that fit any floor size and are checked by `tools/check_layouts.js` (nothing floats, nothing hides behind a tall piece, door, windows and stairs stay clear); the 12 hotel seed venues are rebuilt from them (four to a floor); the server snaps wall pieces onto their wall, so a room that changed size leaves nothing floating. Old venue records are moved to the new numbering on start. A free or rotating camera was **dropped** by the owner for now. Details `docs/game/world.md` (Hotel), `docs/game/spaces.md`. 63 + 40 + 4 server checks pass (`npm test`). **Not deployed yet** (deploy the server first, then the site). Not tried: a real wallet, a second real player on the same floor, performance of a 22 x 15 room full of pieces (16 lights).
 - **World architecture (2026-10-08, owner, `docs/game/world.md`):** one small town (target ~40 x 40 m); **Home** = a plain house, everyone finds their own Home behind one door, visits by invitation only; **Hotel** (today's Chog Lofts) = the venue building: lobby with reception and search, elevator, floors of corridors, each venue a door with an editable facade, "Go to room" spawns you in the corridor; **permanent public address = the Chog license**, free players get a private Home plus a weekly contest on an Exhibition floor; Arcade, Moka, Gallery, NOVA are our own official places; NPC residents follow real-clock routines computed from the clock (no server state), the crowd is topped up to ~12 people; **light rule:** the clock affects only the background, interiors are lit only by placed lights. Mini-games are proposed in `world.md`, not picked. **Built so far (2026-10-08):** the Home house (south-east corner, the slab grew to 20.8 m), invitation-only Homes (direct invites and a revocable link), the light rule (window view, ceiling lamps), the Lofts tower renamed Chog Hotel (its door only says "opens soon"). **Hotel v0 built (2026-10-08):** lobby with a receptionist and directory, elevator, two floors of doors for 12 seed venues (`docs/game/world.md`, `js/hotel.js`, `server/hotel.js`), the door of the Chog Hotel in the town now works. **Deployed on 2026-10-08** (server on Fly, site on Cloudflare Pages; checked on the live site: a client entered the hotel, took the elevator and saw all 12 venues). Never tried live: a real wallet, a second player in the hotel.
@@ -43,8 +44,8 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 | Social creator sandbox with player-run venues, not a combat MMORPG (2026-10-08) | An MMORPG needs content we cannot write in 14 days and is a crowded field; players make the content here. Research: `docs/game/core-loop-research.md` |
 | Venue license from holdings: points per Chog by rarity, tier from total, one venue per wallet | Splitting NFTs across wallets must not pay; consolidating should. Diminishing returns. See `docs/game/design.md` |
 | Host economy, not play-to-earn: no minted rewards, income only from running a venue, free entry by default | Axie-style emission-funded rewards collapse; venue income is player-to-player. "Passive income" is never promised |
-| `$CHOG` burn only for optional things (item publishing, featured placement, festivals); no developer or protocol share in v1 | A cut of a non-existent economy looks like extraction; burn demand must not gate core features |
-| Gambling venues deferred (not in v1; demo use undecided) | Fits neither the no play-and-earn rule nor the legal risk (Roblox class action, Second Life ban) without review |
+| No gambling venues in v1 (2026-10-15) | Fits neither the no play-and-earn rule nor the legal risk (Roblox class action, Second Life ban) |
+| Official shop only: soulbound items, 90 % of every spend burned as $CHOG, 10 % to the team, payable in MON via swap; tips 100 % to owners (2026-10-15) | Owner decision; a burn sink with a small team income, no secondary market to police. `docs/project/build-plan.md` |
 | Theme = crypto culture, audience = Crypto Twitter, not "everyone" and not nostalgia (2026-10-09) | ~1,000 wallets cannot fill a world; the volume must be crypto-native non-holders, and a Habbo clone gives them no reason to come. Culture cannot be copied, is cheap, works alone and fits CT's existing wallets. `docs/game/culture.md` |
 | Smooth stylised 3D ("hybrid"), not pixel-3D | Chog faces and outlines read far better, closer to the official art; code produces lighting, depth, animation and trait swapping. Pixel-3D stays as `?style=pixel` |
 | Warm, soft world | Owner preference; fits Chog's friendly character |
@@ -65,32 +66,25 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 
 ## Next steps (in order)
 
-0. **Still to verify:** a real wallet signing a room save on the live site (only a mock wallet and a throwaway wallet were tried).
-1. ~~Rules change in what is built~~ (Home house, invitation-only visits, light rule): built and tested locally 2026-10-08. Deployed 2026-10-08; existing saved rooms keep working (their `ambience` is ignored).
-2. ~~Hotel v0~~ built (see Status). Left over: the tower's height from the floor count; test with a second player (head count on the plates) and on real hardware.
-3. ~~Facades, tiers, guard~~ built (see Status), and ~~upper and penthouse floors~~ (2026-10-09). Left over: tier upgrade of an existing venue (its door number would change), freezing a venue when holdings fall, higher floors for higher tiers (a penthouse is not at the top of the tower yet), the tower's height from the floor count, a guard at the elevator of a whole-floor venue, venue reports and hiding.
-3d. **Deploy the rooms rework** (server first: `flyctl deploy --ha=false --remote-only`, it migrates old venue records; then `python tools/build_site.py` and wrangler) and look at it live: a Home saved before the change keeps its pieces in the middle of the bigger room (wall pieces move onto the new walls).
-3b. ~~NPC system~~ built (see Status). Left over: challenges accepted by NPCs (with the mini-games), the barista's daily task, deploy and look at it live, a visual pass at night and at dawn.
-3a. **Culture pass (first priority, 2026-10-09):** the owner and Claude write the first ~40 references (`docs/game/culture.md`); NPC roster becomes CT archetypes and caricatures; lobby art, venue seed names and chat lines follow; a reference-hunt counter in My Chog. Trailer idea: a CT scroller sees a joke only they get.
-3c. **Mini-games and the Exhibition floor:** after the owner picks from `world.md`.
-4. **Items and market:** cosmetic and furniture items as NFTs, creators publish, free players buy.
-5. **Venue tiers:** points from the on-chain `Tier` trait (Common 1, Uncommon 1, Rare 3, Epic 5, Legendary 12; thresholds 1 / 3 / 5 / 12 giving 814 / 99 / 72 / 27 wallets) approved 2026-10-08 and embedded in the client; details in `docs/game/design.md`. HUD built (owner picked B + C + small A): "Tier N" pill, license card in My Chog, tier ladder in the Venues window. Deployed to `chog-town.pages.dev` on 2026-10-08 (returning visitors may see the old build for up to 5 minutes: `_headers` caches for 300 s). To do: use the same numbers in the venue contract; decide the final tier names and what each tier really gets when venue v0 is built.
-6. **Contracts:** venue license, items, market on Monad (pausable, daily caps).
-7. **Polish:** measure performance on real hardware, sound, icon set, the see-through fade, more district (second block).
-8. 3-minute demo video, repo, submission details for the Chogathon.
-9. Mobile companion after the PC game works.
+Build everything in `docs/project/build-plan.md` in one session, in this order:
+
+1. Rename to Chog Hotel, tier names, known small issues, guest portrait.
+2. Culture pass: cast and cameos into `js/npc.js` (click-only lines), plaques, images, props, real-clock events, UI text.
+3. Sound: synthesized effects and ambient music per place.
+4. Mini-games (record games, challenges with NPCs, leaderboards, trophies), then the Exhibition floor.
+5. Tier perks: capacity, stage and DJ booth, VIP room, game tables, freeze on falling holdings, tier upgrade, tower height.
+6. Shop and contracts: soulbound ERC-1155 shop with $CHOG burn split and MON swap, tests, deploy script for the owner; shop UI, cosmetics in extra slots, venue extras (budget, events, security camera), tier-locked items, tips.
+7. Deploy (server first, then site), commit and push both repos; the owner then deploys the contracts and checks a real wallet live.
+
+Later: mobile companion, demo video and submission (the owner's call).
 
 ## Open questions
 
-- **Anti-rental details:** minimum holding period, delegation from cold wallets.
-- **What tiers add:** decided so far: wall width, levels (two-level rooms), whole-floor penthouse, room size, piece and light budgets, guard (`docs/game/world.md`). Still open: capacity, VIP room, stage, shelves, so tier 4 beats ten tier 1 venues. **The tier names (Stall / Shop / Mansion / Landmark) are placeholders**; pick final names when the Hotel exists.
-- **World details** (`docs/game/world.md`, Open): which mini-games enter the slice, final name (Chog Town or Chog Hotel), Exhibition floor voting and anti-abuse, guard rules, invite-link rules, window-view pinning.
-- **Do non-holders pay?** The economy assumes free players spend MON on items and tickets. Test early: a Discord poll and our 3-4 seed venues.
+- **Do non-holders pay?** The economy assumes free players spend $CHOG or MON in the shop. Test early: a Discord poll and our 3-4 seed venues.
 - **Long-term goals without combat:** collection, venue upgrades, reputation. Undecided.
 - **Interiors and the venue editor scope** (templates plus settings; how much furniture logic).
 - **Candidate features:** venue opening hours and the doorman (`docs/game/design.md`); decide whether they enter the 14-day slice.
-- **Venue customization burns:** which items cost how much `$CHOG` (security camera is the first idea, `docs/game/design.md`); camera view on mobile needs a phone performance test.
-- **Gambling templates:** decide late, with remaining time and legal review.
+- **Security camera on mobile** needs a phone performance test.
 - **Moderation:** filter, report, who reviews.
 - Submission/video logistics (face or voice on video) are the owner's call.
 - Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.
