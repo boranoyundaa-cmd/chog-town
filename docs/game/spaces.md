@@ -23,7 +23,7 @@ The viewer `prototype/space.html?layout=studio|cyberpunk|retro80s|space|hallowee
 | **Theme kit** | palette, default wall and floor, window shape, scenery, ~60 themed pieces | 5 kits built |
 | **Wall and floor** | any colour + a pattern from a list (plaster, brick, subway tile, stripes, zigzag, dots, planks, herringbone, terrazzo, carpet, grid, metal...) | built |
 | **Window view** | what is seen through the windows: follows the real clock, the owner may pin it. Background only; it never lights the room | built (`SPACE.VIEWS`; the pin is `view` in the document, absent = real clock) |
-| **Lights** | placed lights are the only light inside a space (small fixed floor so an unlit room stays readable); a lamp piece is in every new space; the light budget grows with tier | built: a fixed light floor (`SPACE.INTERIOR`) plus placed lights (pendant lamp, ceiling neon, floor and table lamps...); budget 10 lights, not yet by tier |
+| **Lights** | placed lights are the only light inside a space (small fixed floor so an unlit room stays readable); every new space starts empty and there are no ceiling lamps (floor, table and wall lights and neon only); the light budget grows with tier | built: a fixed light floor (`SPACE.INTERIOR`) plus placed lights (floor and table lamps, neon...); Home 14 lights, venues 16 to 22 by tier |
 | **Pieces** | place, rotate, tint, scale (0.4x to 3x) any piece from the catalog | built; the free-room editor offers place, turn, tint (no scale yet) |
 | **Own pieces** | build a piece from shapes and colours: box, cylinder, sphere, cone, ring, plane, glowing parts, lights, simple motion (spin, bob, blink, pulse), up to 48 parts | format built, editor ("Part Lab") to do |
 | **Text** | words on the wall, any text up to 24 characters, colour, glow | built |
@@ -39,7 +39,7 @@ piece  = { name, cat, fp:[w,d], parts:[ part ... ] }              (stock furnitu
 part   = { t: box|cyl|sph|cone|tor|plane|text|img|light, s, p, r, c:'$token'|'#hex', e (glow), o (opacity), k (scale), g (halo), a: spin|bob|blink|pulse, edit }
 ```
 
-- `js/space.js` interprets documents (numbers clamped; at most 48 parts per piece, 400 pieces, a light budget of 10 that a venue room raises to its tier's number). Windows are laid out for the floor (`SPACE.windowsFor`: one every 4.4 m along each back wall, none over the door or the stairs); a theme only holds the window's size and shape. `js/space_data.js` holds the kits, window views and pieces. Colour tokens (`$accent`, `$wood`...) resolve against the theme palette, so one sofa fits every theme.
+- `js/space.js` interprets documents (numbers clamped; at most 48 parts per piece, a piece budget of 140 for the Home that a venue room raises to its tier's number (200 to 340), a light budget of 14 raised the same way). Windows are laid out for the floor (`SPACE.windowsFor`: one every 4.4 m along each back wall, none over the door or the stairs); a theme only holds the window's size and shape. `js/space_data.js` holds the kits, window views and pieces. Colour tokens (`$accent`, `$wood`...) resolve against the theme palette, so one sofa fits every theme.
 - **No scripts, no network access from a document.** It cannot run code or load anything by itself, so a venue cannot attack visitors; the worst case is an ugly or heavy room, which budgets and reports handle.
 
 ## NFT display
@@ -50,7 +50,7 @@ part   = { t: box|cyl|sph|cone|tor|plane|text|img|light, s, p, r, c:'$token'|'#h
 - **Moderation:** reported spaces are hidden from the directory; NFT images can be offensive, so reports apply to frames too.
 
 ## Budgets: where the Chog NFT matters
-Venue tier (from holdings, `docs/game/design.md`) sets the budget: floor size, pieces, custom parts, lights, kit slots, levels. Free rooms get a fixed budget and the stock kits: the **Home is 13 x 10 m with 80 pieces and 10 lights**; a venue room goes from 15 x 11 m (120 pieces, tier 1) to 22 x 15 m on two levels (200 pieces each, tier 4), table in `docs/game/world.md`. Every new room **starts empty**; the editor offers ready-made rooms (`js/space_layouts.js`, checked by `tools/check_layouts.js`). Freedom is wide, cost is bounded, and a top-tier holder gets the biggest canvas.
+Venue tier (from holdings, `docs/game/design.md`) sets the budget: floor size, pieces, custom parts, lights, kit slots, levels. Free rooms get a fixed budget and the stock kits: the **Home is 20 x 15 m with 140 pieces and 14 lights**; a venue room goes from 22 x 16 m (200 pieces, tier 1) to 33 x 22 m on two levels (340 pieces each, tier 4), table in `docs/game/world.md`. Walls are 5 m high in rooms and 6 m in the lobby and halls; there is no shadow under a room. Tier-locked pieces (`minTier`) and venue-only pieces (stage, DJ booth, game tables) are dropped by the server where the tier does not allow them. Every new room **starts empty**; the editor offers ready-made rooms (`js/space_layouts.js`, checked by `tools/check_layouts.js`). Freedom is wide, cost is bounded, and a top-tier holder gets the biggest canvas.
 
 ## Storage and trust (built for free rooms, 2026-10-08)
 One room per wallet, stored as JSON. **Save = the wallet signs a readable message that contains the hash of the cleaned document** (`personal_sign`, free, once per Save, never per placed piece); the server stores the document with the signature and serves it to the owner and invited visitors. Flow: `roomprep {doc}` returns the cleaned document's message, the wallet signs, `roomsave {doc, ts, sig}` is accepted only if the signature recovers to the session's wallet, matches the cleaned document and is under two minutes old. The server **rebuilds the document from a whitelist** (known pieces, themes, window views, patterns; numbers clamped to the floor; 90 degree turns; text cleaned of links and addresses; no images, scale, height or `custom` pieces yet) and enforces the budget, so a hacked client can only make an ugly room, not a harmful one. Geometry (overlaps) is not checked on the server. Storage is one file per wallet (`DATA_DIR/rooms/<address>.json`); the signed document can later be mirrored or its hash anchored on-chain. Guests (no wallet) decorate a local draft (`localStorage`) and cannot save to the server.
@@ -67,8 +67,8 @@ Home (private, invitation only), Venue (holder, public, a door in the Hotel with
 ## To build, in order
 1. ~~Enter and leave a space from the city, per-space presence and chat, walk collision inside.~~ Done (2026-10-08).
 2. ~~Placement editor and signed save.~~ Done for the free room (grid, pick and place, tint, text, theme, light, wall and floor). To add: stacking on tables, free scale, undo.
-3. ~~The free room for every player.~~ Done. To do: first-visit tour, deploy with a persistent volume.
+3. ~~The free room for every player.~~ Done (first-visit tour and persistent volume included).
 4. NFT frames wired to the wallet (indexer + image proxy).
-5. Part Lab: build and name your own piece, use it in your space, later publish it as an item.
-6. Market: kits, frames and pieces as items.
-7. Hotel (holders): lobby, directory, elevator, floors, facade editor, tiers, entry rule, guard. See `docs/game/world.md`.
+5. Part Lab: build and name your own piece and use it in your space (publishing is out: the shop is official only, `docs/project/build-plan.md`).
+6. ~~Shop: decor pieces as soulbound items~~ Built (code done, contract not deployed yet).
+7. ~~Hotel (holders): lobby, directory, elevator, floors, facade editor, tiers, entry rule, guard.~~ Done, see `docs/game/world.md`.

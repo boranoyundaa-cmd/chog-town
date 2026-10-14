@@ -36,12 +36,14 @@ Later: mini-games in venues, NPC daily events, mobile companion.
 - **Look:** holders appear as their own Chog (traits). Free players are the default purple Chog and may change its colour; cosmetic items from the market add variety.
 - **Venue license** from holdings, one venue per wallet at the highest tier reached (no stacking). Points come from the collection's own on-chain `Tier` trait: Common 1, Uncommon 1, Rare 3, Epic 5, Legendary 12; the wallet's tier comes from its total points. So one Rare is already tier 2, one Epic tier 3, one Legendary tier 4 (from the full dump, approved by the owner 2026-10-08).
 
-| Tier | Points | Venue | Wallets (of 1,012) |
-|---|---|---|---|
-| 1 | 1 | a wall segment, one 15 x 11 m room | 814 |
-| 2 | 3 | a whole wall, one 18 x 13 m room | 99 |
-| 3 | 5 | a whole wall on two floors, two 18 x 13 m levels with stairs | 72 |
-| 4 | 12 | the whole floor and the one above (penthouse), two 22 x 15 m levels | 27 |
+| Tier | Name | Points | Venue | Room (per level) | People inside | Perks | Wallets (of 1,012) |
+|---|---|---|---|---|---|---|---|
+| 1 | Ser | 1 | Room: a wall segment | 22 x 16 m | 12 | | 814 |
+| 2 | Fren | 3 | Suite: a whole wall | 27 x 20 m | 20 | stage and DJ booth | 99 |
+| 3 | Whale | 5 | Floor: a whole wall on two floors, stairs | 27 x 20 m, 2 levels | 32 | + VIP upper level | 72 |
+| 4 | Legend | 12 | Penthouse: the whole floor and the one above | 33 x 22 m, 2 levels | 50 | + VIP upper level | 27 |
+
+Pieces per level 200 / 300 / 280 / 340, lights 16 / 18 / 18 / 22 (`server/hotel.js` `TEMPLATES`, the source of truth). Game tables and the most legendary shop pieces are tier-locked. The free Home is 20 x 15 m with 140 pieces.
 
 - **Why this shape:** splitting NFTs across wallets must not pay. Tier 4 must be worth more than ten tier 1 venues (capacity, VIP room, stage, shelves, not just size), so holders consolidate instead of farming wallets.
 - **No anti-rental rule** (owner, 2026-10-15: no holding period, no delegation). A venue **freezes** if holdings fall below its tier and is freed after 7 days (`docs/project/build-plan.md`).

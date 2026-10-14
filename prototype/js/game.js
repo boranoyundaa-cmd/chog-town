@@ -77,7 +77,8 @@ GAME.walkTo = function (x, z, wasBlocked) {
 // ---- input: click to move (a short press that did not drag), WASD / arrows, hover feedback
 GAME.nameOf = root => (root === GAME.me ? (GAME.nameFn ? GAME.nameFn() : 'Chog') : root.userData.netName || 'Chog');
 GAME.extraRoots = () => [];                                                         // other players' Chogs (net.js replaces this)
-GAME.zoomMin = 7; GAME.zoomMax = 26; GAME.zoomT = 15; GAME.hoverChog = null; GAME.camFollowAt = 0;
+GAME.zoomMin = 7; GAME.zoomMax = 24;   // the same limit outdoors and indoors: never so far out that a place looks small (owner, 2026-10-15)
+ GAME.zoomT = 15; GAME.hoverChog = null; GAME.camFollowAt = 0;
 // every place (town, room, hotel floor) has its own default zoom; how far you zoomed in or out is kept as a ratio of that default, so changing place never resets it
 GAME.zoomBase = 15; GAME.townBase = 15;
 GAME.sceneZoom = def => { const k = GAME.zoomT / GAME.zoomBase; GAME.zoomBase = def; GAME.zoomT = Math.max(GAME.zoomMin, Math.min(GAME.zoomMax, def * k)); };
@@ -190,12 +191,11 @@ animated.push((t, dt) => {
   if (GAME.markT > 0) { GAME.markT = Math.max(0, GAME.markT - dt * 1.4); GAME.mark.material.opacity = GAME.markT; GAME.mark.scale.setScalar(1 + (1 - GAME.markT) * 0.8); }
   // follow camera
   const R = GAME.room;
-  if (R && R.follow && R.bounds) {                                              // a room that asks for it: open close on you (R.follow = visible width) and follow you inside its walls;
-    if (GAME._camRoom !== R) { GAME._camRoom = R; GAME.zoomT = Math.min(GAME.zoomMax, Math.max(GAME.zoomMin, R.follow)); }   // zooming out to R.zoom shows the whole room again
-    const fit = R.zoom || GAME.camFollowAt || R.follow * 1.5, t = Math.max(0, Math.min(1, (fit * 0.97 - GAME.zoomT) / Math.max(0.5, fit * 0.97 - R.follow)));
-    const c = R.center || [0, 1, 0], b = R.bounds, mx = Math.min(R.follow * 0.32, (b.x1 - b.x0) / 2), mz = Math.min(R.follow * 0.32, (b.z1 - b.z0) / 2);   // stay far enough inside the walls that little of the void shows
+  if (R && R.follow && R.bounds) {                                              // a room: open close on you (R.follow = visible width) and follow you inside its walls
+    if (GAME._camRoom !== R) { GAME._camRoom = R; GAME.zoomT = Math.min(GAME.zoomMax, Math.max(GAME.zoomMin, R.follow)); }
+    const b = R.bounds, mx = Math.min(R.follow * 0.32, (b.x1 - b.x0) / 2), mz = Math.min(R.follow * 0.32, (b.z1 - b.z0) / 2);   // stay far enough inside the walls that little of the void shows
     _p.set(Math.max(b.x0 + mx, Math.min(b.x1 - mx, me.position.x)), 1.1, Math.max(b.z0 + mz, Math.min(b.z1 - mz, me.position.z)));
-    _want.set(c[0], c[1], c[2]).lerp(_p, t);
+    _want.copy(_p);
   }
   else if (GAME.camFixed) {                                                     // a room: the whole floor stays in view; zoomed in beyond that the camera follows you
     GAME._camRoom = null; _want.copy(GAME.camFixed);

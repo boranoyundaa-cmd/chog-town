@@ -58,12 +58,12 @@ const ROOM = {
     GAME.room = { blocked: (x, z, r) => roomBlocked(x, z, r) }; ROOM.active = true; GAME.path = []; GAME.keys = {};
     GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.sceneZoom(13.5);
   }
-  const fitZoom = () => { const [w, d] = dims(), z = 13.5 * Math.max(1, (w + d) / 16); GAME.zoomMax = Math.max(26, z * 1.2); GAME.camFollowAt = z; GAME.sceneZoom(z); if (GAME.room) Object.assign(GAME.room, { size: [w, d], h: SPACE.H, center: [0, 1.0, 0], bounds: { x0: -w / 2 + 0.3, x1: w / 2 - 0.3, z0: -d / 2 + 0.3, z1: d / 2 - 0.3 }, zoom: z, follow: 18 }); };      // GAME.room also tells the camera: floor size, wall height, walking bounds, the zoom that shows the whole room (zoom) and the closer one to follow the player with (follow)      // a bigger floor needs a wider view; zoomed in beyond it the camera follows you (game.js)
+  const fitZoom = () => { const [w, d] = dims(), z = 13.5 * Math.max(1, (w + d) / 16); GAME.zoomMax = 24; GAME.camFollowAt = z; GAME.sceneZoom(z); if (GAME.room) Object.assign(GAME.room, { size: [w, d], h: SPACE.H, center: [0, 1.0, 0], bounds: { x0: -w / 2 + 0.3, x1: w / 2 - 0.3, z0: -d / 2 + 0.3, z1: d / 2 - 0.3 }, zoom: z, follow: 18 }); };      // GAME.room also tells the camera: floor size, wall height, walking bounds, the zoom that shows the whole room (zoom) and the closer one to follow the player with (follow)      // a bigger floor needs a wider view; zoomed in beyond it the camera follows you (game.js)
   ROOM.showTown = on => { for (const o of CITY_NODES) o.visible = on; doorMark.visible = on; };            // the hotel hides and shows the street the same way a room does
   function leaveScene(keepTown) {                                                          // keepTown: going from a venue back to the hotel, the street stays hidden
     SPACE.unload(); if (!keepTown) { ROOM.showTown(true); DAY.resume(); }
     const sc = sun.shadow.camera; if (prev) { Object.assign(sc, { left: prev.shadow.l, right: prev.shadow.r, top: prev.shadow.t, bottom: prev.shadow.b, far: prev.shadow.f }); sc.updateProjectionMatrix(); if (!keepTown) GAME.sceneZoom(GAME.townBase); }
-    GAME.room = null; GAME.camFixed = null; GAME.camFollowAt = 0; GAME.zoomMax = 26; SPACE.level = null; SPACE.limits.lights = LIGHTS; GAME.editMode = false; GAME.dragUI = false; GAME.regrid(); ROOM.active = false; ROOM.mode = 'walk';
+    GAME.room = null; GAME.camFixed = null; GAME.camFollowAt = 0; GAME.zoomMax = 24; SPACE.level = null; SPACE.limits.lights = LIGHTS; GAME.editMode = false; GAME.dragUI = false; GAME.regrid(); ROOM.active = false; ROOM.mode = 'walk';
     if (!keepTown) { const me = GAME.me; me.position.set(CITY_OUT.x, 0, CITY_OUT.z); me.rotation.y = CITY_OUT.ry; GAME.path = []; }
     SPACE.refreshHidden(); document.body.classList.remove('inroom');
   }

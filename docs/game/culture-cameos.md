@@ -1,6 +1,6 @@
-# Culture: real CT characters (cameos) (DRAFT for owner review)
+# Culture: real CT characters (cameos) (source draft)
 
-Part of `docs/game/culture.md`. Archetypes: `docs/game/culture-cast.md`. World content: `docs/game/culture-world.md`. Nothing here is in the game yet.
+Part of `docs/game/culture.md`. Archetypes: `docs/game/culture-cast.md`. World content: `docs/game/culture-world.md`. The shipped version is in `js/culture_data.js` (the code wins where it differs; cuts and rewrites were made while building).
 
 ## Rules for this file
 

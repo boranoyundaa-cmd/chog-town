@@ -1,6 +1,6 @@
 # Core loop research
 
-Question: what is the core loop, and why would Chog Town be fun? Researched 2026-10-07 from web sources (mostly secondary: press, analyst blogs, interviews; figures are as reported, not audited). Conclusions marked **[inference]** are ours, not a source's.
+Question: what is the core loop, and why would Chog Hotel be fun? Researched 2026-10-07 from web sources (mostly secondary: press, analyst blogs, interviews; figures are as reported, not audited). Conclusions marked **[inference]** are ours, not a source's.
 
 ## 1. Why blockchain games failed
 
@@ -36,7 +36,7 @@ Isometric view is not the problem: Albion, Dofus, Tibia, RuneScape, Habbo, Ragna
 - **Dofus:** ~95,000 guilds and 13,000 alliances; deliberately limited retro servers because empty servers cannot be merged later.
 - **Tibia / OSRS:** long life from continuous updates and nostalgia; RuneScape's graphics overhaul reportedly cost players.
 
-## 4. What this means for Chog Town
+## 4. What this means for Chog Hotel
 
 Written against the original medieval plan (pillars: town, duels, market); the chosen direction is in section 5. Facts about that design, then **[inference]**:
 

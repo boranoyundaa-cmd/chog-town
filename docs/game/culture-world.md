@@ -1,6 +1,6 @@
-# Culture: world content (DRAFT for owner review)
+# Culture: world content (source draft)
 
-Part of `docs/game/culture.md`. Characters and their click lines: `docs/game/culture-cast.md`. Nothing here is in the game yet.
+Part of `docs/game/culture.md`. Characters and their click lines: `docs/game/culture-cast.md`. The shipped version is in `js/culture_data.js` (the code wins where it differs; cuts and rewrites were made while building).
 
 Source tags as in the cast file: `[V]` found in a published source (secondary; recheck before shipping), `[K]` common community phrase, `[O]` from the owner, `[W]` written by us. Art rule: every image is **redrawn in our style** (`docs/art/art-direction.md`), never copied; no real person's likeness without their cameo gate; no third-party PFP collection art (BAYC, Punks, Milady...) without a licence check.
 

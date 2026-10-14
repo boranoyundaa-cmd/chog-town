@@ -1,10 +1,21 @@
 # Build plan (owner decisions of 2026-10-15)
 
-All open questions were put to the owner on 2026-10-15. These answers are final for the hackathon build; they replace older text where they disagree. Everything below is to be built in one long session, deployed at its end (server first, then site). Building ends about 2026-10-22.
+All open questions were put to the owner on 2026-10-15. These answers are final for the hackathon build; they replace older text where they disagree.
+
+## Status
+
+**Built and tested locally (mock chain and wallet):** rename and tiers, culture pass (42 residents, plaques, props, events, UI text), synthesized audio, 7 mini-games with NPC challenges, boards and trophies, Exhibition floor, tier perks (capacity, stage and DJ booth, VIP level, game tables, tier-locked pieces, freeze, upgrade, move), shop UI and server, ChogShop contract with tests and deploy script, guest portrait, small fixes (invite matching by id, queued `enter` calls), bigger town and interiors.
+
+**Left:**
+1. Deploy the server, then the site; commit and push both repos.
+2. The owner deploys ChogShop from their wallet and sets `SHOP_CONFIG.shop` (client) and `SHOP_ADDRESS` (server); the MON path stays off until a router is set.
+3. Live checks with a real wallet and a second player.
+4. Performance on real hardware.
+5. Demo video and submission: the owner's call.
 
 ## Name and language
 
-- The game is called **Chog Hotel** (was Chog Town). Rename titles, HUD, docs, site title.
+- The game is called **Chog Hotel** (was Chog Town; renamed everywhere).
 - In-game text is **English only**.
 
 ## Tiers
@@ -63,13 +74,12 @@ All solo-playable; NPCs accept two-player challenges (labelled), so a lone judge
 - **Cameos (all 16 of `docs/game/culture-cameos.md`):** to avoid legal risk they appear **under a nickname** (e.g. "The Duck" for DonAlt), as **our own original Chog design** that only nods to their profile picture (never a copy of it, never the real face), saying **only their real posts**, with the date and "X post" in small print and **no real name or handle**. Lines marked (?) ship only once checked against the original. Anyone who asks is removed.
 - **The Nad and Monad in-jokes:** Claude researches Monad community culture and writes them; the owner corrects later.
 - **World content, all of it:** plaques and redrawn iconic images, the interactive props (the Rug, gm wall, laser-eyes booth, liquidation button, seed-phrase vending machine, elevator "ser, please"...), real-clock events, UI text (loading tips, buttons, errors, toasts). Source: `docs/game/culture-world.md`.
-- Dialogue plays **only on click** (remove the proximity bubbles in `js/npc.js`).
+- Dialogue plays **only on click** (done).
 - **No reference hunt** (dropped by the owner).
-- NPC crowd outside stays **about 12** at once; the ~39 characters rotate by their schedules.
+- NPC crowd outside stays **about 16** at once (`NPC.target`); the 42 characters rotate by their schedules.
 
 ## Other
 
 - **Guest portrait:** a player without an NFT shows **the Chog Genesis collection's own profile picture** (the purple Chog) on their profile card.
-- Fix the known small issues in `docs/project/overview.md` (invite matching by name, dropped `enter` calls, bare slab strips, sparse Gallery One).
 - Demo video, submission text, demo tour: **not now**; the owner handles promotion. The game must work and be good.
-- **Deploy only at the end of the session.** Live checks with a real wallet are done by the owner after the deploy.
+- **Deploy only at the end of the build.** Live checks with a real wallet are done by the owner after the deploy.

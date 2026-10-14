@@ -1,6 +1,6 @@
-# Culture: cast and click lines (DRAFT for owner review)
+# Culture: cast and click lines (source draft)
 
-Part of `docs/game/culture.md`. Nothing here is in the game yet. World content (walls, images, places, events, UI text): `docs/game/culture-world.md`.
+Part of `docs/game/culture.md`. The shipped version is in `js/culture_data.js` (the code wins where it differs; cuts and rewrites were made while building). World content (walls, images, places, events, UI text): `docs/game/culture-world.md`.
 
 ## How to read this
 

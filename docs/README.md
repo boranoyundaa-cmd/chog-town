@@ -3,15 +3,17 @@
 | Category | File | Contents |
 |---|---|---|
 | Project | [overview.md](project/overview.md) | Vision, status, decisions, next steps |
-| Project | [build-plan.md](project/build-plan.md) | Owner decisions of 2026-10-15 and what the next build session makes |
+| Project | [build-plan.md](project/build-plan.md) | Owner decisions of 2026-10-15, what is built and what is left |
 | Project | [hackathon.md](project/hackathon.md) | Chogathon rules, prizes, judging criteria |
 | Game | [design.md](game/design.md) | Venue-based social sandbox, NFT license tiers, economy rules, architecture |
 | Game | [core-loop-research.md](game/core-loop-research.md) | Why web3 games and MMOs fail, what worked, candidate core loops |
 | Game | [world.md](game/world.md) | World structure: town, Home, Hotel (venues), NPCs, light rule, mini-games |
+| Game | [culture.md](game/culture.md) | The theme (crypto culture), rules for jokes and cameos, what is in the game; source drafts `culture-cast.md`, `culture-cameos.md`, `culture-world.md` |
 | Game | [spaces.md](game/spaces.md) | Rooms and venues as documents: themes, pieces, render styles, creator freedom, budgets |
 | Art | [art-direction.md](art/art-direction.md) | World style, UI style (Storybook), Chog design rules, scale rules |
 | Engineering | [prototype.md](engineering/prototype.md) | Running, file map, render pipeline, game feel, data tools, pitfalls |
-| Engineering | [server.md](engineering/server.md) | Realtime server: run, protocol, identity, anti-abuse, what is missing |
+| Engineering | [server.md](engineering/server.md) | Realtime server: run, protocol, hotel, games, Exhibition, shop, identity, anti-abuse, what is missing |
+| Engineering | [contracts/README.md](../contracts/README.md) | ChogShop contract, verified chain facts, deploy steps |
 | Reference | [chog-collection.md](reference/chog-collection.md) | Verified contract, token ids, metadata, traits, official art sources |
 
 Images live in `assets/` (`city-golden.png`, `city-night.png`, `city-day.png`, `chog-lineup.png` = current look; `reference/` = style targets).
