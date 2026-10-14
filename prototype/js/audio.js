@@ -1,6 +1,6 @@
 // Chog Hotel audio: everything is synthesized with WebAudio, no files, no libraries.
 // One global: AUDIO. All internals live inside the IIFE below.
-const AUDIO = (function () {
+var AUDIO = (function () {
   'use strict';
   const STORE_KEY = 'chog_audio';
   const LOOKAHEAD = 0.1;

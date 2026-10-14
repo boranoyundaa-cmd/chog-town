@@ -112,8 +112,18 @@ const NET = {
   // ---- spaces: change where we are (the town, a private spot, somebody's saved room); the server then only relays this space to us
   NET.enter = async function (spec) {
     if (NET.status !== 'online' || !NET.rooms) return null;                                  // an older server does not know rooms: the client plays the room alone
-    send(Object.assign({ t: 'enter' }, spec));
-    return await waitFor(['entered', 'roomfail'], 8000);
+    const run = async () => {                                                                // calls are queued: the server drops an enter that follows the last one within 400 ms
+      for (let tries = 0; tries < 4; tries++) {
+        const gap = 450 - (Date.now() - (NET.lastEnterAt || 0)); if (gap > 0) await new Promise(r => setTimeout(r, gap));
+        NET.lastEnterAt = Date.now(); send(Object.assign({ t: 'enter' }, spec));
+        const r = await waitFor(['entered', 'roomfail', 'enterwait'], 8000);
+        if (!r || r.t !== 'enterwait') return r;
+        await new Promise(res => setTimeout(res, Math.min(2000, (r.after || 400) + 30)));      // throttled: the server says when to ask again
+      }
+      return null;
+    };
+    const mine = (NET.enterQ || Promise.resolve()).then(run, run); NET.enterQ = mine.catch(() => null);
+    return await mine;
   };
   // ---- invitations to a Home: you can only enter somebody's Home when its owner invited you (a direct invitation) or gave you their link
   NET.invite = id => { if (NET.status !== 'online') { toast('The town server is offline.'); return; } send({ t: 'invite', id }); };
@@ -167,7 +177,7 @@ const NET = {
       case 'counts': if (typeof HOTEL !== 'undefined') HOTEL.setCounts(m.c); break;
       case 'roomfail': if (typeof HOTEL !== 'undefined' && HOTEL.guardSays && HOTEL.guardSays(m.reason)) break; toast(m.reason || 'That did not work.'); break;
       case 'invited': {
-        const from = [...NET.remotes.values()].find(r => r.name === m.from);
+        const from = NET.remotes.get(m.fromId);                                                  // matched by the sender's stable id, not by display name
         if (from && NET.isMuted(from)) break;
         NET.invites = NET.invites.filter(i => i.owner !== m.owner && i.exp > Date.now()); NET.invites.push({ owner: m.owner, from: m.from, exp: m.exp }); addLog('sys', m.from + ' invited you to their Home.'); if (typeof render === 'function') render(); break;
       }

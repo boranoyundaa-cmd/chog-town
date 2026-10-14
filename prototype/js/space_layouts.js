@@ -156,9 +156,10 @@
 
   def('gallery', 'Gallery', 'Gallery', 'studio', 'A white room with a few pictures and a lot of quiet. A good place to look at things.', (W, D, o) => {
     const r = R(W, D, 'studio', false, o), { x0, z0, x1, z1 } = r, mx = (x0 + x1) / 2 + 0.6, mz = (z0 + z1) / 2 + 0.6;
-    r.hang('n', [{ p: 'wallText', txt: 'GALLERY', c: '#7a3ac8' }, ...cyc('wallArt', 8)], { from: 0.8, step: 0.9 }); r.hang('w', [{ p: 'wallTextSoft', txt: 'welcome', c: '#3f3850' }, ...cyc('wallArt', 8)], { from: 0.8, step: 0.9 });
+    r.hang('n', [{ p: 'wallText', txt: 'GALLERY', c: '#7a3ac8' }, ...cyc('wallArt', 10)], { from: 0.8, step: 0.6 }); r.hang('w', [{ p: 'wallTextSoft', txt: 'welcome', c: '#3f3850' }, ...cyc('wallArt', 10)], { from: 0.8, step: 0.6 });
     r.add('rug', mx, mz); r.add('sofa', mx, mz + 0.62); r.add('sofa', mx, mz - 0.62, 180);
     r.add('bench', mx - 0.2, z0 + 2.9, 180); r.add('bench', x0 + 2.9, mz - 0.5, 270); if (W > 17) { r.add('bench', mx + 3.6, z0 + 2.9, 180); r.add('bench', x0 + 2.9, mz + 3.0, 270); }
+    r.add('holoScreen', mx - 3.4, mz + 0.9, 20); r.add('holoScreen', mx + 3.4, mz - 0.2, -20); r.add('crystal', mx - 3.0, mz - 1.8); r.add('crystal', mx + 3.2, mz + 1.8);   // display stands and two plinths to walk around
     r.add('tallPlant', x0 + 0.6, z1 - 0.6); r.add('tallPlant', x1 - 0.6, z0 + 3.4); r.add('plant', x1 - 0.5, z1 - 0.5); r.add('floorLamp', x1 - 1.2, mz + 1.0); r.add('floorLamp', x0 + 1.4, z1 - 1.2);
     r.add('pendantLamp', mx - 2.4, mz - 1.5); r.add('pendantLamp', mx + 2.6, mz - 1.2); r.add('pendantLamp', mx, mz + 1.8);
     return r.doc('Gallery', { wall: { c: '#f4efe6', pat: 'subway' }, floor: { c: '#c9b8a0', pat: 'herringbone' } });

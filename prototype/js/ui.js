@@ -62,7 +62,7 @@ function portrait(traits) {
 
 // ---- the profile picture: a holder sees their own NFT (the official art, kept as a small file per token: tools/fetch_portraits.py), everyone else a drawn guest Chog.
 // The 3D character is the game body, not the picture of who you are; it is only the fallback when a portrait file is missing.
-const GUEST_ART = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><defs><radialGradient id="b" cx=".35" cy=".25" r="1"><stop offset="0" stop-color="#e6d8ff"/><stop offset="1" stop-color="#b79cf0"/></radialGradient></defs><rect width="256" height="256" fill="url(#b)"/><g fill="#fff" opacity=".35"><circle cx="40" cy="48" r="26"/><circle cx="222" cy="86" r="16"/><circle cx="214" cy="210" r="30"/></g><g stroke="#2a1d3a" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"><path d="M32 150 L18 104 L58 118 L52 70 L92 96 L112 44 L136 88 L170 50 L176 96 L218 76 L206 126 L238 148 L212 176 Z" fill="#5b35b0"/><path d="M38 256 Q46 212 128 206 Q210 212 218 256 Z" fill="#7a54d8"/><path d="M106 210 L104 236 M150 210 L152 236" fill="none" stroke-width="5"/><path d="M52 142 Q50 84 128 80 Q206 84 204 142 Q206 206 128 210 Q50 206 52 142 Z" fill="#f6ecd8"/></g><g stroke="#2a1d3a" stroke-width="6"><circle cx="96" cy="138" r="22" fill="#fff"/><circle cx="160" cy="138" r="22" fill="#fff"/></g><g fill="#1a1028"><circle cx="100" cy="140" r="13"/><circle cx="156" cy="140" r="13"/></g><g fill="#fff"><circle cx="105" cy="134" r="4.5"/><circle cx="161" cy="134" r="4.5"/></g><g fill="#f08ab8"><ellipse cx="72" cy="170" rx="13" ry="9"/><ellipse cx="184" cy="170" rx="13" ry="9"/><ellipse cx="128" cy="162" rx="6" ry="4"/></g><path d="M112 184 Q128 198 146 184" fill="none" stroke="#2a1d3a" stroke-width="5" stroke-linecap="round"/></svg>`).replace(/[()']/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+const GUEST_ART = 'data/portraits/guest.webp';   // the collection's own profile picture (OpenSea collection logo), shown for players without a Chog
 const artOf = id => (id && TOKENS[id] ? 'data/portraits/' + id + '.webp' : GUEST_ART);
 
 // ---- state -> Chog
@@ -170,6 +170,17 @@ function settingsCard(onClose) {
   c.appendChild(el('h3', 'sect', 'Interface style')); const sk = el('div', 'skins');
   for (const id of SKINS_OK) { const b = el('button', 'opt skin-' + id + (UI.skin === id ? ' on' : ''), `<i class="sw"><u></u><u></u><u></u></i><b>${SKINS[id].label}</b><small>${SKINS[id].sub}</small>`); b.onclick = () => { UI.skin = id; try { localStorage.setItem('chog_skin', id); } catch (e) { /* ignore */ } applySkin(); render(); }; sk.appendChild(b); }
   c.appendChild(sk);
+  if (typeof AUDIO !== 'undefined') {                                                                  // sound: three volumes and a mute switch (AUDIO keeps them)
+    c.appendChild(el('h3', 'sect', 'Sound'));
+    for (const [k, lb] of [['master', 'Master'], ['music', 'Music'], ['sfx', 'Effects']]) {
+      const row = el('div', 'timerow'), nm = el('span', 'tl', lb), v = el('span', 'tl', ''), sl = document.createElement('input'); nm.style.cssText = 'width:62px;text-align:left'; row.style.marginTop = '6px';
+      sl.type = 'range'; sl.min = 0; sl.max = 100; sl.step = 1; sl.value = Math.round(AUDIO.settings()[k] * 100); v.textContent = sl.value;
+      sl.oninput = () => { AUDIO.setVolume(k, +sl.value / 100); v.textContent = sl.value; }; sl.onchange = () => AUDIO.sfx('click');
+      row.appendChild(nm); row.appendChild(sl); row.appendChild(v); c.appendChild(row);
+    }
+    const mu = el('button', 'btn' + (AUDIO.settings().muted ? '' : ' ghost'), AUDIO.settings().muted ? 'Sound is off (click to turn on)' : 'Mute all sound'); mu.style.margin = '10px 16px 0';
+    mu.onclick = () => { AUDIO.mute(!AUDIO.settings().muted); render(); }; c.appendChild(mu);
+  }
   c.appendChild(el('h3', 'sect', 'Welcome tips')); const tb = el('button', 'btn ghost', 'Show the tips again'); tb.style.margin = '0 12px'; tb.onclick = () => { TOUR.restart(); closeWin(); }; c.appendChild(tb);
   c.appendChild(el('h3', 'sect', 'Time of day'));
   const seg = el('div', 'seg'), real = DAY.mode === 'real', save = () => { try { localStorage.setItem('chog_time', JSON.stringify({ mode: DAY.mode, hour: DAY.fixedHour })); } catch (e) { /* ignore */ } };

@@ -213,12 +213,24 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
   car(-5.0, 0.95, 0, 0xff7a6a); car(4.2, -0.95, Math.PI, 0x5ad6c0); car(0.95, 5.6, Math.PI / 2, 0xffd84a);
   planter(5.0, 2.45); planter(-6.0, -2.4, 1.6);
   bollards(-1.4, HALF - 0.5, 1.4, HALF - 0.5, 5); bollards(HALF - 0.5, -1.2, HALF - 0.5, 1.2, 4); bollards(-HALF + 0.5, -1.2, -HALF + 0.5, 1.2, 4);
-  {                                                                                       // the town's bulletin pylon, glowing at night
-    const g = new THREE.Group(); g.position.set(5.3, 0, -2.25); { const pb = cbox(1.3, 0.24, 1.3, P.curb, 1); pb.position.y = 0.12; g.add(pb); }
-    g.add(CYL(0.4, 0.44, 0.5, tmat(P.trim), 0, 0.38, 0, 14)); g.add(CYL(0.32, 0.32, 2.4, tmat(0xfdfaf2, { em: 0.2 }), 0, 1.65, 0, 14));
-    const scr = sign('CHOG\nHOTEL', 0.8, 1.3, { fg: '#ffffff', bg: '#7a3ac8', px: 72, font: '"Bungee", sans-serif', glow: '#ff6ad8' }); scr.position.set(0, 2.0, 0.33); g.add(scr);
-    const scr2 = scr.clone(); scr2.position.set(0.33, 2.0, 0); scr2.rotation.y = Math.PI / 2; g.add(scr2);
-    const hs = halo(0xc07aff, 4, 0.4); hs.position.set(0, 2.0, 0.6); g.add(hs); g.add(CYL(0.36, 0.36, 0.14, tmat(P.trim), 0, 2.95, 0, 14)); world.add(g); block(5.3, -2.25, 0.55, 0.55);
+  {                                                                                       // an advertising column: poster for the Chog Hotel wrapped round it (two panels, so any side reads)
+    const g = new THREE.Group(); g.position.set(5.3, 0, -2.25); { const pb = cbox(1.15, 0.2, 1.15, P.curb, 1); pb.position.y = 0.1; g.add(pb); }
+    g.add(CYL(0.5, 0.54, 0.3, tmat(P.trim), 0, 0.35, 0, 20));
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 560;
+    const draw = () => { const c = cv.getContext('2d'); c.clearRect(0, 0, 1024, 560);
+      for (const ox of [0, 512]) {
+        const gr = c.createLinearGradient(0, 0, 0, 560); gr.addColorStop(0, '#8a4ae0'); gr.addColorStop(1, '#4a2490'); c.fillStyle = gr; c.fillRect(ox, 0, 512, 560);
+        c.fillStyle = '#fff3d6'; c.fillRect(ox + 156, 170, 200, 300); c.fillStyle = '#e9c98c'; c.fillRect(ox + 146, 160, 220, 22); c.fillStyle = '#5a3a8a'; c.fillRect(ox + 256, 120, 6, 40); c.fillStyle = '#ff5aa8'; c.fillRect(ox + 262, 120, 30, 16);
+        for (let r = 0; r < 4; r++) for (let k = 0; k < 3; k++) { c.fillStyle = (r + k) % 3 ? '#ffd66a' : '#9ccdf2'; c.fillRect(ox + 178 + k * 56, 200 + r * 56, 34, 38); }
+        c.fillStyle = '#2f6a5c'; c.fillRect(ox + 230, 420, 52, 50); c.fillStyle = '#2b2140'; c.fillRect(ox + 130, 470, 252, 10);
+        c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '56px "Bungee", "Fredoka", sans-serif'; c.lineWidth = 9; c.lineJoin = 'round'; c.strokeStyle = '#2b2140'; c.strokeText('CHOG HOTEL', ox + 256, 70); c.fillStyle = '#fff3d6'; c.fillText('CHOG HOTEL', ox + 256, 70);
+        c.font = '600 28px "Fredoka", sans-serif'; c.fillStyle = '#ffe9a8'; c.fillText('Check in. Never check out.', ox + 256, 520);
+      } };
+    draw(); const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4; SIGNS.push(() => { draw(); tex.needsUpdate = true; });
+    const pm = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.72, 32, 1, true), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })); pm.position.y = 1.36; pm.rotation.y = -Math.PI / 4; g.add(pm);
+    g.add(CYL(0.54, 0.54, 0.12, tmat(P.trim), 0, 2.28, 0, 20)); g.add(CYL(0.1, 0.5, 0.26, tmat(0xe9dfd0), 0, 2.45, 0, 20)); g.add(SPH(0.09, tmat(0xffc23a, { em: 0.5 }), 0, 2.64, 0));
+    g.add(CYL(0.54, 0.54, 0.1, tmat(P.trim), 0, 0.5, 0, 20));
+    world.add(g); block(5.3, -2.25, 0.5, 0.5);
   }
   world.add(plight(0xff3aa8, 0.9, 7, 4.2, 2.2, -2.4)); world.add(plight(0x3ad8ff, 0.7, 7, -4.4, 2.2, 2.4)); world.add(plight(0xffc23a, 0.8, 7, 4.4, 2.2, 2.6));   // colour pools from the neon
 

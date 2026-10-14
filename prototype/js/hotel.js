@@ -167,6 +167,60 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   };
 
   // ------------------------------------------------------------------ the two scenes
+  // ---- lobby: ordinary signs, and three small hidden things (the rug tag, the print in the corner; the elevator one is in the panel). Restraint: most of it is plain hotel.
+  const RUG = { x: 0.2, z: 0.9, hw: 1.5, hd: 1.0, pulledAt: -1e9, until: 0, grp: null, victims: [], baseX: 0.2 };
+  const RECEP = ['Welcome to the Chog Hotel.', 'Rooms are on the floors. The elevator is on your left.', 'The directory lists every open room.', 'Check-out is at 11:00.', 'Breakfast is a coffee. Mika will help you.', 'Need a room? Ask me. Need a view? Take the elevator.'];
+  let recepJoke = null, recepAt = 0;
+  const recepLine = () => {                                                         // normal hotel lines, and one in-joke from the culture file now and then
+    if (!recepJoke) { const c = typeof CULTURE !== 'undefined' && CULTURE.residents && CULTURE.residents.receptionist; recepJoke = c && c.length ? c[Math.floor(Math.random() * c.length)] : ''; }
+    recepAt++; return recepJoke && recepAt % 5 === 0 ? recepJoke : RECEP[recepAt % RECEP.length];
+  };
+  function paperOnWall(g, o, wall, u, y, w, h, paint, frameCol) {
+    const cv = document.createElement('canvas'); cv.width = 256; cv.height = Math.round(256 * h / w); const c = cv.getContext('2d');
+    const draw = () => { c.clearRect(0, 0, cv.width, cv.height); paint(c, cv.width, cv.height); };
+    draw(); const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4; notes.push(() => { draw(); tex.needsUpdate = true; });
+    onWall(g, o, wall, u, y, BOX(w + 0.08, h + 0.08, 0.05, tmat(frameCol || 0x3f3850)), 0.04);
+    onWall(g, o, wall, u, y, new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: tex })), 0.075);
+  }
+  const onRug = p => Math.abs(p.x - RUG.x) < RUG.hw && Math.abs(p.z - RUG.z) < RUG.hd;
+  function pullRug() {
+    const now = performance.now(); if (now < RUG.until) return;
+    RUG.pulledAt = now; RUG.until = now + 60000; sfxPlay('rug'); RUG.victims = [];
+    for (const c of [GAME.me, ...[...NET.remotes.values()].map(r => r.root)]) if (c && c.position && onRug(c.position)) RUG.victims.push(c);
+    const pr = typeof CULTURE !== 'undefined' && CULTURE.props.find(x => x.id === 'rug'); if (pr && pr.lines) toast(pr.lines[Math.floor(Math.random() * pr.lines.length)]);
+  }
+  function rugReset() { for (const c of RUG.victims) { c.rotation.x = 0; c.rotation.z = 0; } RUG.victims = []; }
+  function rugAnim() {
+    const now = performance.now(), dt = (now - RUG.pulledAt) / 1000, left = (RUG.until - now) / 1000;
+    if (RUG.grp) {                                                                    // the rug bunches up towards the wall and comes back after a minute
+      const e = dt < 0.35 ? dt / 0.35 : left > 1 ? 1 : Math.max(0, left); RUG.grp.position.x = RUG.baseX - 0.8 * e; RUG.grp.scale.x = 1 - 0.45 * e;
+    }
+    if (RUG.victims.length) {
+      let rz = 0; if (dt < 0.5) rz = Math.sin(dt * 24) * 0.32; else if (dt < 0.85) rz = 1.45 * ((dt - 0.5) / 0.35); else if (dt < 2.2) rz = 1.45 + Math.sin(dt * 6) * 0.04; else if (dt < 2.8) rz = 1.45 * (1 - (dt - 2.2) / 0.6);
+      if (dt >= 2.8) rugReset(); else for (const c of RUG.victims) { c.rotation.z = rz; c.rotation.x = dt < 0.5 ? Math.sin(dt * 19) * 0.18 : 0; }
+    }
+  }
+  function lobbyExtras(g, o) {
+    const serif = '"Bree Serif", Georgia, serif';
+    paperOnWall(g, o, 'z', 2.65, 1.55, 0.8, 0.54, (c, W, H) => {                      // the founding plaque: brass, plain text
+      c.fillStyle = '#c8a24c'; c.fillRect(0, 0, W, H); c.strokeStyle = '#8a6a22'; c.lineWidth = 5; c.strokeRect(9, 9, W - 18, H - 18); c.fillStyle = '#4a3410'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.font = `700 30px ${serif}`; c.fillText('CHOG HOTEL', W / 2, H * 0.3); c.font = `20px ${serif}`; c.fillText('Founded 2026', W / 2, H * 0.52); c.fillText('All guests welcome', W / 2, H * 0.72);
+    }, 0x5a3a1e);
+    paperOnWall(g, o, 'z', -2.2, 1.6, 0.8, 0.3, (c, W, H) => {                        // the check-out sign
+      c.fillStyle = '#f4ead6'; c.fillRect(0, 0, W, H); c.fillStyle = '#2b1d44'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 30px ${serif}`; c.fillText('CHECK-OUT 11:00', W / 2, H * 0.5);
+    });
+    paperOnWall(g, o, 'x', -2.8, 1.35, 0.4, 0.52, (c, W, H) => {                      // a small framed print in the quiet corner: a plain page and a date, no label
+      c.fillStyle = '#fbfaf5'; c.fillRect(0, 0, W, H); c.fillStyle = '#222'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+      c.font = 'bold 36px Arial, Helvetica, sans-serif'; c.fillText('I AM HODLING', 14, 52); c.fillStyle = '#777'; c.font = '17px Arial, sans-serif'; c.fillText('Dec 18, 2013', 14, 82);
+      c.fillStyle = '#bbb'; for (let i = 0; i < 8; i++) c.fillRect(14, 112 + i * 20, i % 3 === 2 ? 120 : 214, 6);
+    }, 0x2b2140);
+    // the rug tag
+    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const c2 = cv.getContext('2d');
+    const draw = () => { c2.fillStyle = '#f4ead6'; c2.fillRect(0, 0, 128, 64); c2.strokeStyle = '#a89878'; c2.lineWidth = 3; c2.strokeRect(2, 2, 124, 60); c2.fillStyle = '#4a3a2a'; c2.textAlign = 'center'; c2.textBaseline = 'middle'; c2.font = '600 17px "Fredoka", Arial, sans-serif'; c2.fillText('do not pull', 64, 33); };
+    draw(); const tex = new THREE.CanvasTexture(cv); notes.push(() => { draw(); tex.needsUpdate = true; });
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.17), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })); tag.rotation.set(-Math.PI / 2, 0, Math.PI / 4); tag.position.set(1.3, 0.06, 1.62);
+    tag.userData.onClick = pullRug; tag.userData.netName = 'tag'; g.add(tag); RUG.tag = tag; anims.push(rugAnim);
+  }
   function buildLobby() {
     const g = new THREE.Group(), o = { z0: -LOB.d / 2, x0: -LOB.w / 2, lenX: LOB.w, lenZ: LOB.d, cx: 0, cz: 0, wallC: 0xf0e2d0, wallPat: 'wainscot', floorC: 0xe6d6c0, floorPat: 'tiles', floors: [[0, 0, LOB.w, LOB.d]] };
     shell(g, o); walk = [[-LOB.w / 2 + 0.3, LOB.w / 2 - 0.3, -LOB.d / 2 + 0.3, LOB.d / 2 - 0.3]]; mapRects = [[-LOB.w / 2, LOB.w / 2, -LOB.d / 2, LOB.d / 2]];
@@ -176,13 +230,13 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     elevator(g, o, 'x', 0.6);
     onWall(g, o, 'z', 0.2, 2.55, sign('CHOG HOTEL', 3.6, 0.62, '#fff6e0', '#2b1d44', '#ff9ad8'), 0.06); halo(g, 0xff9ad8, 4.5, 0.3, 0.2, 2.5, -3.6);
     // furniture
-    piece(g, 'receptionDesk', 0.2, -2.95); piece(g, 'rug', 0.2, 0.9); piece(g, 'sofa', -2.4, 2.9, 180); piece(g, 'coffeeTable', -2.4, 1.7); piece(g, 'armchair', -4.0, 1.9, 90);
+    piece(g, 'receptionDesk', 0.2, -2.95); RUG.grp = piece(g, 'rug', 0.2, 0.9); RUG.baseX = 0.2; piece(g, 'sofa', -2.4, 2.9, 180); piece(g, 'coffeeTable', -2.4, 1.7); piece(g, 'armchair', -4.0, 1.9, 90);
     piece(g, 'tallPlant', 4.8, -0.6); piece(g, 'plant', 4.9, 3.0); piece(g, 'tallPlant', -4.8, -3.3); piece(g, 'floorLamp', 4.3, 1.6); piece(g, 'sofa', 2.6, 3.0, 180); piece(g, 'sideTable', 0.6, 3.1); piece(g, 'wallArt', -3.2, -4.0);
-    piece(g, 'wallArt', -5.5, 2.6, 90); piece(g, 'wallArt', -5.5, -1.6, 90);
+    piece(g, 'wallArt', -5.5, 2.6, 90); piece(g, 'wallArt', -5.5, -1.6, 90); lobbyExtras(g, o);
     piece(g, 'pendantLamp', 0.2, -1.4); piece(g, 'pendantLamp', -2.4, 2.0); piece(g, 'pendantLamp', 3.0, 1.8);
     block(0.2, -2.95, 1.7, 0.45);
     // the receptionist
-    npc = chog({ hair: 0x5b35b0, outfit: 'vest', vest: 0x7a3ac8, head: 'headset', scale: CHOG_SCALE * 1.0 }); npc.position.set(0.2, 0, -3.62); npc.rotation.y = 0; g.add(npc); npc.userData.netName = 'Reception'; npc.userData.onClick = () => HOTEL.openPanel('dir');
+    npc = chog({ hair: 0x5b35b0, outfit: 'vest', vest: 0x7a3ac8, head: 'headset', scale: CHOG_SCALE * 1.0 }); npc.position.set(0.2, 0, -3.62); npc.rotation.y = 0; g.add(npc); npc.userData.netName = 'Reception'; npc.userData.onClick = () => { toast(recepLine()); HOTEL.openPanel('dir'); };
     npcPlate = PLATES.add(npc, 'Staff');
     spots = [
       { x: 0.2, z: -1.9, r: 1.6, y: 2.2, label: 'Ask reception', run: () => HOTEL.openPanel('dir') },
@@ -233,7 +287,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     for (const h of halos) { const i = noNormalPass.indexOf(h); if (i >= 0) noNormalPass.splice(i, 1); }
     if (npcPlate) { PLATES.remove(npcPlate); npcPlate = null; }
     for (const gd of guards) PLATES.remove(gd.plate); guards = [];
-    G = null; walk = []; rects = []; spots = []; plates.length = 0; anims.length = 0; lights.length = 0; halos.length = 0; npc = null; mapRects = []; mapDoors = [];
+    rugReset(); RUG.grp = null; RUG.tag = null; G = null; walk = []; rects = []; spots = []; plates.length = 0; anims.length = 0; lights.length = 0; halos.length = 0; npc = null; mapRects = []; mapDoors = [];
     SPACE.clearSky(); SPACE.refreshHidden();
   }
 
@@ -335,7 +389,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
 
   // ------------------------------------------------------------------ the HUD: top bar and the two panels (directory, elevator)
   const btn = (cls, txt, fn, title) => { const b = el('button', 'btn hit ' + cls, ''); b.textContent = txt; b.onclick = fn; if (title) b.title = title; return b; };
-  HOTEL.openPanel = p => { if (!HOTEL.active || HOTEL.busy) return; HOTEL.panel = p; if (p === 'dir') HOTEL.q = ''; HOTEL.refreshUI(); if (!HOTEL.info) loadInfo().then(() => HOTEL.refreshUI()); };
+  HOTEL.openPanel = p => { if (!HOTEL.active || HOTEL.busy) return; if (p === 'lift') { liftLit = new Set(); liftSer = false; clearTimeout(liftTimer); } HOTEL.panel = p; if (p === 'dir') HOTEL.q = ''; HOTEL.refreshUI(); if (!HOTEL.info) loadInfo().then(() => HOTEL.refreshUI()); };
   HOTEL.closePanel = () => { HOTEL.panel = null; HOTEL.refreshUI(); };
   HOTEL.hud = function () { if (!HOTEL.ui) { HOTEL.ui = el('div', 'hotelhud'); HOTEL.refreshUI(); } return HOTEL.ui; };
   HOTEL.refreshUI = function () {
@@ -367,14 +421,24 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const q = HOTEL.q.trim().toLowerCase().replace(/^#/, ''), vs = listed().filter(v => (HOTEL.cat === 'All' || v.cat === HOTEL.cat) && (!q || (v.name + ' ' + v.desc + ' ' + v.no + ' ' + v.cat).toLowerCase().includes(q))).sort((a, b) => a.no - b.no);
     for (const v of vs) list.appendChild(venueRow(v)); if (!vs.length) list.appendChild(el('div', 'rp-note', HOTEL.info ? 'Nothing matches.' : 'Loading the directory…'));
   };
+  // the call buttons light up and the car leaves a moment after the last press; every button pressed within a few seconds gets one polite line from the panel (once per visit)
+  let liftLit = new Set(), liftT0 = 0, liftTimer = 0, liftSer = false, liftSerSaid = false;
+  function pressFloor(f) {
+    const now = performance.now(); if (now - liftT0 > 6000 || liftSer) { liftLit = new Set(); liftSer = false; } if (!liftLit.size) liftT0 = now; liftLit.add(f); clearTimeout(liftTimer);
+    const all = 2 + ((HOTEL.info && HOTEL.info.floors) || 0);                               // E, the lobby and every floor
+    if (!liftSerSaid && liftLit.size >= all) { liftSerSaid = liftSer = true; HOTEL.refreshUI(); liftTimer = setTimeout(() => { liftSer = false; liftLit = new Set(); HOTEL.refreshUI(); }, 3200); return; }
+    HOTEL.refreshUI();
+    liftTimer = setTimeout(() => { const to = f; liftLit = new Set(); if (to !== HOTEL.floor) HOTEL.goFloor(to); else HOTEL.refreshUI(); }, 650);
+  }
   function liftPanel() {
     const p = el('div', 'rp hp lift card hit'), h = el('div', 'rp-head'), t = el('b'); t.textContent = 'Elevator'; h.appendChild(t); p.appendChild(h);
     const body = el('div', 'hp-list'), n = (HOTEL.info && HOTEL.info.floors) || 0;
-    const ex = el('button', 'hf' + (HOTEL.floor === 'E' ? ' here' : '')); ex.disabled = HOTEL.floor === 'E'; ex.innerHTML = '<b>E</b><span></span>'; ex.querySelector('span').textContent = 'Exhibition · the weekly Home contest'; ex.onclick = () => HOTEL.goFloor('E'); body.appendChild(ex);
+    if (liftSer) { const sr = el('div', 'rp-note'); sr.textContent = '“ser, please.”'; sr.style.cssText = 'text-align:center;font-weight:700'; p.appendChild(sr); }
+    const ex = el('button', 'hf' + (HOTEL.floor === 'E' ? ' here' : '') + (liftLit.has('E') ? ' lit' : '')); ex.innerHTML = '<b>E</b><span></span>'; ex.querySelector('span').textContent = 'Exhibition · the weekly Home contest'; ex.onclick = () => pressFloor('E'); body.appendChild(ex);
     for (let f = n; f >= 0; f--) {
-      const vs = venuesOn(f).filter(v => !isShut(v)), inside = vs.reduce((s, v) => s + (HOTEL.counts[v.id] || 0), 0), b = el('button', 'hf' + (f === HOTEL.floor ? ' here' : '')); b.disabled = f === HOTEL.floor;
+      const vs = venuesOn(f).filter(v => !isShut(v)), inside = vs.reduce((s, v) => s + (HOTEL.counts[v.id] || 0), 0), b = el('button', 'hf' + (f === HOTEL.floor ? ' here' : '') + (liftLit.has(f) ? ' lit' : ''));
       b.innerHTML = '<b>' + (f === 0 ? 'G' : f) + '</b><span></span>'; const up = f > 0 && !vs.length && venuesOn(f - 1).find(v => (v.levels || 1) > 1 && !isShut(v)); b.querySelector('span').textContent = f === 0 ? 'Lobby · reception · street' : up ? 'Floor ' + f + ' · upper level of #' + up.no : 'Floor ' + f + ' · ' + vs.length + ' room' + (vs.length === 1 ? '' : 's') + (inside ? ' · ' + inside + ' inside' : '');
-      b.onclick = () => HOTEL.goFloor(f); body.appendChild(b);
+      b.onclick = () => pressFloor(f); body.appendChild(b);
     }
     p.appendChild(body); return p;
   }
@@ -397,5 +461,5 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   // the screen fade used by every change of place
   HOTEL.fadeEl = document.createElement('div'); HOTEL.fadeEl.id = 'hfade'; document.body.appendChild(HOTEL.fadeEl);
   // a click on a hotel NPC (the receptionist) is handled by the game's click code through userData.onClick; players keep working as before
-  const prevRoots = GAME.extraRoots; GAME.extraRoots = () => prevRoots().concat(HOTEL.active && npc ? [npc] : [], HOTEL.active ? guards.map(x => x.c) : []);
+  const prevRoots = GAME.extraRoots; GAME.extraRoots = () => prevRoots().concat(HOTEL.active && npc ? [npc] : [], HOTEL.active && HOTEL.floor === 0 && RUG.tag ? [RUG.tag] : [], HOTEL.active ? guards.map(x => x.c) : []);
 })();

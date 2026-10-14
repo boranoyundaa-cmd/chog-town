@@ -257,21 +257,21 @@ const ROOM = {
   function pickUp(e) {
     const idx = ROOM.doc.pieces.indexOf(e.it); if (idx < 0) return;
     ROOM.doc.pieces.splice(idx, 1); SPACE.removeEntry(e); SPACE.refreshHidden(); rebuildNav();
-    hold(Object.assign({}, e.it), { it: e.it, idx });
+    hold(Object.assign({}, e.it), { it: e.it, idx }); sfxPlay('pickup');
   }
   function placeHeld(keep) {
     const h = ROOM.held; if (!h || !h.valid) { if (h && h.reason) toast(h.reason); return; }
     const it = Object.assign({}, h.it), idx = h.from ? h.from.idx : ROOM.doc.pieces.length;
     ROOM.doc.pieces.splice(idx, 0, it); const e = SPACE.makePiece(it); if (e) SPACE.addEntry(e);
-    SPACE.refreshHidden(); rebuildNav(); touch(); ROOM.placedCount = (ROOM.placedCount || 0) + 1;                     // (the tips watch this)
+    SPACE.refreshHidden(); rebuildNav(); touch(); sfxPlay('place'); ROOM.placedCount = (ROOM.placedCount || 0) + 1;                     // (the tips watch this)
     if (keep && !h.from) { ROOM.held = { it: Object.assign({}, it), from: null, valid: false, reason: '' }; setGhost(ROOM.held.it); } else { ROOM.held = null; dropGhost(); }
     ROOM.refreshUI(); if (typeof render === 'function') render();
   }
   function deleteHeld() {
-    const h = ROOM.held; if (!h) return; if (h.from) touch(); ROOM.held = null; dropGhost(); rebuildNav(); ROOM.refreshUI(); if (typeof render === 'function') render();
+    const h = ROOM.held; if (!h) return; if (h.from) touch(); sfxPlay('close'); ROOM.held = null; dropGhost(); rebuildNav(); ROOM.refreshUI(); if (typeof render === 'function') render();
   }
   function rotateHeld() {
-    const h = ROOM.held; if (!h || isWall(defOf(h.it))) return; h.it.ry = ((h.it.ry || 0) + 90) % 360; if (ghost) ghost.g.rotation.y = rad(h.it.ry);
+    const h = ROOM.held; if (!h || isWall(defOf(h.it))) return; h.it.ry = ((h.it.ry || 0) + 90) % 360; sfxPlay('rotate'); if (ghost) ghost.g.rotation.y = rad(h.it.ry);
   }
   ROOM.hold = p => { const lock = SPACE.PIECES[p] && lockedFor(SPACE.PIECES[p]); if (lock) { toast(lock + ' to place the ' + SPACE.PIECES[p].name.toLowerCase() + '.'); return; } if (!ROOM.editing() || (ROOM.doc.pieces.length >= limitNow())) { if (ROOM.doc && ROOM.doc.pieces.length >= limitNow()) toast('This room is full (' + limitNow() + ' pieces).'); return; } cancelHeld(); const d = SPACE.PIECES[p], t = d.parts.find(x => x.edit && x.t === 'text'); hold(Object.assign({ p, x: 0, z: 0, ry: 0 }, t ? { txt: t.txt } : {})); };
   ROOM.rotate = rotateHeld; ROOM.drop = deleteHeld; ROOM.cancel = cancelHeld;
@@ -360,9 +360,9 @@ const ROOM = {
       let sig; try { sig = await WALLET.provider.request({ method: 'personal_sign', params: [hexOf(prep.message), WALLET.account] }); } catch (e) { toast(e && e.code === 4001 ? 'Not saved: you declined the signature.' : 'Could not sign.'); return; }
       const st = ven ? kn + 'save' : 'roomsave', sd = ven ? kn + 'saved' : 'roomsaved';
       NET.send({ t: st, doc: ROOM.doc, ts: prep.ts, sig, level: ROOM.level }); const r = await NET.waitFor([sd, 'roomfail'], 8000);
-      if (r && r.t === sd && ven) { ROOM.dirty = false; ROOM.savedAt = r.at; save$(draftKey(), null); if (typeof VENUE !== 'undefined') VENUE.onMine(r.mine); toast(kn === 'facade' ? 'Facade saved. It shows in the hall right away.' : r.mine && r.mine.state === 'open' ? 'Venue saved. Visitors see the new look.' : 'Venue saved. Press Open venue when you are ready.'); }
+      if (r && r.t === sd && ven) { ROOM.dirty = false; sfxPlay('save'); ROOM.savedAt = r.at; save$(draftKey(), null); if (typeof VENUE !== 'undefined') VENUE.onMine(r.mine); toast(kn === 'facade' ? 'Facade saved. It shows in the hall right away.' : r.mine && r.mine.state === 'open' ? 'Venue saved. Visitors see the new look.' : 'Venue saved. Press Open venue when you are ready.'); }
       else if (r && r.t === sd) {
-        ROOM.dirty = false; ROOM.savedAt = r.at; ROOM.owner = WALLET.account.toLowerCase(); save$(draftKey(), null); toast('Home saved. Invite friends from the top bar.');
+        ROOM.dirty = false; sfxPlay('save'); ROOM.savedAt = r.at; ROOM.owner = WALLET.account.toLowerCase(); save$(draftKey(), null); toast('Home saved. Invite friends from the top bar.');
         if (ROOM.kind === 'solo') { ROOM.kind = 'mine'; const me = GAME.me; NET.enter({ space: 'room', who: 'me', x: me.position.x, z: me.position.z, ry: me.rotation.y }); }      // now others can come in
       } else if (r && r.t === 'roomfail') { /* net.js already showed why */ } else if (!r) toast('The server did not answer. Try Save again.');
     } finally { ROOM.busy = false; ROOM.refreshUI(); if (typeof render === 'function') render(); }

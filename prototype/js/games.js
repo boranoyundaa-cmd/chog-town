@@ -262,8 +262,11 @@ const GAMES = { open: null, profile: { trophies: [], badges: [], best: {}, playe
     const tr = GAMES.trophies(), by = {}; for (const t of tr) by[t.game] = (by[t.game] || 0) + 1;
     const r = el('div', 'gm-trow'); r.innerHTML = `<h3>Trophies</h3>`;
     const chips = el('div', 'gm-tchips');
-    if (!tr.length) chips.appendChild(el('span', 'gm-tnone', 'None yet. Win a game today.'));
+    const ex = typeof EXH !== 'undefined' ? EXH.trophies() : [];                                              // the Exhibition wins (server/exhibition.js) sit with the game trophies
+    if (typeof EXH !== 'undefined' && !EXH.data && !GAMES.exAsked && online() && typeof WALLET !== 'undefined' && WALLET.account) { GAMES.exAsked = true; EXH.load().then(() => { if (typeof render === 'function') render(); }); }
+    if (!tr.length && !ex.length) chips.appendChild(el('span', 'gm-tnone', 'None yet. Win a game today.'));
     for (const m of META) if (by[m.id]) chips.appendChild(el('span', 'gm-tchip', `${cup(15)}${esc(m.name)}${by[m.id] > 1 ? ' ×' + by[m.id] : ''}`));
+    for (const t of ex.slice(-6)) chips.appendChild(el('span', 'gm-tchip', `${cup(15)}Exhibition: ${esc(t.theme || t.week)}`));
     for (const b of GAMES.profile.badges) if (BADGE_TXT[b]) chips.appendChild(el('span', 'gm-tchip badge', `★ ${BADGE_TXT[b]}`));
     r.appendChild(chips); const more = el('button', 'gm-tmore', 'Games'); more.onclick = () => GAMES.hub('trophies'); r.appendChild(more); return r;
   };

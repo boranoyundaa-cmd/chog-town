@@ -273,3 +273,5 @@ body.neon #hotelp { background: rgba(20, 10, 44, .9); color: #f2eaff; border-col
 
 #ui .pcard img.art { float: left; width: 46px; height: 46px; margin: 0 10px 6px 0; border-radius: 10px; object-fit: cover; box-shadow: 0 0 0 2px rgba(128, 100, 160, .35); }
 #ui .pcard .acts { clear: both; }
+
+#ui .hf.lit { background: color-mix(in srgb, #ffd84a 70%, transparent); border-color: #e8a817; }

@@ -188,8 +188,9 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
     const g = new THREE.Group(); g.position.set(gm.x, 0, gm.z);
     for (const s of [-1, 1]) g.add(BOX(0.07, 1.5, 0.07, tmat(0x6a4c3a), s * 0.64, 0.75, -0.04));
     g.add(BOX(1.4, 0.95, 0.06, tmat(0x8a6238), 0, 1.05, 0));
-    const NOTES = [[40, 40, 130, 100, '#fff6e0', 'Piano lessons'], [190, 30, 100, 110, '#ffe27a', 'gm'], [310, 50, 150, 90, '#bfe6d4', 'Yard sale Sun'], [60, 190, 110, 100, '#f6c4d4', 'gm'], [200, 180, 120, 110, '#fff6e0', 'Lost: grey cat'], [350, 190, 100, 100, '#cfd8f4', 'Room 4 free']];
-    const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.85), canvasMat(520, 340, (c, w, h) => { c.fillStyle = '#c9a06a'; c.fillRect(0, 0, w, h); for (const [x, y, nw, nh, col, t] of NOTES) { c.fillStyle = col; c.fillRect(x, y, nw, nh); c.fillStyle = '#d04a4a'; c.beginPath(); c.arc(x + nw / 2, y + 8, 5, 0, 7); c.fill(); c.fillStyle = INK; c.font = `600 ${t === 'gm' ? 40 : 19}px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t, x + nw / 2, y + nh / 2 + 6); } }, false)); pl.position.set(0, 1.05, 0.04); g.add(pl);
+    const gmWord = () => ((DAY.lamp || 0) < 0.35 ? 'gmonad' : 'gn'); gm.word = gmWord();
+    const NOTES = [[40, 40, 130, 100, '#fff6e0', 'Piano lessons'], [190, 30, 100, 110, '#ffe27a', '@GM'], [310, 50, 150, 90, '#bfe6d4', 'Yard sale Sun'], [60, 190, 110, 100, '#f6c4d4', 'Free books'], [200, 180, 120, 110, '#fff6e0', 'Lost: grey cat'], [350, 190, 100, 100, '#cfd8f4', 'Room 4 free']];
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.85), canvasMat(520, 340, (c, w, h) => { c.fillStyle = '#c9a06a'; c.fillRect(0, 0, w, h); for (let [x, y, nw, nh, col, t] of NOTES) { c.fillStyle = col; c.fillRect(x, y, nw, nh); c.fillStyle = '#d04a4a'; c.beginPath(); c.arc(x + nw / 2, y + 8, 5, 0, 7); c.fill(); c.fillStyle = INK; if (t === '@GM') t = gmWord(); c.font = `600 ${t === 'gmonad' || t === 'gn' ? 27 : 19}px ${FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText(t, x + nw / 2, y + nh / 2 + 6); } }, false)); pl.position.set(0, 1.05, 0.04); g.add(pl); gm.redraw = redraws[redraws.length - 1];
     const rc = new THREE.Group(); rc.position.set(0.5, 0.92, 0.06); const rp = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 0.26), canvasMat(80, 130, (c, w, h) => { c.fillStyle = '#f8f6ee'; c.fillRect(0, 0, w, h); c.fillStyle = '#7a7a7a'; c.font = `600 11px ${FONT}`; c.textAlign = 'center'; c.fillText('RECEIPT', w / 2, 18); c.fillText('2 pizzas', w / 2, 52); c.fillText('10,000 BTC', w / 2, 70); c.fillText('2010', w / 2, 100); }, false)); rc.add(rp);
     rc.userData.cultureClick = () => PROPS.openCard('Pinned receipt', '2 pizzas. 10,000 BTC. May 22, 2010.'); g.add(rc);
     g.traverse(o => { if (o.isMesh) o.userData.noOutline = true; }); addBlock(gm.x, gm.z, 0.75, 0.15);
@@ -198,11 +199,11 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
   PROPS.gm = () => {
     const now = performance.now(); if (now < gm.cool) { say('The wall is still saying gm.'); return; } gm.cool = now + 5000;
     const roots = [GAME.me, ...NPC.list.filter(r => r.c && r.c.visible).map(r => r.c), ...GAME.extraRoots()].filter(o => o && o.visible && Math.hypot(o.position.x - gm.x, o.position.z - gm.z) < 8);
-    roots.forEach((root, i) => { const e = document.createElement('div'); e.className = 'cgm'; e.textContent = 'gm'; e.style.opacity = 0; host.appendChild(e); gm.fl.push({ e, root, t0: now + i * 120 + 40 }); });
-    sfx('gm'); say(CULTURE.ui.toasts.gm);
+    roots.forEach((root, i) => { const e = document.createElement('div'); e.className = 'cgm'; e.textContent = gm.word; e.style.opacity = 0; host.appendChild(e); gm.fl.push({ e, root, t0: now + i * 120 + 40 }); });
+    sfx('gm'); if (gm.word === 'gmonad') say(CULTURE.ui.toasts.gm);
   };
   ticks.push(() => {
-    const now = performance.now();
+    const now = performance.now(), w = (DAY.lamp || 0) < 0.35 ? 'gmonad' : 'gn'; if (w !== gm.word) { gm.word = w; if (gm.redraw) gm.redraw(); }
     gm.fl = gm.fl.filter(f => {
       const age = (now - f.t0) / 1000; if (age < 0) return true; if (age > 2.6 || !f.root.parent) { f.e.remove(); return false; }
       const [sx, sy, sz] = screenOf(f.root, 2.0 * f.root.scale.y / CHOG_SCALE * 0.9 + age * 0.8), hide = sz > 1 || !NPC.group.visible;
