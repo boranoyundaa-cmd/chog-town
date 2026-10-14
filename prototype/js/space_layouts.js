@@ -1,6 +1,6 @@
 // ===== ready-made rooms: layouts that fit any floor size, and the checker that every one of them must pass =====
 // A layout is a function (W, D, opts) -> room document. It is built from the walls outwards (furniture flush against a wall, art hung on a wall, a cluster in the middle), so the same layout
-// fills a 13 x 10 Home or a 22 x 15 penthouse. The editor offers them as a starting point (room.js "Ready-made rooms"); the hotel's own venues are made from them (tools/build_seed_venues.js).
+// fills a 20 x 15 Home or a 33 x 22 penthouse. The editor offers them as a starting point (room.js "Ready-made rooms"); the hotel's own venues are made from them (tools/build_seed_venues.js).
 // Loaded after space_data.js (needs SPACE.PIECES and SPACE.windowsFor). Also loaded by the tools through vm, so it only uses SPACE.
 // Frame: x runs west to east, z north to south; the back walls are north (z = -D/2) and west (x = -W/2); the door is on the north wall at u = W/2 - 1.6, and in a room with an upper level the
 // stairs stand 3.2 m to its left (SPACE.stairsU). A piece faces local +z: ry 0 faces south (so it stands against the north wall), 90 faces east (west wall), 180 faces north (south wall), 270 faces west (east wall).
@@ -59,7 +59,8 @@
   function R(W, D, theme, windows, opts = {}) {
     const x0 = -W / 2, z0 = -D / 2, x1 = W / 2, z1 = D / 2, doorU = W / 2 - 1.6, th = SPACE.THEMES[theme] || SPACE.THEMES.studio, wins = windows === false ? [] : SPACE.windowsFor(th, W, D, !!opts.stairs);
     const stairsU = opts.stairs ? SPACE.stairsU(W) : null, northEnd = stairsU !== null ? stairsU - 1.3 : doorU - 0.95, items = [];
-    const add = (p, x, z, ry = 0, o) => { const it = Object.assign({ p, x: num(x), z: num(z) }, ry ? { ry } : {}, o || {}); items.push(it); return it; };
+    const add = (p, x, z, ry = 0, o) => { if (!P[p]) return { p, x: num(x), z: num(z) };                // a piece that left the catalog (the ceiling lamps) is skipped
+      const it = Object.assign({ p, x: num(x), z: num(z) }, ry ? { ry } : {}, o || {}); items.push(it); return it; };
     const r = { W, D, x0, z0, x1, z1, doorU, northEnd, items, add, wins, mx: 0, mz: 0 };
     // the stretches of a wall that a piece may not occupy: the door, the stairs, windows (for tall pieces and for art), and floor pieces already standing against it (for art: only tall ones)
     const taken = (wall, tall, hang) => {
@@ -111,6 +112,9 @@
       const sx = (bx - ax) / cols, sz = (bz - az) / rows;
       for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) fn(ax + sx / 2 + i * sx, az + sz / 2 + j * sz, i, j, cols, rows);
     };
+    r.lamps = Math.max(6, Math.floor(W / 2.1));                                       // how many pendants and ceiling neons a room of this width may use (the light budgets are small)
+    r.edgeS = (id, gap) => { for (let u = x0 + 2.2; u < x1 - 1.6; u += gap) r.s(id, u); };      // pieces spaced along the open south edge (plants and the like)
+    r.edgeE = (id, gap) => { for (let u = z0 + 3.6; u < z1 - 1.4; u += gap) r.e(id, u); };      // and along the open east edge
     r.doc = (name, extra) => Object.assign({ name, theme, pieces: items }, windows === false ? { windows: false } : {}, extra || {});
     return r;
   }
@@ -120,129 +124,149 @@
   const READY = SPACE.READY = {}, def = (id, name, cat, theme, desc, make) => { READY[id] = { id, name, cat, theme, desc, make }; };
   const cyc = (id, n) => Array.from({ length: n }, () => id);
 
+  // Every layout grows with the floor: clusters repeat along the room (`clusters`), grids take as many rows and columns as fit, the walls are filled to their ends.
+  // Light budgets are small (Home 14, tier 4 22), so pendants and neons are counted: `r.lamps` is how many a room of this size may use.
+  const clusters = (r, from, to, pitch) => { const n = Math.max(1, Math.round((to - from) / pitch)), s = (to - from) / n; return Array.from({ length: n }, (_, i) => from + s / 2 + i * s); };      // centres of equal cells across a stretch
+
   def('cafe', 'Café', 'Café', 'studio', 'Coffee, quiet tables and a counter. Say hi to whoever sits next to you.', (W, D, o) => {
-    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r;
-    r.line('n', ['kitchen', 'fridge', 'bookshelf', 'bookshelf'], { from: 0.1, gap: 0.2 });
-    r.line('w', ['bookshelf', 'bookshelf'], { from: 1.2, gap: 0.2, to: z1 - 3.0 });
-    r.grid(x0 + 2.4, x1 - 1.9, z0 + 3.0, z1 - 1.5, 2.9, 2.7, (x, z) => { r.set(x, z); r.add('pendantLamp', x, z); }, { maxC: 4, maxR: 3 });
-    r.add('tallPlant', x0 + 0.6, z1 - 0.6); r.add('plant', x1 - 0.5, z1 - 0.5); r.add('tallPlant', x1 - 0.55, z0 + 3.5); r.add('plant', x0 + 0.5, z1 - 3.4);
-    r.hang('n', ['neonOpen', 'wallArt', 'wallArt'], { from: 0.8 }); r.hang('w', ['wallArt', { p: 'wallTextSoft', txt: 'good coffee', c: '#3f3850' }, 'wallArt'], { from: 0.8 });
+    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r; let lamp = 0;
+    r.line('n', ['kitchen', 'fridge', ...cyc('bookshelf', 8)], { from: 0.1, gap: 0.2 });
+    r.line('w', cyc('bookshelf', 10), { from: 1.2, gap: 0.2, to: z1 - 3.0 });
+    r.grid(x0 + 2.4, x1 - 1.9, z0 + 3.0, z1 - 1.5, 2.9, 2.7, (x, z) => { r.set(x, z); if (lamp++ < r.lamps - 2) r.add('pendantLamp', x, z); }, { maxC: 7, maxR: 5 });
+    r.edgeS('plant', 5.5); r.edgeE('tallPlant', 6.5); r.add('tallPlant', x0 + 0.6, z1 - 0.6); r.add('plant', x0 + 0.5, z1 - 3.4);
+    r.hang('n', ['neonOpen', ...cyc('wallArt', 9)], { from: 0.8, step: 1.4 }); r.hang('w', ['wallArt', { p: 'wallTextSoft', txt: 'good coffee', c: '#3f3850' }, ...cyc('wallArt', 9)], { from: 0.8, step: 1.4 });
     return r.doc('Café', { wall: { c: '#f0d8c0', pat: 'wainscot' }, floor: { c: '#b8855a', pat: 'boards' } });
   });
 
   def('club', 'Neon club', 'Club', 'cyberpunk', 'The neon room. Lights are the whole point here: place a few and watch the mood change.', (W, D, o) => {
-    const r = R(W, D, 'cyberpunk', false, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, dz = (z0 + z1) / 2 - 0.2;
-    r.line('n', ['speaker', 'serverRack', 'holoScreen', 'serverRack', 'speaker'], { from: 0.4, gap: 0.45 });
-    r.line('w', ['vending', 'vending'], { from: 1.6, gap: 0.3 });
+    const r = R(W, D, 'cyberpunk', false, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, dz = (z0 + z1) / 2 - 0.4;
+    r.line('n', ['speaker', 'serverRack', 'holoScreen', 'serverRack', 'speaker', 'serverRack', 'speaker', 'serverRack', 'holoScreen'], { from: 0.4, gap: 0.45 });
+    r.line('w', cyc('vending', 3), { from: 1.6, gap: 0.3, to: z1 - 3.4 });
     r.add('discoBall', cx + 0.6, dz);
-    r.grid(x0 + 4, x1 - 2.5, dz - 2.2, dz + 2.2, 3.4, 3.0, (x, z, i, j) => { r.add('ceilingNeon', x, z, 0, { c: (i + j) % 2 ? '#2ad8ff' : '#ff2a98' }); }, { maxC: 3, maxR: 2 });
+    r.grid(x0 + 4, x1 - 2.5, dz - D * 0.2, dz + D * 0.2, 3.4, 3.0, (x, z, i, j) => { r.add('ceilingNeon', x, z, 0, { c: (i + j) % 2 ? '#2ad8ff' : '#ff2a98' }); }, { maxC: W > 24 ? 4 : 3, maxR: 2 });
     const lounge = (x, z) => { r.add('coffeeTable', x, z); r.add('gamingChair', x - 1.35, z, 90); r.add('gamingChair', x + 1.35, z, 270); r.add('beanbag', x, z + 1.35); };
-    lounge(x0 + 3.6, z1 - 2.4); lounge(x1 - 3.8, z1 - 2.4); if (W > 17) lounge(cx, z1 - 2.4);
-    r.add('beanbag', x0 + 2.4, dz + 1.2); r.add('beanbag', x0 + 3.6, dz + 0.3);
-    r.hang('w', ['neonTube', 'neonOpen', 'neonTubeBlue'], { from: 0.8, step: 0.5 }); r.hang('n', ['neonTube', 'neonTubeBlue'], { from: 0.8, step: 0.5 });
+    for (const x of clusters(r, x0 + 2, x1 - 2, 5.4)) { lounge(x, z1 - 2.4); if (D > 18) lounge(x, z1 - 7.6); }
+    r.add('beanbag', x0 + 2.4, dz + 1.2); r.add('beanbag', x0 + 3.6, dz + 0.3); if (W > 24) { r.add('beanbag', x1 - 2.4, dz - 1.2); r.add('beanbag', x1 - 3.6, dz - 0.3); }
+    const neons = ['neonTube', 'neonOpen', 'neonTubeBlue', 'triangleNeon', 'neonTubeBlue', 'neonTube'];
+    r.hang('w', neons, { from: 0.8, step: 1.2 }); r.hang('n', neons.slice().reverse(), { from: 0.8, step: 1.2 });
     return r.doc('Neon club', { view: 'neon', wall: { c: '#2a2058', pat: 'panels' }, floor: { c: '#1c1840', pat: 'grid' } });
   });
 
   def('arcade', 'Arcade', 'Arcade', 'retro80s', 'Cabinets in rows, a boombox and a high-score wall. Come break a record.', (W, D, o) => {
-    const r = R(W, D, 'retro80s', false, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, zc = (z0 + z1) / 2 + 0.9;
-    r.line('n', cyc('arcadeCab', 5), { from: 0.3, gap: 0.08 });
-    r.line('w', cyc('arcadeCab', 3), { from: 0.3, gap: 0.08, to: zc - 1.4 });
-    r.grid(x0 + 4.2, x1 - 2.2, zc - 0.5, zc + 0.5, 1.1, 1, (x, z, i) => { r.add('arcadeCab', x, zc - 0.45, 180); r.add('arcadeCab', x, zc + 0.45); }, { maxC: W > 17 ? 7 : 5, maxR: 1 });
-    r.add('beanbag', x0 + 1.5, z1 - 2.7); r.add('beanbag', x0 + 3.0, z1 - 2.2); r.add('boombox', cx - 1.5, z1 - 1.6, 0);
-    r.add('palm', x1 - 0.6, z1 - 0.6); r.add('palm', x0 + 0.6, z1 - 0.7); r.add('discoBall', cx + 0.5, (z0 + z1) / 2 - 1.2); r.add('ceilingNeon', cx - 2.6, zc + 2.2, 0, { c: '#ff4ac8' }); r.add('ceilingNeon', cx + 3.0, zc + 2.4, 0, { c: '#4ae8ff' });
-    r.hang('n', ['triangleNeon'], { from: 0.8 }); r.hang('w', ['sunPoster'], { from: 0.8 });
+    const r = R(W, D, 'retro80s', false, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2;
+    r.line('n', cyc('arcadeCab', 7), { from: 0.3, gap: 0.08 }); r.line('w', cyc('arcadeCab', 8), { from: 0.3, gap: 0.08, to: z1 - 4.6 });
+    const rows = Math.max(1, Math.min(4, Math.floor((D - 7) / 4.4)));
+    for (let j = 0; j < rows; j++) { const zc = z0 + 5.6 + j * 4.4; r.grid(x0 + 4.2, x1 - 2.2, zc - 0.5, zc + 0.5, 1.1, 1, x => { r.add('arcadeCab', x, zc - 0.45, 180); r.add('arcadeCab', x, zc + 0.45); }, { maxC: Math.floor(W / 2.6), maxR: 1 }); }
+    for (let k = 0; k < Math.floor(W / 7); k++) { r.add('beanbag', x0 + 1.5 + k * 3.4, z1 - 2.7); r.add('beanbag', x0 + 3.0 + k * 3.4, z1 - 2.1); }
+    r.add('boombox', cx - 1.5, z1 - 1.0, 180); r.edgeS('palm', 7); r.edgeE('palm', 7.5);
+    r.add('discoBall', cx + 0.5, z0 + 5.6 + (rows - 1) * 4.4 + 2.3); r.grid(x0 + 5, x1 - 4, z0 + 3, z1 - 3, 7, 6, (x, z, i, j) => { r.add('ceilingNeon', x, z, 0, { c: (i + j) % 2 ? '#4ae8ff' : '#ff4ac8' }); }, { maxC: 3, maxR: 3 });
+    r.hang('n', ['triangleNeon', 'sunPoster', 'triangleNeon', 'sunPoster'], { from: 0.8, step: 1.6 }); r.hang('w', ['sunPoster', 'triangleNeon', 'sunPoster', 'triangleNeon'], { from: 0.8, step: 1.6 });
     return r.doc('Arcade', { view: 'night' });
   });
 
   def('gallery', 'Gallery', 'Gallery', 'studio', 'A white room with a few pictures and a lot of quiet. A good place to look at things.', (W, D, o) => {
-    const r = R(W, D, 'studio', false, o), { x0, z0, x1, z1 } = r, mx = (x0 + x1) / 2 + 0.6, mz = (z0 + z1) / 2 + 0.6;
-    r.hang('n', [{ p: 'wallText', txt: 'GALLERY', c: '#7a3ac8' }, ...cyc('wallArt', 10)], { from: 0.8, step: 0.6 }); r.hang('w', [{ p: 'wallTextSoft', txt: 'welcome', c: '#3f3850' }, ...cyc('wallArt', 10)], { from: 0.8, step: 0.6 });
-    r.add('rug', mx, mz); r.add('sofa', mx, mz + 0.62); r.add('sofa', mx, mz - 0.62, 180);
-    r.add('bench', mx - 0.2, z0 + 2.9, 180); r.add('bench', x0 + 2.9, mz - 0.5, 270); if (W > 17) { r.add('bench', mx + 3.6, z0 + 2.9, 180); r.add('bench', x0 + 2.9, mz + 3.0, 270); }
-    r.add('holoScreen', mx - 3.4, mz + 0.9, 20); r.add('holoScreen', mx + 3.4, mz - 0.2, -20); r.add('crystal', mx - 3.0, mz - 1.8); r.add('crystal', mx + 3.2, mz + 1.8);   // display stands and two plinths to walk around
-    r.add('tallPlant', x0 + 0.6, z1 - 0.6); r.add('tallPlant', x1 - 0.6, z0 + 3.4); r.add('plant', x1 - 0.5, z1 - 0.5); r.add('floorLamp', x1 - 1.2, mz + 1.0); r.add('floorLamp', x0 + 1.4, z1 - 1.2);
-    r.add('pendantLamp', mx - 2.4, mz - 1.5); r.add('pendantLamp', mx + 2.6, mz - 1.2); r.add('pendantLamp', mx, mz + 1.8);
+    const r = R(W, D, 'studio', false, o), { x0, z0, x1, z1 } = r, mz = (z0 + z1) / 2 + 0.8;
+    r.hang('n', [{ p: 'wallText', txt: 'GALLERY', c: '#7a3ac8' }, ...cyc('wallArt', 18)], { from: 0.8, step: 1.4 }); r.hang('w', [{ p: 'wallTextSoft', txt: 'welcome', c: '#3f3850' }, ...cyc('wallArt', 18)], { from: 0.8, step: 1.4 });
+    for (const x of clusters(r, x0 + 3, x1 - 2.5, 9.5)) {                                      // a seating island with display stands around it, repeated along the room
+      r.add('rug', x, mz); r.add('sofa', x, mz + 0.62); r.add('sofa', x, mz - 0.62, 180);
+      r.add('holoScreen', x - 3.0, mz + 0.9, 20); r.add('holoScreen', x + 3.0, mz - 0.2, -20); r.add('crystal', x - 2.8, mz - 1.8); r.add('crystal', x + 2.9, mz + 1.8); r.add('pendantLamp', x, mz + 1.8);
+      if (D > 19) { r.add('bench', x - 1.2, mz - 4.6, 180); r.add('bench', x + 1.4, mz + 4.6); }
+    }
+    for (const x of clusters(r, x0 + 3, x1 - 2.5, 7)) r.add('bench', x, z0 + 2.9, 180);
+    for (const z of clusters(r, z0 + 4, z1 - 3, 6.5)) r.add('bench', x0 + 1.4, z, 270);
+    r.add('tallPlant', x0 + 0.6, z1 - 0.6); r.add('plant', x1 - 0.5, z1 - 0.5); r.add('floorLamp', x1 - 1.2, mz + 1.0); r.add('floorLamp', x0 + 1.4, z1 - 1.2); r.edgeS('plant', 8); r.edgeE('tallPlant', 9);
     return r.doc('Gallery', { wall: { c: '#f4efe6', pat: 'subway' }, floor: { c: '#c9b8a0', pat: 'herringbone' } });
   });
 
   def('orbit', 'Orbit lounge', 'Lounge', 'space', 'A quiet station with a view of nothing but stars. Sit down, take your helmet off.', (W, D, o) => {
-    const r = R(W, D, 'space', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, mz = (z0 + z1) / 2 + 0.8;
-    const run = r.line('n', ['consoleDesk', 'holoGlobe', 'crystal', 'consoleDesk'], { from: 0.5, gap: 0.5 });
+    const r = R(W, D, 'space', true, o), { x0, z0, x1, z1 } = r, mz = (z0 + z1) / 2 + 0.8; let lamp = 0;
+    const run = r.line('n', ['consoleDesk', 'holoGlobe', 'crystal', 'consoleDesk', 'tallPlant', 'consoleDesk', 'tallPlant', 'consoleDesk'], { from: 0.5, gap: 0.5 });
     for (const it of run) if (it.p === 'consoleDesk') r.add('spaceChair', it.x, z0 + 0.9 + 0.5, 180);
-    r.line('w', ['capsuleBed', 'capsuleBed'], { from: 2.6, gap: 0.35 });
-    for (const k of W > 17 ? [-3.4, 4.6] : [0]) { r.add('rug', cx + 1 + k, mz); r.add('sofa', cx + 1 + k, mz + 1.3); r.add('coffeeTable', cx + 1 + k, mz - 0.1); r.add('armchair', cx - 0.9 + k, mz - 0.1, 90); r.add('armchair', cx + 2.9 + k, mz - 0.1, 270); }
-    r.add('oxygenTube', x0 + 0.6, z1 - 0.6); r.add('oxygenTube', x1 - 0.6, z1 - 0.7); r.add('oxygenTube', x1 - 0.6, z0 + 3.2); r.add('crystal', x0 + 0.8, z1 - 2.0);
-    r.add('ceilingNeon', cx - 1.4, mz - 2.0, 0, { c: '#5ad8ff' }); r.add('ceilingNeon', cx + 3.4, mz + 2.2, 0, { c: '#ffb03a' });
+    r.line('w', cyc('capsuleBed', 6), { from: 2.6, gap: 0.35, to: z1 - 1 });
+    for (const x of clusters(r, x0 + 4, x1 - 2, 7)) { r.add('rug', x + 1, mz); r.add('sofa', x + 1, mz + 1.3); r.add('coffeeTable', x + 1, mz - 0.1); r.add('armchair', x - 0.9, mz - 0.1, 90); r.add('armchair', x + 2.9, mz - 0.1, 270); if (lamp++ < 3) r.add('ceilingNeon', x + 1, mz - 1.8, 0, { c: lamp % 2 ? '#5ad8ff' : '#ffb03a' }); }
+    if (D > 17) for (const x of clusters(r, x0 + 4, x1 - 2, 10)) { r.add('rug', x, mz + 5.2); r.add('beanbag', x - 1, mz + 5.0); r.add('beanbag', x + 1, mz + 5.4); r.add('tallPlant', x + 2.4, mz + 5.2); }
+    r.edgeS('tallPlant', 6.5); r.edgeE('tallPlant', 7); r.add('oxygenTube', x0 + 0.6, z1 - 0.6); r.add('oxygenTube', x1 - 0.8, z1 - 0.8);
     return r.doc('Orbit lounge', { view: 'night' });
   });
 
   def('haunted', 'Haunted hollow', 'Spooky', 'halloween', 'A cauldron, a few ghosts and candles that flicker on their own. Not scary, mostly.', (W, D, o) => {
-    const r = R(W, D, 'halloween', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2 + 0.6;
-    r.line('w', ['coffinBed'], { from: 2.4 }); r.line('n', ['pumpkin', 'bigPumpkin', 'pumpkin'], { from: 1.0, gap: 0.6 });
+    const r = R(W, D, 'halloween', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2 - 0.4;
+    r.line('w', ['coffinBed', 'coffinBed'], { from: 2.4, gap: 0.6 }); r.line('n', ['pumpkin', 'bigPumpkin', 'pumpkin'], { from: 1.0, gap: 0.9 });
     r.add('cauldron', cx + 0.8, cz); for (const [dx, dz] of [[-1.5, -1.3], [2.0, -1.2], [-1.4, 1.4], [2.0, 1.5]]) r.add('candles', cx + 0.8 + dx, cz + dz);
     r.add('ghost', cx - 2.8, cz - 0.4); r.add('ghost', cx + 3.2, cz + 0.2);
-    for (let i = 0, u = x0 + 3.0; i < (W > 17 ? 8 : 4) && u < x1 - 2.6; i++, u += 1.5) r.add('gravestone', u, cz + (W > 17 ? 4.2 : 2.9));
-    if (W > 17) { r.add('ghost', cx - 6.6, cz - 2.4); r.add('ghost', cx + 6.4, cz + 1.8); r.add('candles', cx - 6.6, cz - 0.6); r.add('candles', cx + 6.4, cz - 0.2); r.add('bigPumpkin', x1 - 1.0, z0 + 3.6); }
-    r.add('witchHat', x1 - 0.9, z1 - 2.6); r.add('bigPumpkin', x1 - 0.9, z1 - 0.9);
-    r.hang('n', ['cobweb', 'bat', 'bat'], { from: 0.7, step: 1.5 }); r.hang('w', ['cobweb', 'bat'], { from: 0.7, step: 1.5 });
+    const rows = D > 18 ? [cz + 3.6, cz + 6.0] : [cz + 3.4]; for (const z of rows) for (let u = x0 + 3.0; u < x1 - 2.6; u += 2.0) r.add('gravestone', u, z);
+    for (const [dx, dz] of [[-6.6, -2.4], [6.4, 1.8]]) { r.add('ghost', cx + dx, cz + dz); if (W > 24) r.add('candles', cx + dx, cz + dz - 1.8); }
+    if (W > 24) { r.add('ghost', cx - 11, cz + 1.2); r.add('ghost', cx + 11, cz - 2.2); r.add('bigPumpkin', cx - 9, cz - 3.4); r.add('witchHat', cx + 9, cz + 1.4); }
+    r.add('bigPumpkin', x1 - 0.9, z1 - 0.9); r.edgeS('witchHat', 7); r.edgeE('ghost', 8);
+    r.hang('n', ['cobweb', 'bat', 'bat', 'cobweb', 'bat'], { from: 0.7, step: 3 }); r.hang('w', ['cobweb', 'bat', 'bat', 'cobweb', 'bat'], { from: 0.7, step: 3 });
     return r.doc('Haunted hollow', { view: 'night' });
   });
 
   def('library', 'Reading nook', 'Lounge', 'studio', 'Shelves to the ceiling, soft lamps, nobody talking. Chat is allowed anyway.', (W, D, o) => {
-    const r = R(W, D, 'studio', false, o), { x0, z0, x1, z1 } = r, mx = (x0 + x1) / 2 + 0.4, mz = (z0 + z1) / 2 + 0.8;
-    r.line('n', cyc('bookshelf', 9), { from: 0.05, gap: 0.12 }); r.line('w', cyc('bookshelf', 9), { from: 0.05, gap: 0.12, to: z1 - 2.6 });
-    r.add('rug', mx - 1.4, mz); r.add('armchair', mx - 2.7, mz, 90); r.add('armchair', mx - 0.1, mz, 270); r.add('lampTable', mx - 1.4, mz + 1.3);
-    r.add('rug', mx + 3.2, mz + 1.2); r.add('sofa', mx + 3.2, mz + 2.1); r.add('coffeeTable', mx + 3.2, mz + 0.5);
-    r.add('floorLamp', x0 + 1.6, z1 - 1.1); r.add('floorLamp', x1 - 0.7, mz - 0.6); r.add('tallPlant', x1 - 0.6, z0 + 3.6); r.add('plant', x1 - 0.5, z1 - 0.5);
-    r.add('pendantLamp', mx - 1.4, mz - 0.4); r.add('pendantLamp', mx + 3.2, mz + 0.6);
-    r.hang('w', ['wallArt', 'wallArt'], { from: 0.8, step: 0.8 });
+    const r = R(W, D, 'studio', false, o), { x0, z0, x1, z1 } = r, mz = (z0 + z1) / 2 + 0.8; let lamp = 0;
+    r.line('n', cyc('bookshelf', 16), { from: 0.05, gap: 0.12 }); r.line('w', cyc('bookshelf', 14), { from: 0.05, gap: 0.12, to: z1 - 2.6 });
+    for (const x of clusters(r, x0 + 3.5, x1 - 2.5, 8)) {
+      r.add('rug', x - 1.4, mz); r.add('armchair', x - 2.7, mz, 90); r.add('armchair', x - 0.1, mz, 270); r.add('lampTable', x - 1.4, mz + 1.3); if (lamp++ < r.lamps - 4) r.add('pendantLamp', x - 1.4, mz - 0.4);
+      r.add('rug', x + 1.4, mz + 4.2); r.add('sofa', x + 1.4, mz + 5.1); r.add('coffeeTable', x + 1.4, mz + 3.5);
+    }
+    if (D > 14) for (const x of clusters(r, x0 + 5, x1 - 4, 9)) { r.set(x, z0 + 5.2, 'diningTable', 'chair', 0.5, 0.85); if (lamp++ < r.lamps - 4) r.add('pendantLamp', x, z0 + 5.2); }
+    r.add('floorLamp', x0 + 1.6, z1 - 1.1); r.add('floorLamp', x1 - 0.7, mz - 0.6); r.add('plant', x1 - 0.5, z1 - 0.5); r.edgeS('tallPlant', 7); r.edgeE('floorLamp', 9);
+    r.hang('w', cyc('wallArt', 6), { from: 0.8, step: 1.2 });
     return r.doc('Reading nook', { wall: { c: '#d8c0a0', pat: 'wainscot' }, floor: { c: '#8a5a3a', pat: 'boards' } });
   });
 
   def('studio', 'Workshop', 'Workshop', 'studio', 'Desks, a kitchenette and a sofa corner. Where people make things together.', (W, D, o) => {
-    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2;
-    const dn = r.line('n', cyc('desk', 4), { from: 0.2, gap: 0.5 }); for (const it of dn) r.add('chair', it.x, z0 + 0.9 + 0.45, 180);
-    const dw = r.line('w', ['desk', 'desk', 'kitchen', 'fridge'], { from: 1.4, gap: 0.3 }); for (const it of dw) if (it.p === 'desk') r.add('chair', x0 + 0.9 + 0.45, it.z, 270);
-    const tz = z1 - 0.6; r.add('rug', cx + 1.2, tz - 3.1); r.add('sofa', cx + 1.2, tz - 1.9, 0); r.add('coffeeTable', cx + 1.2, tz - 3.4); r.add('armchair', cx - 1.4, tz - 3.2, 90); r.add('armchair', cx + 3.8, tz - 3.2, 270);
-    r.add('tallPlant', x1 - 0.6, z1 - 0.6); r.add('plant', x0 + 2.4, z1 - 0.5); r.add('floorLamp', x0 + 1.6, z1 - 2.4); r.add('pendantLamp', cx + 1.2, tz - 3.4); r.add('pendantLamp', x0 + 3.2, z0 + 3.6); r.add('pendantLamp', cx + 2, z0 + 3.4);
-    r.hang('n', ['wallArt', 'wallArt'], { from: 0.8 });
+    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2; let lamp = 0;
+    const dn = r.line('n', cyc('desk', 8), { from: 0.2, gap: 0.5 }); for (const it of dn) r.add('chair', it.x, z0 + 0.9 + 0.45, 180);
+    const dw = r.line('w', ['desk', 'desk', 'desk', 'desk', 'kitchen', 'fridge'], { from: 1.4, gap: 0.3, to: z1 - 6.5 }); for (const it of dw) if (it.p === 'desk') r.add('chair', x0 + 0.9 + 0.45, it.z, 270);
+    r.grid(x0 + 3.2, x1 - 2.6, z0 + 3.9, z1 - 6.2, 2.6, 2.8, (x, z) => { r.add('desk', x, z); r.add('chair', x, z + 0.9, 180); if (lamp++ % 2 === 0 && lamp < r.lamps) r.add('pendantLamp', x, z); }, { maxC: 7, maxR: 3 });
+    for (const x of clusters(r, x0 + 4, x1 - 2.5, 9)) { const tz = z1 - 0.6; r.add('rug', x, tz - 3.1); r.add('sofa', x, tz - 1.9, 0); r.add('coffeeTable', x, tz - 3.4); r.add('armchair', x - 2.6, tz - 3.2, 90); r.add('armchair', x + 2.6, tz - 3.2, 270); r.add('pendantLamp', x, tz - 3.4); }
+    r.add('tallPlant', x1 - 0.6, z1 - 0.6); r.add('plant', x0 + 2.4, z1 - 0.5); r.add('floorLamp', x0 + 1.6, z1 - 2.4); r.edgeE('tallPlant', 7.5);
+    r.hang('n', cyc('wallArt', 6), { from: 0.8, step: 1.6 });
     return r.doc('Workshop', { wall: { c: '#e6e0f0', pat: 'plaster' }, floor: { c: '#a89888', pat: 'tiles' } });
   });
 
   def('terrace', 'Sunset terrace', 'Lounge', 'studio', 'It is always golden hour here. Bean bags, plants and a speaker for the evening.', (W, D, o) => {
-    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, mz = (z0 + z1) / 2 + 0.8;
-    r.line('n', ['speaker', 'sofa', 'lampTable'], { from: 0.8, gap: 0.3 });
-    for (const k of W > 17 ? [-4.2, 4.2] : [0]) { r.add('rug', cx + k, mz); r.add('beanbag', cx + k - 2.2, mz - 0.4); r.add('beanbag', cx + k - 1.3, mz + 1.5); r.add('beanbag', cx + k + 2.2, mz); r.add('beanbag', cx + k + 1.2, mz + 1.6); r.add('sideTable', cx + k, mz - 0.1); }
-    r.add('tallPlant', x0 + 0.6, z1 - 0.6); r.add('tallPlant', x1 - 0.6, z1 - 0.6); r.add('plant', x1 - 0.5, z0 + 3.4); r.add('plant', x0 + 0.5, z0 + 3.8); r.add('floorLamp', x0 + 1.6, mz + 1.0); r.add('floorLamp', x1 - 1.4, mz - 1.0);
-    for (const k of W > 17 ? [-4.2, 4.2] : [0]) r.add('pendantLamp', cx + k, mz); r.hang('w', ['wallArt', 'wallArt'], { from: 0.8, step: 1.0 });
+    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r, mz = (z0 + z1) / 2 + 0.8; let lamp = 0;
+    r.line('n', ['speaker', 'sofa', 'lampTable', 'sofa', 'speaker'], { from: 0.8, gap: 0.3 });
+    const zs = D > 17 ? [mz - 2.6, mz + 3.2] : [mz];
+    for (const z of zs) for (const k of clusters(r, x0 + 3, x1 - 2, 7.5)) {
+      r.add('rug', k, z); r.add('beanbag', k - 2.2, z - 0.4); r.add('beanbag', k - 1.3, z + 1.5); r.add('beanbag', k + 2.2, z); r.add('beanbag', k + 1.2, z + 1.6); r.add('sideTable', k, z - 0.1); if (lamp++ < r.lamps - 4) r.add('pendantLamp', k, z);
+    }
+    r.add('tallPlant', x0 + 0.6, z1 - 0.6); r.add('tallPlant', x1 - 0.6, z1 - 0.6); r.add('plant', x0 + 0.5, z0 + 3.8); r.add('floorLamp', x0 + 1.6, mz + 1.0); r.add('floorLamp', x1 - 1.4, mz - 1.0); r.edgeS('tallPlant', 6); r.edgeE('plant', 5);
+    r.hang('w', cyc('wallArt', 6), { from: 0.8, step: 1.6 }); r.hang('n', cyc('wallArt', 4), { from: 0.8, step: 1.6 });
     return r.doc('Sunset terrace', { view: 'evening', wall: { c: '#f4c8a0', pat: 'plaster' }, floor: { c: '#c8a070', pat: 'wood' } });
   });
 
   def('garage', 'Synthwave garage', 'Arcade', 'retro80s', 'Old screens, a boombox and a grid floor. Always 1986 in here.', (W, D, o) => {
     const r = R(W, D, 'retro80s', false, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, mz = (z0 + z1) / 2 + 0.9;
-    r.line('n', ['retroTv', 'retroTv', 'retroTv', 'arcadeCab', 'arcadeCab'], { from: 0.5, gap: 0.3 });
-    r.line('w', ['boombox', 'arcadeCab'], { from: 1.8, gap: 0.5 });
-    for (const k of W > 17 ? [-4, 4.4] : [0]) { r.add('rug', cx + k, mz); r.add('beanbag', cx + k - 1.7, mz - 0.3); r.add('beanbag', cx + k + 0.2, mz + 1.2); r.add('beanbag', cx + k + 1.9, mz - 0.2); r.add('coffeeTable', cx + k + 0.1, mz - 0.1); }
-    r.add('palm', x1 - 0.6, z1 - 0.6); r.add('palm', x0 + 0.7, z1 - 0.6); r.add('discoBall', cx + 0.4, mz - 1.4); r.add('ceilingNeon', cx - 3.2 - (W > 17 ? 2 : 0), mz + 1.4, 0, { c: '#ff4ac8' }); r.add('ceilingNeon', cx + 3.4 + (W > 17 ? 2 : 0), mz + 1.6, 0, { c: '#4ae8ff' });
-    r.hang('n', ['triangleNeon'], { from: 0.8 }); r.hang('w', ['sunPoster', 'triangleNeon'], { from: 0.8 });
+    r.line('n', ['retroTv', 'retroTv', 'retroTv', 'arcadeCab', 'arcadeCab', 'retroTv', 'retroTv', 'retroTv', 'arcadeCab'], { from: 0.5, gap: 0.3 });
+    r.line('w', ['boombox', 'arcadeCab', 'arcadeCab', 'boombox', 'arcadeCab', 'arcadeCab'], { from: 1.8, gap: 0.5, to: z1 - 4 });
+    const zs = D > 17 ? [mz - 2.4, mz + 3.6] : [mz];
+    for (const z of zs) for (const k of clusters(r, x0 + 3.5, x1 - 2, 8)) { r.add('rug', k, z); r.add('beanbag', k - 1.7, z - 0.3); r.add('beanbag', k + 0.2, z + 1.2); r.add('beanbag', k + 1.9, z - 0.2); r.add('coffeeTable', k + 0.1, z - 0.1); }
+    r.edgeS('palm', 7); r.edgeE('palm', 8); r.add('discoBall', cx + 0.4, z0 + 2.4);
+    r.grid(x0 + 4, x1 - 3, z0 + 3.5, z1 - 3, 7.5, 6.5, (x, z, i, j) => { r.add('ceilingNeon', x, z, 0, { c: (i + j) % 2 ? '#4ae8ff' : '#ff4ac8' }); }, { maxC: 3, maxR: 2 });
+    r.hang('n', ['triangleNeon', 'sunPoster', 'triangleNeon'], { from: 0.8, step: 1.8 }); r.hang('w', ['sunPoster', 'triangleNeon', 'sunPoster'], { from: 0.8, step: 1.8 });
     return r.doc('Synthwave garage', { view: 'neon' });
   });
 
   def('canteen', 'Ghost kitchen', 'Café', 'cyberpunk', 'A cyberpunk canteen: vending machines, noodles in the air, holograms over the tables.', (W, D, o) => {
-    const r = R(W, D, 'cyberpunk', false, o), { x0, z0, x1, z1 } = r;
-    r.line('n', ['kitchen', 'fridge', 'vending', 'vending'], { from: 0.1, gap: 0.2 }); r.line('w', ['serverRack', 'holoScreen'], { from: 1.4, gap: 0.5 });
-    r.grid(x0 + 2.6, x1 - 1.9, z0 + 3.2, z1 - 1.5, 3.0, 2.9, (x, z) => { r.set(x, z, 'diningTable', 'gamingChair', 0.5, 0.95); r.add('ceilingNeon', x, z, 0, { c: '#ff2a98' }); }, { maxC: 3, maxR: 2 });
-    r.add('beanbag', x1 - 0.8, z1 - 0.9); r.add('plant', x1 - 0.5, z0 + 3.5);
-    r.hang('w', ['neonOpen', 'neonTube'], { from: 0.8 }); r.hang('n', ['neonTubeBlue'], { from: 0.8 });
+    const r = R(W, D, 'cyberpunk', false, o), { x0, z0, x1, z1 } = r; let lamp = 0;
+    r.line('n', ['kitchen', 'fridge', 'vending', 'vending', 'kitchen', 'vending', 'vending'], { from: 0.1, gap: 0.2 }); r.line('w', ['serverRack', 'holoScreen', 'serverRack', 'holoScreen', 'serverRack'], { from: 1.4, gap: 0.5, to: z1 - 2.8 });
+    r.grid(x0 + 2.6, x1 - 1.9, z0 + 3.2, z1 - 1.5, 3.0, 2.9, (x, z) => { r.set(x, z, 'diningTable', 'gamingChair', 0.5, 0.95); if (lamp++ < r.lamps - 2) r.add('ceilingNeon', x, z, 0, { c: lamp % 2 ? '#ff2a98' : '#2ad8ff' }); }, { maxC: 6, maxR: 4 });
+    r.add('beanbag', x1 - 0.8, z1 - 0.9); r.edgeS('plant', 8); r.edgeE('beanbag', 7);
+    r.hang('w', ['neonOpen', 'neonTube', 'neonTubeBlue', 'neonTube'], { from: 0.8, step: 1.4 }); r.hang('n', ['neonTubeBlue', 'neonTube', 'neonOpen'], { from: 0.8, step: 1.4 });
     return r.doc('Ghost kitchen', { view: 'night', wall: { c: '#3a2a70', pat: 'brick' } });
   });
 
   def('sleepover', 'Sleepover suite', 'Lounge', 'studio', 'Beds, bean bags and a TV. Bring snacks.', (W, D, o) => {
-    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, mz = (z0 + z1) / 2 + 0.6;
-    r.line('w', ['bed', 'lampTable', 'bed', 'lampTable', 'bed'], { from: 1.2, gap: 0.2, to: z1 - 0.2 });
-    r.n('tvUnit', cx + 0.4); r.add('rug', cx + 1.4, mz); r.add('beanbag', cx + 0.2, mz + 0.5); r.add('beanbag', cx + 2.6, mz + 0.4); r.add('beanbag', cx + 1.4, mz - 0.8);
-    r.add('tallPlant', x1 - 0.6, z1 - 0.6); r.add('plant', x1 - 0.5, z0 + 3.5); r.add('floorLamp', x1 - 1.4, mz - 0.4); r.add('floorLamp', cx - 2.2, z1 - 1.0);
-    r.add('pendantLamp', cx + 1.4, mz); r.hang('n', ['wallArt', 'wallArt'], { from: 0.8, step: 1.2 });
+    const r = R(W, D, 'studio', true, o), { x0, z0, x1, z1 } = r, cx = (x0 + x1) / 2, mz = (z0 + z1) / 2 + 0.6; let lamp = 0;
+    r.line('w', ['bed', 'lampTable', 'bed', 'lampTable', 'bed', 'lampTable', 'bed', 'lampTable', 'bed'], { from: 1.2, gap: 0.2, to: z1 - 0.2 });
+    r.line('n', ['bed', 'lampTable', 'bed', 'lampTable', 'bed', 'lampTable'], { from: 3.0, gap: 0.2 });
+    r.n('tvUnit', cx + 3.4);
+    for (const x of clusters(r, x0 + 4, x1 - 2.5, 7)) { r.add('rug', x, mz + 1.4); r.add('beanbag', x - 1.2, mz + 1.9); r.add('beanbag', x + 1.2, mz + 1.8); r.add('beanbag', x, mz + 0.4); if (lamp++ < r.lamps - 4) r.add('pendantLamp', x, mz + 1.4); }
+    r.add('tallPlant', x1 - 0.6, z1 - 0.6); r.add('floorLamp', x1 - 1.4, mz - 0.4); r.add('floorLamp', cx - 2.2, z1 - 1.0); for (let u = x0 + 4.5; u < x1 - 1.6; u += 6) r.s('plant', u); r.edgeE('tallPlant', 8);
+    r.hang('n', cyc('wallArt', 4), { from: 0.8, step: 1.8 });
     return r.doc('Sleepover suite', { wall: { c: '#e8d0e8', pat: 'dots' }, floor: { c: '#d8c8b0', pat: 'carpet' } });
   });
 

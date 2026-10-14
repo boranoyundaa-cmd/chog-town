@@ -50,13 +50,13 @@ const PROPS = { roots: [], placed: [], group: new THREE.Group(), card: null, cou
   if (document.fonts) Promise.all(['64px "Bungee"', '600 48px "Fredoka"'].map(f => document.fonts.load(f))).then(() => redraws.forEach(f => f())).catch(() => { });
 
   // ---------- walking blockers (both lists: the world's and game.js's copy), and a place finder that keeps doors, residents and other things clear
-  const addBlock = (x, z, hw, hd) => { const b = { x, z, hw, hd }; WORLD_BLOCKERS.push(b); if (typeof BLOCKERS !== 'undefined' && BLOCKERS !== WORLD_BLOCKERS) BLOCKERS.push(b); return b; };
+  const addBlock = (x, z, hw, hd) => { const b = { x, z, hw, hd }; WORLD_BLOCKERS.push(b); if (typeof BLOCKERS !== 'undefined' && BLOCKERS !== WORLD_BLOCKERS) BLOCKERS.push(b); if (BG) stamp(BG, b); return b; };
   const doorPts = () => { const p = []; for (const k of ['moka', 'arcade', 'nova', 'gallery', 'hotel']) if (NPC.PL[k]) p.push([NPC.PL[k].x, NPC.PL[k].z]); for (const k in CITY.doors) { const d = CITY.doors[k]; p.push([d.x, d.z]); if (d.out !== undefined) p.push([d.x, d.out]); } return p; };
   const DOORS = doorPts(), SPOTS = Object.values(NPC.PL).filter(p => p.act !== 'in' && p.act !== 'stroll');
   const taken = [];
   const free = (x, z, r, gap, roadOk) => {
     if (Math.abs(x) > HALF - 0.8 || Math.abs(z) > HALF - 0.8) return false;
-    if (!roadOk && (Math.abs(x) < 1.9 || Math.abs(z) < 1.9)) return false;
+    if (!roadOk) for (const rd of CITY.roads || []) if (Math.abs((rd.axis === 'z' ? z : x) - rd.at) < CITY.road / 2 + 0.4) return false;
     for (const b of WORLD_BLOCKERS) if (Math.abs(x - b.x) < b.hw + r + 0.1 && Math.abs(z - b.z) < b.hd + r + 0.1) return false;
     for (const d of DOORS) if (Math.hypot(x - d[0], z - d[1]) < 1.15) return false;
     for (const s of SPOTS) if (Math.hypot(x - s.x, z - s.z) < 0.7) return false;
@@ -66,14 +66,16 @@ const PROPS = { roots: [], placed: [], group: new THREE.Group(), card: null, cou
   // a new blocker must not seal a door or a resident's spot off from the street: flood fill from the spawn on a 0.25 grid (the player's walking radius)
   const RG = 0.25, RN = Math.round((HALF * 2 + 2) / RG), rIdx = v => Math.max(0, Math.min(RN - 1, Math.floor((v + HALF + 1) / RG))), rW = c => (c + 0.5) * RG - HALF - 1;
   const targets = () => { const t = []; for (const k in NPC.PL) { const p = NPC.PL[k]; if (p.act !== 'stroll') t.push([p.x, p.z]); } const h = CITY.doors.home; if (h) t.push([h.x, h.out !== undefined ? h.out : h.z]); return t; };
+  let BG = null;                                                              // the blocker grid, built once and stamped as blockers are added (rebuilding it per candidate froze the 64 m town)
+  function stamp(g, q) { const i0 = rIdx(q.x - q.hw - 0.25), i1 = rIdx(q.x + q.hw + 0.25), j0 = rIdx(q.z - q.hd - 0.25), j1 = rIdx(q.z + q.hd + 0.25);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (Math.abs(rW(i) - q.x) < q.hw + 0.25 && Math.abs(rW(j) - q.z) < q.hd + 0.25) g[j * RN + i] = 1; }
   function baseGrid() {
-    const g = new Uint8Array(RN * RN), lim = HALF - 0.45;
-    for (let j = 0; j < RN; j++) for (let i = 0; i < RN; i++) { const x = rW(i), z = rW(j); let b = Math.abs(x) > lim || Math.abs(z) > lim; if (!b) for (const q of WORLD_BLOCKERS) if (Math.abs(x - q.x) < q.hw + 0.25 && Math.abs(z - q.z) < q.hd + 0.25) { b = true; break; } g[j * RN + i] = b ? 1 : 0; }
-    return g;
+    if (!BG) { BG = new Uint8Array(RN * RN); const lim = HALF - 0.45; for (let j = 0; j < RN; j++) for (let i = 0; i < RN; i++) if (Math.abs(rW(i)) > lim || Math.abs(rW(j)) > lim) BG[j * RN + i] = 1; for (const q of WORLD_BLOCKERS) stamp(BG, q); }
+    return BG.slice();
   }
   function reachable(extra) {                                                  // extra = {x, z, hw, hd} a candidate blocker; returns the targets that cannot be reached
-    const g = baseGrid(); if (extra) for (let j = 0; j < RN; j++) for (let i = 0; i < RN; i++) if (Math.abs(rW(i) - extra.x) < extra.hw + 0.25 && Math.abs(rW(j) - extra.z) < extra.hd + 0.25) g[j * RN + i] = 1;
-    const seen = new Uint8Array(RN * RN), q = [rIdx(0.5) + rIdx(2.0) * RN]; seen[q[0]] = 1;
+    const g = baseGrid(); if (extra) stamp(g, extra);
+    const seen = new Uint8Array(RN * RN), q = [rIdx(CITY.spawn[0]) + rIdx(CITY.spawn[1]) * RN]; seen[q[0]] = 1;
     for (let h = 0; h < q.length; h++) { const c = q[h], ci = c % RN, cj = (c / RN) | 0; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const i = ci + di, j = cj + dj; if ((di || dj) && i >= 0 && j >= 0 && i < RN && j < RN && !g[j * RN + i] && !seen[j * RN + i] && !(di && dj && (g[cj * RN + i] || g[j * RN + ci]))) { seen[j * RN + i] = 1; q.push(j * RN + i); } } }
     return targets().filter(([x, z]) => { const i = rIdx(x), j = rIdx(z); for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) if (seen[(j + dj) * RN + i + di]) return false; return true; });
   }
@@ -183,7 +185,7 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
   const screenOf = (root, up) => { projV.set(root.position.x, root.position.y + up, root.position.z).project(cam); return [(projV.x * 0.5 + 0.5) * innerWidth, (-projV.y * 0.5 + 0.5) * innerHeight, projV.z]; };
 
   // gm wall: a ring of "gm" bubbles rises over every Chog near the wall
-  const gm = { x: -1.0, z: -3.45, cool: 0, fl: [] };
+  const gm = { x: 1.4, z: -12.4, cool: 0, fl: [] };
   (function () {
     const g = new THREE.Group(); g.position.set(gm.x, 0, gm.z);
     for (const s of [-1, 1]) g.add(BOX(0.07, 1.5, 0.07, tmat(0x6a4c3a), s * 0.64, 0.75, -0.04));
@@ -212,11 +214,11 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
   });
 
   // touch grass: a roped patch; one second inside is one touch; ten touches unlock the title and a toast
-  const grass = { x: -8.6, z: -3.75, hw: 1.1, hd: 0.7, t: 0, n: 0, inside: false };
+  const grass = { x: -10.5, z: 21.5, hw: 1.1, hd: 0.7, t: 0, n: 0, inside: false };
   (function () {
     try { grass.n = +localStorage.getItem('chog_grass') || 0; } catch (e) { /* ignore */ }
     const g = new THREE.Group(); g.position.set(grass.x, 0, grass.z);
-    const patch = new THREE.Mesh(new THREE.PlaneGeometry(grass.hw * 2, grass.hd * 2), tmat(0x5eb868, { em: 0.25 })); patch.rotation.x = -Math.PI / 2; patch.position.y = 0.04; patch.userData.noPick = false; g.add(patch);
+    const patch = new THREE.Mesh(new THREE.PlaneGeometry(grass.hw * 2, grass.hd * 2), tmat(0x5eb868, { em: 0.25 })); patch.rotation.x = -Math.PI / 2; patch.position.y = 0.09; patch.userData.noPick = false; g.add(patch);
     for (let i = 0; i < 36; i++) { const t = M(new THREE.ConeGeometry(0.05, 0.22, 4), tmat(i % 3 ? 0x4aa858 : 0x7ad07a), (Math.random() * 2 - 1) * (grass.hw - 0.1), 0.15, (Math.random() * 2 - 1) * (grass.hd - 0.1)); t.rotation.y = Math.random() * 3; g.add(t); }
     g.traverse(o => { if (o.isMesh) { o.userData.noOutline = true; o.castShadow = false; } });
     PROPS.group.add(g); PROPS.placed.push({ id: 'grass', x: grass.x, z: grass.z }); taken.push({ x: grass.x, z: grass.z, r: 1.3 });
@@ -317,7 +319,7 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
   ticks.push(() => { if (!PLACE_EXTRA || !GAME.me || !NPC.group.visible) return; const near = Math.hypot(GAME.me.position.x - gas.x, GAME.me.position.z - (gas.z + 0.55)) < 0.75; if (near && !gas.near) PROPS.receipt(); gas.near = near; });
 
   // laser-eyes photo booth: red eyes for 10 s, a picture with a small watermark two seconds in
-  const booth = { x: -0.85, z: -4.7, laser: null, until: 0, snap: 0 };
+  const booth = { x: 2.2, z: -15.6, laser: null, until: 0, snap: 0 };
   (function () {
     const g = new THREE.Group(); g.position.set(booth.x, 0, booth.z);
     g.add(BOX(1.0, 2.1, 0.95, tmat(0x7a3ac8, { em: 0.25 }), 0, 1.05, -0.05)); g.add(BOX(0.7, 1.55, 0.05, tmat(0x1a1030), 0, 0.95, 0.43)); g.add(BOX(0.74, 1.6, 0.04, tmat(0xe83a6a), 0.02, 0.95, 0.46));
@@ -364,16 +366,16 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
   // ordinary signage (no jokes), and three hidden things: a tiny plate on a park bench, a faded old poster, one item on the cafe menu (the pinned receipt is on the notice board)
   const ST = { street: { bg: '#2f6a5c', fg: '#ffffff', border: '#e8f0e8' }, bus: { bg: '#ffd84a', fg: INK, border: INK }, hours: { bg: CREAM, fg: INK, border: '#8a6a3a' }, park: { bg: '#2f6a5c', fg: '#ffffff', border: '#e8f0e8' }, noskate: { bg: '#ffffff', fg: '#c02a2a', border: '#c02a2a' }, parking: { bg: '#3a74d8', fg: '#ffffff', border: '#ffffff' } };
   const SIGNS = [
-    { id: 'sg_street', title: 'Street sign', text: 'Chog Avenue / Hotel Street', disp: 'Chog Avenue', style: ST.street, at: [2.3, 2.4] },
-    { id: 'sg_bus', title: 'Bus 7 timetable', text: 'Bus 7: every 30 minutes, 06:30 to 22:00.', disp: 'Bus 7\n07:10  07:40\n08:10  08:40', style: ST.bus, at: [-5.8, 1.95] },
-    { id: 'sg_moka', title: 'Opening hours', text: 'Moka & Co: open 06:30 to 20:00.', disp: 'Moka & Co\nOpen 06:30 - 20:00', style: ST.hours, at: [-6.2, 6.7] },
-    { id: 'sg_arcade', title: 'Opening hours', text: 'Arcade: open 15:00 to 02:00.', disp: 'Arcade\nOpen 15:00 - 02:00', style: ST.hours, at: [6.1, 7.0] },
-    { id: 'sg_parking', title: 'Parking', text: 'Parking: 2 hours maximum.', disp: 'P\n2 hours max', style: ST.parking, at: [8.9, 2.4] },
-    { id: 'sg_menu', title: 'Today at Moka & Co', text: 'Flat white 3.2 / Oat latte 3.8 / Hopium latte 4.2 / Croissant 2.5', disp: 'TODAY\nFlat white  3.2\nOat latte  3.8\nHopium latte  4.2\nCroissant  2.5', kind: 'chalk', at: [-2.4, 7.2] },
-    { id: 'sg_park', title: 'Lantern Park', text: 'Lantern Park. Open from dawn to dusk.', disp: 'Lantern Park', style: ST.park, at: [-9.2, -2.9] },
-    { id: 'sg_noskate', title: 'Park rules', text: 'No skateboarding.', disp: 'No skateboarding', style: ST.noskate, at: [-7.4, -2.0] },
-    { id: 'hid_gox', title: 'Bench plaque', text: 'Goxxed, 2014', disp: 'Goxxed, 2014', kind: 'bench', at: [-8.0, -1.9] },
-    { id: 'hid_poster', title: 'Old poster', text: 'BULL RUN. Nov 10, 2021. (Torn.)', disp: 'BULL RUN\nNov 2021', kind: 'poster', faded: true, col: '#9a8f86', at: [7.1, 5.0] },
+    { id: 'sg_street', title: 'Street sign', text: 'Chog Avenue / Hotel Street', disp: 'Chog Avenue', style: ST.street, at: [6.0, 5.8] },
+    { id: 'sg_bus', title: 'Bus 7 timetable', text: 'Bus 7: every 30 minutes, 06:30 to 22:00.', disp: 'Bus 7\n07:10  07:40\n08:10  08:40', style: ST.bus, at: [-10.2, 11.2] },
+    { id: 'sg_moka', title: 'Opening hours', text: 'Moka & Co: open 06:30 to 20:00.', disp: 'Moka & Co\nOpen 06:30 - 20:00', style: ST.hours, at: [-22.6, -12.4] },
+    { id: 'sg_arcade', title: 'Opening hours', text: 'Arcade: open 15:00 to 02:00.', disp: 'Arcade\nOpen 15:00 - 02:00', style: ST.hours, at: [19.8, 5.6] },
+    { id: 'sg_parking', title: 'Parking', text: 'Parking: 2 hours maximum.', disp: 'P\n2 hours max', style: ST.parking, at: [10.4, -10.4] },
+    { id: 'sg_menu', title: 'Today at Moka & Co', text: 'Flat white 3.2 / Oat latte 3.8 / Hopium latte 4.2 / Croissant 2.5', disp: 'TODAY\nFlat white  3.2\nOat latte  3.8\nHopium latte  4.2\nCroissant  2.5', kind: 'chalk', at: [-22.2, -3.2] },
+    { id: 'sg_park', title: 'Lantern Park', text: 'Lantern Park. Open from dawn to dusk.', disp: 'Lantern Park', style: ST.park, at: [-6.0, 11.0] },
+    { id: 'sg_noskate', title: 'Park rules', text: 'No skateboarding.', disp: 'No skateboarding', style: ST.noskate, at: [-3.4, 11.2] },
+    { id: 'hid_gox', title: 'Bench plaque', text: 'Goxxed, 2014', disp: 'Goxxed, 2014', kind: 'bench', at: [-14.0, 16.9] },
+    { id: 'hid_poster', title: 'Old poster', text: 'BULL RUN. Nov 10, 2021. (Torn.)', disp: 'BULL RUN\nNov 2021', kind: 'poster', faded: true, col: '#9a8f86', at: [20.0, -3.2] },
   ];
   for (const p of SIGNS) {
     const k = kindOf(p), q = fit(p.at[0], p.at[1], 0.3, 1.2, false, k === 'ground' ? 0 : k === 'post' ? 0.2 : 0.5); if (!q) { console.warn('sign has no room', p.id); continue; }

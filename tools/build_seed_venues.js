@@ -1,6 +1,6 @@
 'use strict';
 // Builds server/seed_venues.json: the venues the game itself puts in the Chog Hotel (so the first floors are never empty).
-// Each venue is a ready-made room (prototype/js/space_layouts.js) laid out for a tier 1 floor (15 x 11 m), served to visitors like any holder's room. Four to a floor: 101..104, 201..204, 301..304.
+// Each venue is a ready-made room (prototype/js/space_layouts.js) laid out for a tier 1 floor (22 x 16 m), served to visitors like any holder's room. Four to a floor: 101..104, 201..204, 301..304.
 // The same ready-made rooms are what the room editor offers every player. Run after changing a layout or the catalog:
 //   node tools/build_room_catalog.js && node tools/check_layouts.js && node tools/build_seed_venues.js
 const fs = require('fs'), path = require('path'), vm = require('vm');
@@ -8,7 +8,7 @@ const JS = path.join(__dirname, '..', 'prototype', 'js');
 const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {} };
 for (const f of ['space_data.js', 'space_layouts.js']) vm.runInNewContext(fs.readFileSync(path.join(JS, f), 'utf8'), { SPACE });
 const rooms = require('../server/rooms');
-const SIZE = [15, 11], LIMIT = 120, LIGHTS = 12;                                  // tier 1 (server/hotel.js TEMPLATES)
+const SIZE = [22, 16], LIMIT = 200, LIGHTS = 16;                                  // tier 1 (server/hotel.js TEMPLATES)
 
 // [number, ready-made room, name, kind, listing text]
 const V = [

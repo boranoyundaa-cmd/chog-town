@@ -1,14 +1,14 @@
 // ===== hotel: the Chog Hotel (docs/game/world.md): a lobby with a reception and an elevator, and floors with a wall of rooms =====
-// Floor 0 is the lobby (a rectangle with the reception desk, the elevator and the street door). Floors 1..N are square halls 16 x 16 m generated from the server's list of venues:
-// two rooms on the north back wall (slots 1 and 2) and two on the west back wall (slots 3 and 4), each 6.5 m of wall; the elevator stands in the corner (3 m). The camera only draws the two back walls.
+// Floor 0 is the lobby (a rectangle with the reception desk, the elevator and the street door). Floors 1..N are square halls 24 x 24 m (6 m tall) generated from the server's list of venues:
+// two rooms on the north back wall (slots 1 and 2) and two on the west back wall (slots 3 and 4), each 10 m of wall; the elevator stands in the corner (3.5 m). The camera only draws the two back walls.
 // venue number = floor * 100 + first slot. A venue holds 1 slot (a wall segment), 2 (a whole wall) or 4 (the whole floor); from tier 3 it holds the same slots on the floor above too (its upper level).
 // Every hotel scene hides the town like a room does (ROOM.showTown, DAY.pause). A venue is a room document the server serves (ROOM.enterVenue); leaving it returns to its door.
 // Loaded after room.js and net.js. Needs the town server: the list of venues and the head count come from it.
 const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, facadeBy: {}, mineId: null, busy: false, ui: null, panel: null, q: '', cat: 'All', fadeEl: null };
 (function () {
-  const rad = d => d * Math.PI / 180, H = 3.3, wait = ms => new Promise(r => setTimeout(r, ms));
-  const LOB = { w: 11, d: 8 };                                                        // lobby floor: x -5.5..5.5, z -4..4
-  const FLH = 8, ELEV = 3, SLOT = 6.5, FAC_D = 1.6;                                      // a floor: half size of the hall, the corner the elevator takes, metres of wall per slot, how far a facade reaches into the hall
+  const rad = d => d * Math.PI / 180, H = 6.0, wait = ms => new Promise(r => setTimeout(r, ms));
+  const LOB = { w: 16.5, d: 12 };                                                    // lobby floor: x -8.25..8.25, z -6..6, walls 6 m tall
+  const FLH = 12, ELEV = 3.5, SLOT = 10, FAC_D = 1.6;                                      // a floor: half size of the hall, the corner the elevator takes, metres of wall per slot, how far a facade reaches into the hall
   const CAT_COL = { Winner: 0xffc23a, Club: 0xff5ab8, 'Café': 0x3fb8a0, Arcade: 0xffc23a, Gallery: 0xe8e0d0, Lounge: 0x8a5ad8, Spooky: 0xff7a1a, Workshop: 0x4a8ad8 };
   const colOf = cat => CAT_COL[cat] ?? 0x9a8ab8, hexOf = c => '#' + new THREE.Color(c).getHexString();
   const pal = () => SPACE.THEMES.studio.pal;
@@ -49,7 +49,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     g.add(BOX(o.lenX + 0.25, 0.14, 0.32, trim, o.cx - 0.125, H + 0.07, o.z0 - 0.125)); g.add(BOX(0.32, 0.14, o.lenZ, trim, o.x0 - 0.125, H + 0.07, o.cz));
     for (const [cx, cz, w, d] of o.floors) {
       const f = new THREE.Mesh(new THREE.BoxGeometry(w, 0.12, d), floorMat(o.floorC, o.floorPat, w / 2.4, d / 2.4)); f.position.set(cx, -0.06, cz); f.receiveShadow = true; g.add(f);
-      g.add(BOX(w + 0.4, 0.7, d + 0.4, tmat(new THREE.Color(pal().trim).multiplyScalar(1.2).getHex()), cx, -0.55, cz));
+      { const sl = BOX(w + 0.4, 0.7, d + 0.4, tmat(new THREE.Color(pal().trim).multiplyScalar(1.2).getHex()), cx, -0.55, cz); sl.castShadow = false; g.add(sl); }
     }
   }
   const onWall = (g, o, wall, u, y, mesh, off = 0.02) => { if (wall === 'z') mesh.position.set(u, y, o.z0 + off); else { mesh.position.set(o.x0 + off, y, u); mesh.rotation.y = Math.PI / 2; } g.add(mesh); return mesh; };
@@ -69,35 +69,35 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     onWall(g, o, wall, u, 1.25, BOX(2.3, 2.6, 0.12, trim), 0.06); onWall(g, o, wall, u, 1.1, BOX(1.9, 2.25, 0.1, tmat(0x1a1430)), 0.1);
     onWall(g, o, wall, u - 0.47, 1.1, BOX(0.92, 2.2, 0.06, steel), 0.16); onWall(g, o, wall, u + 0.47, 1.1, BOX(0.92, 2.2, 0.06, steel), 0.16); onWall(g, o, wall, u, 1.1, BOX(0.03, 2.2, 0.04, trim), 0.2);
     onWall(g, o, wall, u + 1.45, 1.15, BOX(0.2, 0.36, 0.06, trim), 0.08); onWall(g, o, wall, u + 1.45, 1.22, BOX(0.08, 0.08, 0.04, tmat(0xffd84a, { em: 1 })), 0.12); onWall(g, o, wall, u + 1.45, 1.06, BOX(0.08, 0.08, 0.04, tmat(0xff5ab8, { em: 1 })), 0.12);
-    onWall(g, o, wall, u, 2.72, sign('ELEVATOR', 1.5, 0.26, '#ffffff', '#2b1d44', '#7ae8ff'), 0.12);
-    const hx = wall === 'z' ? u : o.x0 + 0.5, hz = wall === 'z' ? o.z0 + 0.5 : u; halo(g, 0x7ae8ff, 2.2, 0.35, hx, 2.7, hz);
+    onWall(g, o, wall, u, 3.3, sign('ELEVATOR', 2.0, 0.34, '#ffffff', '#2b1d44', '#7ae8ff'), 0.12);
+    const hx = wall === 'z' ? u : o.x0 + 0.5, hz = wall === 'z' ? o.z0 + 0.5 : u; halo(g, 0x7ae8ff, 2.2, 0.35, hx, 3.3, hz);
   }
   function door(g, o, wall, u, col) {                                                  // a plain venue door in a category colour with a wall lamp
     const trim = tmat(pal().trim);
     onWall(g, o, wall, u, 1.12, BOX(1.28, 2.32, 0.1, trim), 0.05); onWall(g, o, wall, u, 1.05, BOX(1.0, 2.1, 0.12, tmat(col, { em: 0.2 })), 0.09); onWall(g, o, wall, u + 0.34, 1.0, SPH(0.06, tmat(0xf0d070)), 0.19);
-    onWall(g, o, wall, u + 1.0, 1.85, BOX(0.14, 0.3, 0.12, tmat(0xfff2c8, { em: 1 })), 0.08);
-    const hx = wall === 'z' ? u + 1.0 : o.x0 + 0.2, hz = wall === 'z' ? o.z0 + 0.2 : u + 1.0; halo(g, 0xffd890, 1.3, 0.5, hx, 1.85, hz);
+    onWall(g, o, wall, u + 1.0, 2.5, BOX(0.14, 0.3, 0.12, tmat(0xfff2c8, { em: 1 })), 0.08);
+    const hx = wall === 'z' ? u + 1.0 : o.x0 + 0.2, hz = wall === 'z' ? o.z0 + 0.2 : u + 1.0; halo(g, 0xffd890, 1.3, 0.5, hx, 2.5, hz);
   }
   // the default front of a room whose owner has not made a facade: the wall tinted in its colour and big lit windows on both sides of the door
   function shopfront(g, o, wall, u, W, col, shut) {
     const trim = tmat(pal().trim), tint = new THREE.Color(0xf0e2d0).lerp(new THREE.Color(col), shut ? 0.05 : 0.2).getHex();
     onWall(g, o, wall, u, (H - 0.1) / 2 + 0.05, BOX(W - 0.1, H - 0.1, 0.04, wallMat(tint, 'wainscot', W / 3, 1)), 0.04);
-    const glass = new THREE.Color(col).lerp(new THREE.Color(0xffffff), 0.5), n = W > 8 ? 2 : 1;
+    const glass = new THREE.Color(col).lerp(new THREE.Color(0xffffff), 0.5), n = W > 12 ? 2 : 1;
     for (let k = 0; k < n; k++) for (const sd of [-1, 1]) {
-      const wu = u + sd * (2.3 + k * 2.8); onWall(g, o, wall, wu, 1.65, BOX(1.7, 1.5, 0.08, trim), 0.06);
-      onWall(g, o, wall, wu, 1.65, new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.3), new THREE.MeshBasicMaterial({ color: shut ? 0x4a3f62 : glass })), 0.11);
-      onWall(g, o, wall, wu, 1.65, BOX(0.05, 1.3, 0.05, trim), 0.13); onWall(g, o, wall, wu, 1.65, BOX(1.5, 0.05, 0.05, trim), 0.13);
+      const wu = u + sd * (3.1 + k * 3.6); onWall(g, o, wall, wu, 2.3, BOX(2.3, 3.0, 0.08, trim), 0.06);
+      onWall(g, o, wall, wu, 2.3, new THREE.Mesh(new THREE.PlaneGeometry(2.1, 2.8), new THREE.MeshBasicMaterial({ color: shut ? 0x4a3f62 : glass })), 0.11);
+      onWall(g, o, wall, wu, 2.3, BOX(0.05, 2.8, 0.05, trim), 0.13); onWall(g, o, wall, wu, 2.3, BOX(2.1, 0.05, 0.05, trim), 0.13);
     }
   }
   // a stretch of wall that belongs to a venue but has no door: its upper level, or the other wall of a whole-floor venue. Glowing windows and a note.
   function reserved(g, o, wall, u0, u1, v, text) {
-    const trim = tmat(pal().trim), col = colOf(v.cat), glass = new THREE.Color(col).lerp(new THREE.Color(0xffffff), 0.5), W = u1 - u0, u = (u0 + u1) / 2, n = Math.max(1, Math.round(W / 3.5));
+    const trim = tmat(pal().trim), col = colOf(v.cat), glass = new THREE.Color(col).lerp(new THREE.Color(0xffffff), 0.5), W = u1 - u0, u = (u0 + u1) / 2, n = Math.max(1, Math.round(W / 3.6));
     onWall(g, o, wall, u, (H - 0.1) / 2 + 0.05, BOX(W - 0.1, H - 0.1, 0.04, wallMat(new THREE.Color(0xf0e2d0).lerp(new THREE.Color(col), 0.12).getHex(), 'wainscot', W / 3, 1)), 0.04);
     for (let k = 0; k < n; k++) {
-      const wu = u0 + (k + 0.5) * W / n; onWall(g, o, wall, wu, 1.7, BOX(2.2, 1.6, 0.08, trim), 0.06);
-      onWall(g, o, wall, wu, 1.7, new THREE.Mesh(new THREE.PlaneGeometry(2.0, 1.4), new THREE.MeshBasicMaterial({ color: glass })), 0.11); onWall(g, o, wall, wu, 1.7, BOX(0.05, 1.4, 0.05, trim), 0.13);
+      const wu = u0 + (k + 0.5) * W / n; onWall(g, o, wall, wu, 2.4, BOX(2.4, 3.2, 0.08, trim), 0.06);
+      onWall(g, o, wall, wu, 2.4, new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.0), new THREE.MeshBasicMaterial({ color: glass })), 0.11); onWall(g, o, wall, wu, 2.4, BOX(0.05, 3.0, 0.05, trim), 0.13);
     }
-    notePlate(g, o, wall, u, 2.72, [text, v.name === 'Opening soon' ? '' : v.name], col);
+    notePlate(g, o, wall, u, 4.4, [text, v.name === 'Opening soon' ? '' : v.name], col);
   }
   // a small wall plate with one or two lines of text (reserved walls, free rooms)
   function notePlate(g, o, wall, u, y, lines, col) {
@@ -105,7 +105,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const draw = () => { c.clearRect(0, 0, 512, 160); c.fillStyle = '#2b1d44'; c.strokeStyle = hexOf(col); c.lineWidth = 7; c.beginPath(); c.roundRect ? c.roundRect(6, 6, 500, 148, 24) : c.rect(6, 6, 500, 148); c.fill(); c.stroke();
       c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = hexOf(col); c.font = '700 40px "Fredoka", sans-serif'; c.fillText(lines[0], 256, lines[1] ? 55 : 80); if (lines[1]) { c.fillStyle = '#ffffff'; let px = 44; c.font = `700 ${px}px "Fredoka", sans-serif`; while (c.measureText(lines[1]).width > 440 && px > 22) { px -= 3; c.font = `700 ${px}px "Fredoka", sans-serif`; } c.fillText(lines[1], 256, 108); } };
     draw(); const tex = new THREE.CanvasTexture(cv); tex.anisotropy = 4; notes.push(() => { draw(); tex.needsUpdate = true; });
-    onWall(g, o, wall, u, y, new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.6), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })), 0.12);
+    onWall(g, o, wall, u, y, new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.76), new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide })), 0.12);
   }
   function plateFor(g, o, wall, u, v) {                                                // the door plate: number, name, and how many people are inside right now
     const cv = document.createElement('canvas'); cv.width = 512; cv.height = 192;
@@ -121,7 +121,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
       p.n = n; if (p.tex) p.tex.needsUpdate = true;
     };
     p.draw(); p.tex = new THREE.CanvasTexture(cv); p.tex.anisotropy = 4;
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 0.71), new THREE.MeshBasicMaterial({ map: p.tex, transparent: true, side: THREE.DoubleSide })); onWall(g, o, wall, u, 2.72, m, 0.12);
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.9), new THREE.MeshBasicMaterial({ map: p.tex, transparent: true, side: THREE.DoubleSide })); onWall(g, o, wall, u, 3.0, m, 0.12);
     plates.push(p); return p;
   }
   if (document.fonts) document.fonts.load('700 40px "Fredoka"').then(() => { plates.forEach(p => p.draw()); notes.forEach(f => f()); }).catch(() => { });
@@ -168,7 +168,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
 
   // ------------------------------------------------------------------ the two scenes
   // ---- lobby: ordinary signs, and three small hidden things (the rug tag, the print in the corner; the elevator one is in the panel). Restraint: most of it is plain hotel.
-  const RUG = { x: 0.2, z: 0.9, hw: 1.5, hd: 1.0, pulledAt: -1e9, until: 0, grp: null, victims: [], baseX: 0.2 };
+  const RUG = { x: 0.3, z: 1.7, hw: 1.5, hd: 1.0, pulledAt: -1e9, until: 0, grp: null, victims: [], baseX: 0.3 };
   const RECEP = ['Welcome to the Chog Hotel.', 'Rooms are on the floors. The elevator is on your left.', 'The directory lists every open room.', 'Check-out is at 11:00.', 'Breakfast is a coffee. Mika will help you.', 'Need a room? Ask me. Need a view? Take the elevator.'];
   let recepJoke = null, recepAt = 0;
   const recepLine = () => {                                                         // normal hotel lines, and one in-joke from the culture file now and then
@@ -202,14 +202,14 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   }
   function lobbyExtras(g, o) {
     const serif = '"Bree Serif", Georgia, serif';
-    paperOnWall(g, o, 'z', 2.65, 1.55, 0.8, 0.54, (c, W, H) => {                      // the founding plaque: brass, plain text
+    paperOnWall(g, o, 'z', 4.2, 1.7, 0.8, 0.54, (c, W, H) => {                      // the founding plaque: brass, plain text
       c.fillStyle = '#c8a24c'; c.fillRect(0, 0, W, H); c.strokeStyle = '#8a6a22'; c.lineWidth = 5; c.strokeRect(9, 9, W - 18, H - 18); c.fillStyle = '#4a3410'; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.font = `700 30px ${serif}`; c.fillText('CHOG HOTEL', W / 2, H * 0.3); c.font = `20px ${serif}`; c.fillText('Founded 2026', W / 2, H * 0.52); c.fillText('All guests welcome', W / 2, H * 0.72);
     }, 0x5a3a1e);
-    paperOnWall(g, o, 'z', -2.2, 1.6, 0.8, 0.3, (c, W, H) => {                        // the check-out sign
+    paperOnWall(g, o, 'z', -3.6, 1.7, 0.8, 0.3, (c, W, H) => {                        // the check-out sign
       c.fillStyle = '#f4ead6'; c.fillRect(0, 0, W, H); c.fillStyle = '#2b1d44'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `700 30px ${serif}`; c.fillText('CHECK-OUT 11:00', W / 2, H * 0.5);
     });
-    paperOnWall(g, o, 'x', -2.8, 1.35, 0.4, 0.52, (c, W, H) => {                      // a small framed print in the quiet corner: a plain page and a date, no label
+    paperOnWall(g, o, 'x', -4.6, 1.35, 0.4, 0.52, (c, W, H) => {                      // a small framed print in the quiet corner: a plain page and a date, no label
       c.fillStyle = '#fbfaf5'; c.fillRect(0, 0, W, H); c.fillStyle = '#222'; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
       c.font = 'bold 36px Arial, Helvetica, sans-serif'; c.fillText('I AM HODLING', 14, 52); c.fillStyle = '#777'; c.font = '17px Arial, sans-serif'; c.fillText('Dec 18, 2013', 14, 82);
       c.fillStyle = '#bbb'; for (let i = 0; i < 8; i++) c.fillRect(14, 112 + i * 20, i % 3 === 2 ? 120 : 214, 6);
@@ -218,48 +218,53 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const c2 = cv.getContext('2d');
     const draw = () => { c2.fillStyle = '#f4ead6'; c2.fillRect(0, 0, 128, 64); c2.strokeStyle = '#a89878'; c2.lineWidth = 3; c2.strokeRect(2, 2, 124, 60); c2.fillStyle = '#4a3a2a'; c2.textAlign = 'center'; c2.textBaseline = 'middle'; c2.font = '600 17px "Fredoka", Arial, sans-serif'; c2.fillText('do not pull', 64, 33); };
     draw(); const tex = new THREE.CanvasTexture(cv); notes.push(() => { draw(); tex.needsUpdate = true; });
-    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.17), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })); tag.rotation.set(-Math.PI / 2, 0, Math.PI / 4); tag.position.set(1.3, 0.06, 1.62);
+    const tag = new THREE.Mesh(new THREE.PlaneGeometry(0.34, 0.17), new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })); tag.rotation.set(-Math.PI / 2, 0, Math.PI / 4); tag.position.set(1.4, 0.06, 2.42);
     tag.userData.onClick = pullRug; tag.userData.netName = 'tag'; g.add(tag); RUG.tag = tag; anims.push(rugAnim);
   }
   function buildLobby() {
     const g = new THREE.Group(), o = { z0: -LOB.d / 2, x0: -LOB.w / 2, lenX: LOB.w, lenZ: LOB.d, cx: 0, cz: 0, wallC: 0xf0e2d0, wallPat: 'wainscot', floorC: 0xe6d6c0, floorPat: 'tiles', floors: [[0, 0, LOB.w, LOB.d]] };
     shell(g, o); walk = [[-LOB.w / 2 + 0.3, LOB.w / 2 - 0.3, -LOB.d / 2 + 0.3, LOB.d / 2 - 0.3]]; mapRects = [[-LOB.w / 2, LOB.w / 2, -LOB.d / 2, LOB.d / 2]];
     // the street door (like a room's exit), the elevator, the big sign
-    const trim = tmat(pal().trim); onWall(g, o, 'z', 3.9, 1.0, BOX(1.1, 2.0, 0.12, tmat(0x2f6a5c)), 0.06); onWall(g, o, 'z', 3.9, 1.0, BOX(1.3, 2.15, 0.08, trim), 0.03); onWall(g, o, 'z', 4.24, 1.0, SPH(0.06, tmat(0xf0d070)), 0.16);
-    onWall(g, o, 'z', 3.9, 2.35, sign('STREET', 0.9, 0.22, '#ffffff'), 0.1);
-    elevator(g, o, 'x', 0.6);
-    onWall(g, o, 'z', 0.2, 2.55, sign('CHOG HOTEL', 3.6, 0.62, '#fff6e0', '#2b1d44', '#ff9ad8'), 0.06); halo(g, 0xff9ad8, 4.5, 0.3, 0.2, 2.5, -3.6);
-    // furniture
-    piece(g, 'receptionDesk', 0.2, -2.95); RUG.grp = piece(g, 'rug', 0.2, 0.9); RUG.baseX = 0.2; piece(g, 'sofa', -2.4, 2.9, 180); piece(g, 'coffeeTable', -2.4, 1.7); piece(g, 'armchair', -4.0, 1.9, 90);
-    piece(g, 'tallPlant', 4.8, -0.6); piece(g, 'plant', 4.9, 3.0); piece(g, 'tallPlant', -4.8, -3.3); piece(g, 'floorLamp', 4.3, 1.6); piece(g, 'sofa', 2.6, 3.0, 180); piece(g, 'sideTable', 0.6, 3.1); piece(g, 'wallArt', -3.2, -4.0);
-    piece(g, 'wallArt', -5.5, 2.6, 90); piece(g, 'wallArt', -5.5, -1.6, 90); lobbyExtras(g, o);
-    piece(g, 'pendantLamp', 0.2, -1.4); piece(g, 'pendantLamp', -2.4, 2.0); piece(g, 'pendantLamp', 3.0, 1.8);
-    block(0.2, -2.95, 1.7, 0.45);
+    const trim = tmat(pal().trim); onWall(g, o, 'z', 5.9, 1.0, BOX(1.1, 2.0, 0.12, tmat(0x2f6a5c)), 0.06); onWall(g, o, 'z', 5.9, 1.0, BOX(1.3, 2.15, 0.08, trim), 0.03); onWall(g, o, 'z', 6.24, 1.0, SPH(0.06, tmat(0xf0d070)), 0.16);
+    onWall(g, o, 'z', 5.9, 2.5, sign('STREET', 1.1, 0.27, '#ffffff'), 0.1);
+    elevator(g, o, 'x', 0.9);
+    onWall(g, o, 'z', 0.3, 3.6, sign('CHOG HOTEL', 5.4, 0.93, '#fff6e0', '#2b1d44', '#ff9ad8'), 0.06); halo(g, 0xff9ad8, 6.5, 0.3, 0.3, 3.5, -5.4);
+    // furniture: the reception on the north wall, a sitting corner west, another east, the rug (with its hidden tag) in the middle, plants and lamps at the edges
+    piece(g, 'receptionDesk', 0.3, -4.95); RUG.grp = piece(g, 'rug', 0.3, 1.7); RUG.baseX = 0.3;
+    piece(g, 'sofa', -4.0, 4.9, 180); piece(g, 'coffeeTable', -4.0, 3.5); piece(g, 'armchair', -6.2, 3.6, 90); piece(g, 'armchair', -1.8, 3.6, 270);
+    piece(g, 'sofa', 4.6, 4.9, 180); piece(g, 'coffeeTable', 4.6, 3.5); piece(g, 'armchair', 2.6, 3.6, 90); piece(g, 'sideTable', 7.2, 3.6);
+    piece(g, 'plant', 7.4, 5.0); piece(g, 'tallPlant', -7.4, -5.0); piece(g, 'tallPlant', 7.6, -1.8); piece(g, 'tallPlant', -7.4, 5.2); piece(g, 'floorLamp', 7.0, 1.6); piece(g, 'floorLamp', -7.0, 1.4);
+    piece(g, 'wallArt', -5.2, -6.0); piece(g, 'wallArt', -8.25, 4.2, 90); piece(g, 'wallArt', -8.25, -2.8, 90); lobbyExtras(g, o);
+    piece(g, 'floorLamp', 5.0, -4.7); piece(g, 'floorLamp', -3.6, -4.7); piece(g, 'floorLamp', 0.3, 5.6);
+    block(0.3, -4.95, 1.7, 0.45);
     // the receptionist
-    npc = chog({ hair: 0x5b35b0, outfit: 'vest', vest: 0x7a3ac8, head: 'headset', scale: CHOG_SCALE * 1.0 }); npc.position.set(0.2, 0, -3.62); npc.rotation.y = 0; g.add(npc); npc.userData.netName = 'Reception'; npc.userData.onClick = () => { toast(recepLine()); HOTEL.openPanel('dir'); };
+    piece(g, 'stool', 0.3, -5.62);                                                    // a tall stool behind the counter, so the receptionist shows above it
+    npc = chog({ hair: 0x5b35b0, outfit: 'vest', vest: 0x7a3ac8, head: 'headset', scale: CHOG_SCALE * 1.0 }); npc.position.set(0.3, 0.76, -5.62); npc.rotation.y = 0; g.add(npc); npc.userData.netName = 'Reception'; npc.userData.onClick = () => { toast(recepLine()); HOTEL.openPanel('dir'); };
     npcPlate = PLATES.add(npc, 'Staff');
     spots = [
-      { x: 0.2, z: -1.9, r: 1.6, y: 2.2, label: 'Ask reception', run: () => HOTEL.openPanel('dir') },
-      { x: -4.4, z: 0.6, r: 1.4, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-5.2, 2.7, 0.6] },
-      { x: 3.9, z: -3.1, r: 1.3, y: 2.6, label: 'Go out to the street', run: () => HOTEL.leave(), at: [3.9, 2.6, -3.9] },
+      { x: 0.3, z: -3.9, r: 1.6, y: 2.2, label: 'Ask reception', run: () => HOTEL.openPanel('dir') },
+      { x: -6.6, z: 0.9, r: 1.4, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-7.8, 2.7, 0.9] },
+      { x: 5.9, z: -5.1, r: 1.3, y: 2.6, label: 'Go out to the street', run: () => HOTEL.leave(), at: [5.9, 2.6, -5.9] },
     ];
-    G = g; return { spawn: { x: 3.6, z: -2.0, ry: 0 } };
+    G = g; return { spawn: { x: 5.5, z: -3.6, ry: 0 } };
   }
   function buildFloor(f) {
     const g = new THREE.Group(), o = { z0: -FLH, x0: -FLH, lenX: 2 * FLH, lenZ: 2 * FLH, cx: 0, cz: 0, wallC: 0xf0e2d0, wallPat: 'wainscot', floorC: 0x4e2a5c, floorPat: 'carpet', floors: [[0, 0, 2 * FLH, 2 * FLH]] };
     shell(g, o);
     const m = 0.3; walk = [[-FLH + m, FLH - m, -FLH + m, FLH - m]]; mapRects = [[-FLH, FLH, -FLH, FLH]]; mapDoors = [];
     const trim = tmat(pal().trim);
-    elevator(g, o, 'z', -FLH + ELEV / 2); onWall(g, o, 'z', -FLH + ELEV / 2, 3.07, f === 'E' ? sign('EXHIBITION', 2.0, 0.24, '#ffe9a8', null, '#ffb03a') : sign('FLOOR ' + f, 1.2, 0.24, '#ffe9a8', null, '#ffb03a'), 0.12);
-    if (f === 'E') notePlate(g, o, 'x', -FLH + ELEV / 2, 1.9, ['THIS WEEK', (typeof EXH !== 'undefined' && EXH.theme()) || '…'], 0xffc23a);         // the weekly theme, on the wall beside the elevator
-    else { onWall(g, o, 'x', -FLH + ELEV / 2, 1.7, BOX(1.5, 1.3, 0.1, trim), 0.05); onWall(g, o, 'x', -FLH + ELEV / 2, 1.7, new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.1), new THREE.MeshBasicMaterial({ color: SPACE.VIEWS[SPACE.viewKey(null)].window })), 0.11); }
-    spots = [{ x: -FLH + ELEV / 2, z: -FLH + 1.7, r: 1.5, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-FLH + ELEV / 2, 2.9, -FLH + 0.5] }];
-    // the hall: a rug and a sitting corner in the middle, plants at the open corners, a pendant lamp over each part of the floor
-    const rug = new THREE.Mesh(new THREE.PlaneGeometry(7, 4.4), new THREE.MeshBasicMaterial({ color: 0x8a4a78 })); rug.rotation.x = -Math.PI / 2; rug.position.set(1.9, 0.012, 2.6); g.add(rug);
-    piece(g, 'coffeeTable', 1.9, 2.3); piece(g, 'sofa', 1.9, 3.9, 180); piece(g, 'armchair', -0.4, 2.3, 90); piece(g, 'armchair', 4.2, 2.3, 270); piece(g, 'lampTable', -0.4, 3.7); piece(g, 'lampTable', 4.2, 3.7);
-    piece(g, 'bench', -1.0, -3.3, 180); piece(g, 'bench', 5.0, -3.3, 180); piece(g, 'bench', -3.6, 0.0, 270); piece(g, 'bench', -3.6, 5.6, 270);
-    piece(g, 'tallPlant', FLH - 0.6, FLH - 0.6); piece(g, 'tallPlant', -5.0, FLH - 0.6); piece(g, 'plant', FLH - 0.55, -1.0, 0, 0, { free: true }); piece(g, 'plant', FLH - 0.55, 2.4, 0, 0, { free: true });
-    for (const [x, z] of [[-3.5, -3.4], [3.0, -3.4], [-3.6, 2.6], [1.9, 2.5], [6.0, 4.0], [-2.0, 6.2], [4.5, 6.4]]) piece(g, 'pendantLamp', x, z);
+    elevator(g, o, 'z', -FLH + ELEV / 2); onWall(g, o, 'z', -FLH + ELEV / 2, 3.9, f === 'E' ? sign('EXHIBITION', 2.8, 0.34, '#ffe9a8', null, '#ffb03a') : sign('FLOOR ' + f, 1.7, 0.34, '#ffe9a8', null, '#ffb03a'), 0.12);
+    if (f === 'E') notePlate(g, o, 'x', -FLH + ELEV / 2, 2.4, ['THIS WEEK', (typeof EXH !== 'undefined' && EXH.theme()) || '…'], 0xffc23a);         // the weekly theme, on the wall beside the elevator
+    else { onWall(g, o, 'x', -FLH + ELEV / 2, 2.4, BOX(1.8, 3.0, 0.1, trim), 0.05); onWall(g, o, 'x', -FLH + ELEV / 2, 2.4, new THREE.Mesh(new THREE.PlaneGeometry(1.6, 2.8), new THREE.MeshBasicMaterial({ color: SPACE.VIEWS[SPACE.viewKey(null)].window })), 0.11); }
+    spots = [{ x: -FLH + ELEV / 2, z: -FLH + 1.7, r: 1.5, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-FLH + ELEV / 2, 3.4, -FLH + 0.5] }];
+    // the hall: a big rug and a sitting corner in the open middle, benches in front of the doors, plants along the open walls, floor lamps around it
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(11, 7), new THREE.MeshBasicMaterial({ color: 0x8a4a78 })); rug.rotation.x = -Math.PI / 2; rug.position.set(2.0, 0.012, 3.4); g.add(rug);
+    const rug2 = new THREE.Mesh(new THREE.PlaneGeometry(5, 3), new THREE.MeshBasicMaterial({ color: 0x6a4a98 })); rug2.rotation.x = -Math.PI / 2; rug2.position.set(2.0, 0.014, 3.4); g.add(rug2);
+    piece(g, 'coffeeTable', 2.0, 3.0); piece(g, 'sofa', 2.0, 5.2, 180); piece(g, 'sofa', 2.0, 0.9, 0); piece(g, 'armchair', -1.6, 3.0, 90); piece(g, 'armchair', 5.6, 3.0, 270); piece(g, 'lampTable', -1.6, 4.9); piece(g, 'lampTable', 5.6, 4.9);
+    piece(g, 'bench', -4.0, -6.2, 180); piece(g, 'bench', 6.0, -6.2, 180); piece(g, 'bench', -6.2, -3.4, 270); piece(g, 'bench', -6.2, 6.4, 270); piece(g, 'bench', 9.0, 9.2, 180); piece(g, 'bench', -3.0, 9.2, 180);
+    piece(g, 'tallPlant', FLH - 0.6, FLH - 0.6); piece(g, 'tallPlant', -7.5, FLH - 0.6); piece(g, 'tallPlant', FLH - 0.6, -7.0); piece(g, 'tallPlant', -FLH + 1.0, FLH - 0.6);
+    for (const z of [-2.0, 1.5, 5.0, 8.0]) piece(g, 'plant', FLH - 0.55, z, 0, 0, { free: true });
+    for (const [x, z] of [[-1.0, -4.6], [4.0, -4.6], [9.0, -4.6], [-5.0, 1.5], [9.0, 1.2], [-2.5, 9.5], [5.5, 9.5], [9.5, 7.5]]) piece(g, 'floorLamp', x, z);
     // the rooms: per venue its door run, the other wall of a whole-floor venue, and (one floor up) the upper level of the venues below
     const taken = new Set(), list = venuesOn(f), below = venuesOn(f - 1).filter(v => (v.levels || 1) > 1);
     for (const v of list) {
@@ -269,13 +274,13 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
       if (!fac) shopfront(g, o, d.wall, d.u, d.w, col, shut);
       door(g, o, d.wall, d.u, col); plateFor(g, o, d.wall, d.u, v);
       for (const r of runs.slice(1)) reserved(g, o, r.wall, r.u0, r.u1, v, 'PENTHOUSE');
-      spots.push({ x: d.stand.x, z: d.stand.z, r: 1.3, label: v.ex ? 'View ' + v.name : shut ? (own ? 'Enter your venue (' + (v.state === 'frozen' ? 'frozen' : 'closed') + ')' : v.state === 'frozen' ? 'Frozen' : 'Closed') : 'Enter ' + v.name + (v.cap && (HOTEL.counts[v.id] || 0) >= v.cap ? ' (full)' : ''), run: () => (shut && !own ? toast(v.state === 'frozen' ? v.name + ' is frozen: its owner no longer holds enough Chogs.' : v.name === 'Opening soon' ? 'This room is not open yet.' : v.name + ' is closed right now.') : HOTEL.enterVenue(v)), at: d.wall === 'z' ? [d.u, 2.45, -FLH + 0.4] : [-FLH + 0.4, 2.45, d.u], v });
+      spots.push({ x: d.stand.x, z: d.stand.z, r: 1.3, label: v.ex ? 'View ' + v.name : shut ? (own ? 'Enter your venue (' + (v.state === 'frozen' ? 'frozen' : 'closed') + ')' : v.state === 'frozen' ? 'Frozen' : 'Closed') : 'Enter ' + v.name + (v.cap && (HOTEL.counts[v.id] || 0) >= v.cap ? ' (full)' : ''), run: () => (shut && !own ? toast(v.state === 'frozen' ? v.name + ' is frozen: its owner no longer holds enough Chogs.' : v.name === 'Opening soon' ? 'This room is not open yet.' : v.name + ' is closed right now.') : HOTEL.enterVenue(v)), at: d.wall === 'z' ? [d.u, 3.4, -FLH + 0.4] : [-FLH + 0.4, 3.4, d.u], v });
       mapDoors.push({ x: d.wall === 'z' ? d.u : -FLH, z: d.wall === 'z' ? -FLH : d.u, col: v.state === 'frozen' ? '#7ab8e8' : shut ? '#7a6a98' : hexOf(colOf(v.cat)) });
     }
     for (const v of below) for (const r of runsOf(v.no, v.span || 1)) { reserved(g, o, r.wall, r.u0, r.u1, v, 'UPPER LEVEL'); for (let s = r.a; s <= r.b; s++) taken.add(s); }
     for (let s = 1; s <= 4; s++) if (!taken.has(s)) {                                          // a free room: nobody holds it yet
       const w = wallOfSlot(s), u0 = slotU(s), u = u0 + SLOT / 2;
-      notePlate(g, o, w, u, 2.1, f === 'E' ? ['EMPTY SLOT', 'enter your Home'] : ['ROOM #' + (f * 100 + s), 'free for a Chog holder'], 0x6a5a88);
+      notePlate(g, o, w, u, 3.0, f === 'E' ? ['EMPTY SLOT', 'enter your Home'] : ['ROOM #' + (f * 100 + s), 'free for a Chog holder'], 0x6a5a88);
     }
     for (const it of HOTEL.facadeBy[f] || []) buildFacade(g, o, it);
     for (const v of list) if (v.state === 'open' && v.rule && v.rule !== 'public') buildGuard(g, o, v);                // a whole-floor venue's guard is at the elevator (buildGuard)
@@ -298,9 +303,15 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   HOTEL.onInfo = m => { HOTEL.info = { floors: m.floors, venues: m.venues || [] }; try { localStorage.setItem('chog_hotel_floors', String(m.floors || 0)); } catch (e) { /* the town tower keeps its old height */ } HOTEL.infoAt = Date.now(); HOTEL.counts = m.counts || {}; if (HOTEL.panel) HOTEL.refreshUI(); };
   HOTEL.setCounts = c => { HOTEL.counts = c || {}; for (const p of plates) if (p.n !== (HOTEL.counts[p.v.id] || 0)) p.draw(); if (HOTEL.panel === 'dir' || HOTEL.panel === 'lift') HOTEL.refreshList(); };
 
+  // what the camera may use (game.js): floor size, wall height, walking bounds, the zoom that shows the whole place and a closer one to follow the player with
+  const HALL_ZOOM = 24;
+  function sceneInfo() {
+    const b = walk[0] || [0, 0, 0, 0], m = mapRects[0] || [0, 0, 0, 0];
+    if (GAME.room) Object.assign(GAME.room, { size: [m[1] - m[0], m[3] - m[2]], h: H, center: [0, 1.0, 0], bounds: { x0: b[0], x1: b[1], z0: b[2], z1: b[3] }, zoom: HALL_ZOOM, follow: 18 });
+  }
   // show a floor (0 = lobby). The server move comes first: if it says no, nothing on screen changes.
   async function show(floor, spawn) {
-    const me = GAME.me, a = spawn || (floor === 0 ? { x: 3.6, z: -2.0, ry: 0 } : { x: -FLH + ELEV / 2, z: -FLH + 2.6, ry: 0 });
+    const me = GAME.me, a = spawn || (floor === 0 ? { x: 5.5, z: -3.6, ry: 0 } : { x: -FLH + ELEV / 2, z: -FLH + 2.6, ry: 0 });
     const r = await NET.enter({ space: 'hotel', floor, x: a.x, z: a.z, ry: a.ry || 0 }); if (!r || r.t !== 'entered') return false;
     if (r.counts) HOTEL.counts = r.counts;
     if (floor === 'E' && typeof EXH !== 'undefined') await EXH.load();
@@ -310,7 +321,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     SPACE.applyView(SPACE.VIEWS[SPACE.viewKey(null)]); SPACE.refreshHidden();
     GAME.room = { blocked: (x, z, rr) => blocked(x, z, rr) }; GAME.path = []; GAME.keys = {}; GAME.regrid();
     me.position.set(a.x, 0, a.z); me.rotation.y = a.ry || 0; camTarget.set(a.x, 1.1, a.z);
-    if (floor === 0) { GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.sceneZoom(16); } else { GAME.camFixed = null; GAME.sceneZoom(16); }
+    GAME.camFixed = floor === 0 ? new THREE.Vector3(0, 1.0, 0) : null; GAME.sceneZoom(HALL_ZOOM); sceneInfo();      // both places are 1.5 times bigger than before: the whole place fits at HALL_ZOOM, GAME.room tells the camera what to follow with
     HOTEL.active = true; HOTEL.floor = floor; HOTEL.panel = null; document.body.classList.add('inhotel'); HOTEL.refreshUI(); if (typeof render === 'function') render();
     return true;
   }
@@ -318,7 +329,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   HOTEL.rebuildHere = function () {
     if (!HOTEL.active || HOTEL.floor === 0) return; const me = GAME.me, p = { x: me.position.x, z: me.position.z, ry: me.rotation.y };
     clearScene(); buildFloor(HOTEL.floor); world.add(G); SPACE.applyView(SPACE.VIEWS[SPACE.viewKey(null)]); SPACE.refreshHidden();
-    GAME.room = { blocked: (x, z, rr) => blocked(x, z, rr) }; GAME.regrid(); me.position.set(p.x, 0, p.z); me.rotation.y = p.ry; HOTEL.refreshUI();
+    GAME.room = { blocked: (x, z, rr) => blocked(x, z, rr) }; GAME.regrid(); me.position.set(p.x, 0, p.z); me.rotation.y = p.ry; sceneInfo(); HOTEL.refreshUI();
   };
   // town -> lobby
   HOTEL.enterFromTown = async function () {

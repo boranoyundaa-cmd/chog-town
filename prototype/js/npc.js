@@ -6,7 +6,7 @@
 // Dialogue only on click: the card shows one random line (CULTURE.pick) and the Chog says it in a bubble. Nothing is said by itself.
 // Loaded after culture_data.js, plates.js and net.js (it uses CULTURE, PLATES, NET, TOUR and the world); culture.js (events) and props.js (plaques, props) come after it.
 // The receptionist of the Chog Hotel lives in hotel.js. Chogs are built the first time a resident is shown (42 of them at load would be wasted work).
-const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, override: null, pins: {}, t0: performance.now() };
+const NPC = { list: [], group: new THREE.Group(), target: 16, card: null, override: null, pins: {}, t0: performance.now() };
 (function () {
   world.add(NPC.group); CITY_NODES.push(NPC.group);                                   // rooms and the hotel hide the street together with its residents
   const DAY_S = 86400, CELL_N = 0.3, GH = HALF - 0.4, NG = Math.round(GH * 2 / CELL_N);
@@ -15,22 +15,22 @@ const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, overri
   const door = (x, z) => ({ act: 'in', x, z, ry: 0 });
   const stand = (x, z, ry = 0.8, act = 'idle', mate = 0) => ({ act, x, z, ry, mate });
   const beat = (ax, az, bx, bz) => ({ act: 'stroll', x: ax, z: az, bx, bz, len: Math.hypot(bx - ax, bz - az), ry: 0 });
-  const PL = {
-    moka: door(-3.6, 6.75), arcade: door(4.0, 6.75), nova: door(3.85, -2.6), gallery: door(1.2, -5.1), hotel: door(-4.8, -2.7),
-    baristaPost: stand(-2.4, 5.4, 1.2, 'wave'), guidePost: stand(2.4, 3.0, 3.6), guardPost: stand(3.85, -2.5, 0),
-    // cafe terrace and the arcade and gallery fronts (they face the shop)
-    cafeQ1: stand(-3.1, 6.95, 3.14), cafeQ2: stand(-4.15, 6.95, 3.14), cafeT3: stand(-5.25, 6.95, 3.14), cafeT4: stand(-6.2, 6.95, 3.14),
-    arcadeFront1: stand(3.3, 6.95, 3.14), arcadeFront2: stand(5.2, 6.95, 3.14), arcadeFront3: stand(6.15, 6.95, 3.14), liqSpot: stand(6.9, 4.5, 0.9),
-    galleryFront: stand(0.4, -4.75, 3.14), galleryFront2: stand(2.3, -4.75, 3.14),
-    // park (north-west corner), in front of the hotel, the plaza ring, the street
-    parkA: stand(-8.4, -3.7, 0.8), parkB: stand(-7.6, -8.2, 0.6),
-    hf1: stand(-5.6, -1.25), hf2: stand(-4.7, -1.25), hf3: stand(-3.9, -1.25), hf4: stand(-6.5, -1.25), bankers: stand(-2.5, -1.25),
-    pz1: stand(-1.1, -1.1), pz2: stand(1.1, -1.1, -0.8), pz3: stand(1.1, 1.1, -2.3), pz4: stand(-1.1, 1.1, 2.3), pzFlag: stand(2.5, -0.9, 1.5), pzShadow: stand(0, -1.3, 0),
-    twA: stand(2.1, 0.9, -1.5, 'chat', -1), twB: stand(1.3, 0.9, 1.5, 'chat', 1),
-    pizzaStand: stand(7.6, 2.2), tourist: stand(8.3, 0.95, 1.6), larryPost: stand(-7.4, 4.7, 3.14), kolSpot: stand(7.0, -1.95), maxiSpot: stand(9.2, -7.0), exitBench: stand(2.7, 7.3, 0.4), cricketSpot: stand(9.2, 3.8),
-    c1: stand(6.3, -2.5), c2: stand(7.3, -3.6), c3: stand(8.1, -3.0), c4: stand(7.2, -5.7), c5: stand(8.5, -4.1),
-    avenueEW: beat(-7, 0.2, 7, 0.2), jeetBeat: beat(-7.5, -0.1, 7.5, -0.1), wassieBeat: beat(1.5, 9.3, 9.0, 9.3),
-    sidewalkS: beat(-8.5, 7.9, 1.0, 7.9), westWalk: beat(-8.6, -7.0, -8.6, 7.0), northWalk: beat(-8.5, -8.7, 8.5, -8.7),
+  const PL = {                                                                       // positions follow the 64 x 64 m town in world_city.js (plaza centre -6, -6)
+    moka: door(-23.6, -8), arcade: door(14.2, 4.4), nova: door(15.1, -23.6), gallery: door(-24.8, -23.6), hotel: door(-6, -23.6),
+    baristaPost: stand(-22.8, -6.2, 1.57, 'wave'), guidePost: stand(-3.6, 0.6, 3.6), guardPost: stand(15.1, -23.0, 0),
+    // cafe terrace on Moka Lane, the arcade and gallery fronts (they face the shop)
+    cafeQ1: stand(-22.4, -9.4, -1.57), cafeQ2: stand(-22.4, -10.4, -1.57), cafeT3: stand(-22.4, -5.4, -1.57), cafeT4: stand(-22.4, -4.4, -1.57),
+    arcadeFront1: stand(13.0, 5.0, 3.14), arcadeFront2: stand(16.0, 5.0, 3.14), arcadeFront3: stand(17.4, 5.0, 3.14), liqSpot: stand(19.6, 5.3, 0.9),
+    galleryFront: stand(-27, -22.9, 3.14), galleryFront2: stand(-23.2, -22.9, 3.14),
+    // the park, in front of the hotel, round the fountain, the street
+    parkA: stand(-16, 21, 0.8), parkB: stand(-23, 17.2, 0.6),
+    hf1: stand(-9.2, -22.6), hf2: stand(-7.8, -22.6), hf3: stand(-4.2, -22.6), hf4: stand(-2.8, -22.6), bankers: stand(-1.2, -22.6),
+    pz1: stand(-9.4, -7.8), pz2: stand(-2.6, -7.8, -0.8), pz3: stand(-2.6, -4.2, -2.3), pz4: stand(-9.4, -4.2, 2.3), pzFlag: stand(-1.2, -10.2, 1.5), pzShadow: stand(-6, -10.2, 0),
+    twA: stand(-0.4, -2.6, -1.5, 'chat', -1), twB: stand(-1.2, -2.6, 1.5, 'chat', 1),
+    pizzaStand: stand(28.4, -23.0), tourist: stand(2.6, 1.8, 1.6), larryPost: stand(-11.6, -22.6, 3.14), kolSpot: stand(11.2, -22.6), maxiSpot: stand(24.4, -22.6), exitBench: stand(-9.6, 10.9, 0.4), cricketSpot: stand(5.0, 16.6),
+    c1: stand(12.4, -22.6), c2: stand(18.4, -22.4), c3: stand(19.6, -22.9), c4: stand(13.6, -21.9), c5: stand(20.6, -21.9),
+    avenueEW: beat(-17, 5.6, 5, 5.6), jeetBeat: beat(-17.5, 6.1, 30, 6.1), wassieBeat: beat(11, 12.5, 30, 12.5),
+    sidewalkS: beat(-17, -17.0, 2.4, -17.0), westWalk: beat(-16.0, -16, -16.0, 4.5), northWalk: beat(-30, -23.0, 19, -23.0),
   };
 
   // ---------- the roster, built from CULTURE.cast + CULTURE.cameos. Looks are real trait values (chog_hats / chog_bodies / chog_items names) that match each `look` hint; the colour of
@@ -123,9 +123,9 @@ const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, overri
     let pts;
     if (clear(sx, sz, ex, ez)) pts = [[ax, az], [bx, bz]];
     else {
-      const si = gi(sx), sj = gi(sz), ti = gi(ex), tj = gi(ez), g = new Float32Array(NG * NG).fill(1e9), from = new Int32Array(NG * NG).fill(-1), open = new Heap(); open.push([0, sj * NG + si]); g[sj * NG + si] = 0;
+      const si = gi(sx), sj = gi(sz), ti = gi(ex), tj = gi(ez), g = new Float32Array(NG * NG).fill(1e9), from = new Int32Array(NG * NG).fill(-1), shut = new Uint8Array(NG * NG), open = new Heap(); open.push([0, sj * NG + si]); g[sj * NG + si] = 0;
       while (open.size) {
-        const cur = open.pop()[1], ci = cur % NG, cj = (cur / NG) | 0; if (ci === ti && cj === tj) break;
+        const cur = open.pop()[1]; if (shut[cur]) continue; shut[cur] = 1; const ci = cur % NG, cj = (cur / NG) | 0; if (ci === ti && cj === tj) break;
         for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
           if (!di && !dj) continue; const i = ci + di, j = cj + dj; if (i < 0 || j < 0 || i >= NG || j >= NG || G[j * NG + i]) continue;
           if (di && dj && (G[cj * NG + i] || G[j * NG + ci])) continue;
@@ -134,7 +134,7 @@ const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, overri
       }
       const cells = []; for (let c = tj * NG + ti; c >= 0 && c !== sj * NG + si; c = from[c]) cells.push(c); cells.reverse();
       const raw = [[ax, az], ...cells.map(c => [gw(c % NG), gw((c / NG) | 0)]), [bx, bz]]; pts = [raw[0]];
-      let k = 0; while (k < raw.length - 1) { let far = k + 1; for (let m = raw.length - 1; m > k + 1; m--) if (clear(raw[k][0], raw[k][1], raw[m][0], raw[m][1])) { far = m; break; } pts.push(raw[far]); k = far; }
+      let k = 0; while (k < raw.length - 1) { let far = k + 1; for (let m = k + 2; m < raw.length; m++) { if (clear(raw[k][0], raw[k][1], raw[m][0], raw[m][1])) far = m; else if (m - far > 6) break; } pts.push(raw[far]); k = far; }   // string pulling, linear in the path length
     }
     const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     return { pts, cum, len: cum[cum.length - 1] };
@@ -163,7 +163,7 @@ const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, overri
     for (let j = 0; j < NG; j++) for (let i = 0; i < NG; i++) G[j * NG + i] = blockedAt(gw(i), gw(j)) ? 1 : 0;
     ROUTES = {};
     for (const k in PL) { const p = PL[k], o = PL0[k], [x, z] = freeNear(o.x, o.z); if (Math.hypot(x - o.x, z - o.z) > 0.05 && p.act !== 'in') console.warn('npc place moved', k, o.x, o.z, '->', x, z); if (p.act !== 'in') { p.x = x; p.z = z; } else { p.x = o.x; p.z = o.z; } }
-    for (const r of ROSTER) plan(r);
+    const T0 = performance.now(); for (const r of ROSTER) { const t1 = performance.now(); plan(r); if (window.NPC_DEBUG) console.log('plan', r.id, Math.round(performance.now() - t1)); } if (window.NPC_DEBUG) console.log('planAll', Math.round(performance.now() - T0), Object.keys(ROUTES).length);
     planned = true;
   }
 

@@ -7,9 +7,12 @@ const ROOM = {
   dirty: false, savedAt: null, held: null, busy: false, ui: null, tab: 'pieces', cat: 'all', rects: [],
 };
 (function () {
-  const SNAP = 0.5, LIMIT = 80, HOME = [13, 10];                             // grid step; pieces per free Home and its floor in metres (the server enforces the same numbers, server/rooms.js LIMITS)
+  const SNAP = 0.5, LIMIT = 140, HOME = [20, 15], LIGHTS = 14, WALL_H = 5.0, FACADE_H = 6.0, HALL_H = 6.0;                             // grid step; pieces per free Home and its floor in metres (the server enforces the same numbers, server/rooms.js LIMITS); rooms are 5 m tall, the facade strip shows the 6 m hall wall
   const CITY_DOOR = CITY.doors.home, HOTEL_DOOR = CITY.doors.hotel, CITY_OUT = { x: CITY_DOOR.x, z: CITY_DOOR.out, ry: 0 };   // the Home door in the town
   const spawnIn = (size, at) => ({ x: at === 'stairs' ? SPACE.stairsU(size[0]) : size[0] / 2 - 1.6, z: -size[1] / 2 + (at === 'stairs' ? 2.1 : 1.2), ry: 0 });      // where you appear inside: by the room's own door (or the foot of its stairs)
+  // unsaved drafts from before the rooms grew (2026-10-15) have no `sz`: shift them like the server shifts saved rooms (every piece keeps its place against the back walls)
+  const OLD_ROOM = { home: [13, 10], 1: [15, 11], 2: [18, 13], 3: [18, 13], 4: [22, 15] };
+  const draftDoc = (dr, oldKey, to) => { const from = !dr.sz && OLD_ROOM[oldKey]; if (!from || !to) return dr.doc; const dx = (from[0] - to[0]) / 2, dz = (from[1] - to[1]) / 2; return Object.assign({}, dr.doc, { pieces: (dr.doc.pieces || []).map(it => Object.assign({}, it, { x: +(it.x + dx).toFixed(2), z: +(it.z + dz).toFixed(2) })) }); };
   const WALL_GAP = 0.3, rad = d => d * Math.PI / 180;
   const isWall = d => d.cat === 'wall' || d.fp[1] <= 0.12, isFlat = d => d.cat === 'floor' || d.cat === 'ceiling', grp = d => (d.cat === 'ceiling' ? 2 : d.cat === 'floor' ? 1 : 0);          // rugs and ceiling lights do not block walking; each kind only collides with its own kind
   const rotated = it => Math.round((it.ry || 0) / 90) % 2 !== 0;
@@ -55,12 +58,12 @@ const ROOM = {
     GAME.room = { blocked: (x, z, r) => roomBlocked(x, z, r) }; ROOM.active = true; GAME.path = []; GAME.keys = {};
     GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.sceneZoom(13.5);
   }
-  const fitZoom = () => { const [w, d] = dims(), z = 13.5 * Math.max(1, (w + d) / 16); GAME.zoomMax = Math.max(26, z * 1.2); GAME.camFollowAt = z; GAME.sceneZoom(z); };      // a bigger floor needs a wider view; zoomed in beyond it the camera follows you (game.js)
+  const fitZoom = () => { const [w, d] = dims(), z = 13.5 * Math.max(1, (w + d) / 16); GAME.zoomMax = Math.max(26, z * 1.2); GAME.camFollowAt = z; GAME.sceneZoom(z); if (GAME.room) Object.assign(GAME.room, { size: [w, d], h: SPACE.H, center: [0, 1.0, 0], bounds: { x0: -w / 2 + 0.3, x1: w / 2 - 0.3, z0: -d / 2 + 0.3, z1: d / 2 - 0.3 }, zoom: z, follow: 18 }); };      // GAME.room also tells the camera: floor size, wall height, walking bounds, the zoom that shows the whole room (zoom) and the closer one to follow the player with (follow)      // a bigger floor needs a wider view; zoomed in beyond it the camera follows you (game.js)
   ROOM.showTown = on => { for (const o of CITY_NODES) o.visible = on; doorMark.visible = on; };            // the hotel hides and shows the street the same way a room does
   function leaveScene(keepTown) {                                                          // keepTown: going from a venue back to the hotel, the street stays hidden
     SPACE.unload(); if (!keepTown) { ROOM.showTown(true); DAY.resume(); }
     const sc = sun.shadow.camera; if (prev) { Object.assign(sc, { left: prev.shadow.l, right: prev.shadow.r, top: prev.shadow.t, bottom: prev.shadow.b, far: prev.shadow.f }); sc.updateProjectionMatrix(); if (!keepTown) GAME.sceneZoom(GAME.townBase); }
-    GAME.room = null; GAME.camFixed = null; GAME.camFollowAt = 0; GAME.zoomMax = 26; SPACE.level = null; SPACE.limits.lights = 10; GAME.editMode = false; GAME.dragUI = false; GAME.regrid(); ROOM.active = false; ROOM.mode = 'walk';
+    GAME.room = null; GAME.camFixed = null; GAME.camFollowAt = 0; GAME.zoomMax = 26; SPACE.level = null; SPACE.limits.lights = LIGHTS; GAME.editMode = false; GAME.dragUI = false; GAME.regrid(); ROOM.active = false; ROOM.mode = 'walk';
     if (!keepTown) { const me = GAME.me; me.position.set(CITY_OUT.x, 0, CITY_OUT.z); me.rotation.y = CITY_OUT.ry; GAME.path = []; }
     SPACE.refreshHidden(); document.body.classList.remove('inroom');
   }
@@ -84,7 +87,7 @@ const ROOM = {
         if (r && r.t === 'entered') { Object.assign(info, { kind: 'mine', owner: r.owner, savedAt: r.savedAt }); doc = r.doc; }
         else { if (NET.status === 'online') await NET.enter(Object.assign({ space: 'solo' }, SPAWN_AT)); Object.assign(info, { kind: 'solo', owner: addr }); }
         const dr = load$('chog_room_' + (addr || 'guest'));                                     // unsaved changes from last time win over the saved copy
-        if (dr && dr.doc) { doc = dr.doc; info.draft = true; toast('Your unsaved changes are back.'); }
+        if (dr && dr.doc) { doc = draftDoc(dr, 'home', HOME); info.draft = true; toast('Your unsaved changes are back.'); }
         if (!doc) doc = SPACE.starterRoom();
       }
       info.spawn = SPAWN_AT; if (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.away)) { HOTEL.hideScene(false); HOTEL.away = false; }       // going to a Home from inside the hotel: the street comes back when you leave it
@@ -98,10 +101,10 @@ const ROOM = {
     try {
       const r = await NET.enter(Object.assign({ space: 'venue', id: v.id, level }, SPAWN_AT)); if (!r || r.t !== 'entered') return false;
       if (typeof HOTEL !== 'undefined' && HOTEL.active) { HOTEL.hideScene(true); HOTEL.away = true; }
-      const ven = r.venue || v, spawn = scatter(spawnIn(ven.size || [15, 11], arrive));                 // just inside the door (the foot of the stairs when you came from the other level)
+      const ven = r.venue || v, spawn = scatter(spawnIn(ven.size || [22, 16], arrive));                 // just inside the door (the foot of the stairs when you came from the other level)
       let doc = r.doc, draft = false;
       if (r.mine) {                                                                              // the owner: unsaved changes win, a new venue starts as an empty room
-        const dr = load$((level === 2 ? 'chog_venue2_' : 'chog_venue_') + (r.owner || '')); if (dr && dr.doc) { doc = dr.doc; draft = true; toast('Your unsaved changes are back.'); }
+        const dr = load$((level === 2 ? 'chog_venue2_' : 'chog_venue_') + (r.owner || '')); if (dr && dr.doc) { doc = draftDoc(dr, ven.tier || (typeof VENUE !== 'undefined' && VENUE.mine && VENUE.mine.tier), ven.size); draft = true; toast('Your unsaved changes are back.'); }
         if (!doc) doc = SPACE.starterRoom();
       }
       if (!doc) doc = SPACE.starterRoom();                                                       // an upper level nobody has decorated yet
@@ -119,7 +122,7 @@ const ROOM = {
     if (!Array.isArray(doc.pieces)) doc.pieces = [];
     const ven = info.venue; SPACE.size = (ven && ven.size) || HOME; doc.pieces = doc.pieces.filter(it => SPACE.PIECES[it.p]).slice(0, (ven && ven.limit) || LIMIT);
     snapWalls(doc, SPACE.size[0], SPACE.size[1]);
-    SPACE.level = info.kind === 'venue' && ven && ven.levels > 1 ? { n: info.level || 1, of: ven.levels } : null; SPACE.limits.lights = (ven && ven.lights) || 10;      // upper level: stairs on the north wall; the tier's light budget
+    SPACE.level = info.kind === 'venue' && ven && ven.levels > 1 ? { n: info.level || 1, of: ven.levels } : null; SPACE.limits.lights = (ven && ven.lights) || LIGHTS; SPACE.H = info.kind === 'facade' ? FACADE_H : WALL_H;      // upper level: stairs on the north wall; the tier's light budget
     Object.assign(ROOM, info, { doc, dirty: !!info.draft, held: null, hover: null, mode: 'walk', level: info.kind === 'venue' ? info.level || 1 : 1 });
     if (!ROOM.active) enterScene();
     GAME.editMode = false; GAME.dragUI = false; dropGhost();
@@ -220,7 +223,7 @@ const ROOM = {
     ROOM.refreshUI(); if (typeof render === 'function') render();
   }
   ROOM.setEdit = setEdit;
-  const touch = () => { ROOM.dirty = true; save$(draftKey(), { doc: ROOM.doc, at: Date.now() }); };
+  const touch = () => { ROOM.dirty = true; save$(draftKey(), { doc: ROOM.doc, at: Date.now(), sz: SPACE.size }); };
   const entryOf = it => SPACE.placed.find(e => e.it === it);
 
   // what the pointer points at: a wall (for wall pieces) or the floor, snapped to the grid; returns an item position
@@ -331,7 +334,7 @@ const ROOM = {
     let show = false, label = '', at = null;
     if (!ROOM.active && nearDoor() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter your Home'; at = [CITY_DOOR.x, 2.45, CITY_DOOR.z]; }
     else if (!ROOM.active && nearHotel() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter the Chog Hotel'; at = [HOTEL_DOOR.x, 2.35, HOTEL_DOOR.z]; }
-    else if (ROOM.active && ROOM.mode === 'walk' && nearStairs() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Go ' + (SPACE.stairs.up ? 'upstairs' : 'downstairs'); at = [SPACE.stairs.u, 2.9, -dims()[1] / 2]; }
+    else if (ROOM.active && ROOM.mode === 'walk' && nearStairs() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Go ' + (SPACE.stairs.up ? 'upstairs' : 'downstairs'); at = [SPACE.stairs.u, 3.6, -dims()[1] / 2]; }
     else if (ROOM.active && ROOM.mode === 'walk' && nearExit() && !ROOM.busy) { const ex = exitSpot(); show = true; label = '<kbd>E</kbd> Leave the room'; at = [ex.x, 2.5, ex.z]; }
     if (show) {
       v3.set(at[0], at[1], at[2]).project(cam); const sc = Math.max(0.8, Math.min(1.6, innerHeight / 810));

@@ -95,13 +95,13 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
     zigzag: () => tex('w_zig', 64, 64, (g, w, h) => { fill(g, w, h, '#f6f6f6'); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 4; for (let y = 8; y < h; y += 20) { g.beginPath(); for (let x = 0; x <= w; x += 16) g.lineTo(x, y + (x / 16 % 2 ? 8 : 0)); g.stroke(); } }, 6, 4),
     diamonds: () => tex('w_dia', 64, 64, (g, w, h) => { fill(g, w, h, '#f2f2f2'); g.strokeStyle = 'rgba(0,0,0,.2)'; g.lineWidth = 2; g.beginPath(); g.moveTo(32, 2); g.lineTo(62, 32); g.lineTo(32, 62); g.lineTo(2, 32); g.closePath(); g.stroke(); g.fillStyle = 'rgba(0,0,0,.08)'; g.fill(); }, 6, 4),
     subway: () => tex('w_subway', 64, 64, (g, w, h) => { fill(g, w, h, '#f8f8f8'); g.strokeStyle = 'rgba(0,0,0,.28)'; g.lineWidth = 2; for (let y = 0; y < h; y += 16) for (let x = 0; x < w; x += 32) { const ox = (y / 16) % 2 ? 16 : 0; g.strokeRect(x + ox, y, 32, 16); } }, 8, 5),
-    wainscot: () => tex('w_wain', 64, 64, (g, w, h) => { fill(g, w, h, '#f4f4f4'); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, 38, w, 26); g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(0, 37, w, 2); g.strokeStyle = 'rgba(0,0,0,.2)'; for (let x = 0; x < w; x += 21) g.strokeRect(x + 2, 42, 17, 18); }, 4, 1),
+    wainscot: () => tex('w_wain', 64, 64, (g, w, h) => { fill(g, w, h, '#f4f4f4'); g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(0, 46, w, 18); g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(0, 45, w, 2); g.strokeStyle = 'rgba(0,0,0,.2)'; for (let x = 0; x < w; x += 21) g.strokeRect(x + 2, 49, 17, 11); }, 4, 1),
   };
   SPACE.PATTERNS = { wall: Object.keys(WALL), floor: Object.keys(FLOOR) }; SPACE.WALL = WALL; SPACE.FLOOR = FLOOR;
 
   // ---- window view: the background only (sky, fog, sun or moon, stars, window glass). It never lights the room: interiors get a small fixed light floor (SPACE.INTERIOR) plus the lights placed in them.
   // The default view follows the real clock; a space may pin one (doc.view). Not an art style: rendering never changes.
-  SPACE.size = [13, 10]; SPACE.H = 3.3; SPACE.door = null; SPACE.stairs = null; SPACE.level = null; SPACE.windows = [];       // the free Home is 13 x 10 m; level = {n, of} in a venue with two levels (stairs on the north wall)
+  SPACE.size = [20, 15]; SPACE.H = 5.0; SPACE.door = null; SPACE.stairs = null; SPACE.level = null; SPACE.windows = [];       // the free Home is 20 x 15 m and rooms are 5 m tall (SPACE.H); level = {n, of} in a venue with two levels (stairs on the north wall)
   let stars = null;
   let shellHalos = [];
   const dropHalos = list => { for (const h of list) { const i = noNormalPass.indexOf(h); if (i >= 0) noNormalPass.splice(i, 1); } };
@@ -143,11 +143,12 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
     const wallC = doc.wall && doc.wall.c !== undefined ? colorOf(doc.wall.c, pal) : pal.wall, wallPat = (doc.wall && WALL[doc.wall.pat]) ? doc.wall.pat : th.wallTex || 'plaster';
     const floorC = doc.floor && doc.floor.c !== undefined ? colorOf(doc.floor.c, pal) : pal.floor, floorPat = (doc.floor && FLOOR[doc.floor.pat]) ? doc.floor.pat : th.floorTex || 'wood';
     const slab = BOX(W + 0.4, 0.7, D + 0.4, tmat(th.slab ?? sh(pal.trim, 1.2)), 0, -0.55, 0); grp.add(slab);
-    const under = M(new THREE.CylinderGeometry((W / 2 - 0.1) * Math.SQRT2, 1.0, 3.2, 4, 1), tmat(sh(th.slab ?? pal.trim, 0.6), { tex: TEX.rock, noCache: true }), 0, -2.3, 0); under.rotation.y = Math.PI / 4; under.scale.z = (D + 0.2) / (W + 0.2); grp.add(under);
-    const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.12, D), tmat(floorC, { tex: FLOOR[floorPat](), noCache: true, em: th.floorEm ?? 0.14 })); floor.position.y = -0.06; floor.receiveShadow = true; grp.add(floor);
-    const wallM = () => tmat(wallC, { tex: WALL[wallPat](), noCache: true, em: th.wallEm ?? 0.14 });
-    const wz = new THREE.Mesh(new THREE.BoxGeometry(W + 0.25, H, 0.25), wallM()); wz.position.set(-0.125, H / 2, -D / 2 - 0.125); wz.castShadow = wz.receiveShadow = true; grp.add(wz);
-    const wx = new THREE.Mesh(new THREE.BoxGeometry(0.25, H, D), wallM()); wx.position.set(-W / 2 - 0.125, H / 2, 0); wx.castShadow = wx.receiveShadow = true; grp.add(wx);
+    slab.castShadow = false;                                                                // the interior floats with nothing under it: no rock cone and no shadow of the base on the void
+    const dens = (t, sx, sy) => reTex(t, t.repeat.x * sx, t.repeat.y * sy);                          // patterns keep their size in metres whatever the room size (they were drawn for a 13 x 10 x 3.3 m room)
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(W, 0.12, D), tmat(floorC, { tex: dens(FLOOR[floorPat](), W / 13, D / 10), noCache: true, em: th.floorEm ?? 0.14 })); floor.position.y = -0.06; floor.receiveShadow = true; grp.add(floor);
+    const wallM = (len, ref) => tmat(wallC, { tex: dens(WALL[wallPat](), len / ref, wallPat === 'wainscot' ? 1 : H / 3.3), noCache: true, em: th.wallEm ?? 0.14 });                // wainscot is drawn for any height (its band is a fixed share of the wall)
+    const wz = new THREE.Mesh(new THREE.BoxGeometry(W + 0.25, H, 0.25), wallM(W, 13)); wz.position.set(-0.125, H / 2, -D / 2 - 0.125); wz.castShadow = wz.receiveShadow = true; grp.add(wz);
+    const wx = new THREE.Mesh(new THREE.BoxGeometry(0.25, H, D), wallM(D, 10)); wx.position.set(-W / 2 - 0.125, H / 2, 0); wx.castShadow = wx.receiveShadow = true; grp.add(wx);
     grp.add(BOX(W, 0.16, 0.06, tmat(pal.trim), 0, 0.08, -D / 2 + 0.03)); grp.add(BOX(0.06, 0.16, D, tmat(pal.trim), -W / 2 + 0.03, 0.08, 0));
     grp.add(BOX(W + 0.25, 0.14, 0.32, tmat(pal.trim), -0.125, H + 0.07, -D / 2 - 0.125)); grp.add(BOX(0.32, 0.14, D, tmat(pal.trim), -W / 2 - 0.125, H + 0.07, 0));
     const onWall = (wall, u, y, mesh, off = 0.02) => { if (wall === 'z') mesh.position.set(u, y, -D / 2 + off); else { mesh.position.set(-W / 2 + off, y, u); mesh.rotation.y = Math.PI / 2; } grp.add(mesh); return mesh; };
@@ -163,10 +164,10 @@ const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {}, group: null, doc
     SPACE.stairs = null;
     if (SPACE.level && SPACE.level.of > 1 && !SPACE.doorAt) {                       // a room with an upper level: a stair door beside the exit, a short flight in front of it
       const su = SPACE.stairsU(W), up = SPACE.level.n < SPACE.level.of; SPACE.stairs = { u: su, up };
-      onWall('z', su, 1.15, BOX(1.7, 2.3, 0.1, tmat(pal.trim)), 0.05); onWall('z', su, 1.05, BOX(1.4, 2.1, 0.12, tmat(0x120c24)), 0.09);
-      for (let i = 0; i < 4; i++) { const h = 0.15 * (i + 1), st = BOX(1.5, h, 0.34, tmat(i % 2 ? sh(pal.floor, 1.1) : sh(pal.floor, 1.3))); st.position.set(su, h / 2, -D / 2 + 0.17 + (3 - i) * 0.34); st.castShadow = st.receiveShadow = true; grp.add(st); }
-      for (const sd of [-1, 1]) { const rl = BOX(0.06, 0.7, 1.36, tmat(pal.trim)); rl.position.set(su + sd * 0.78, 0.45, -D / 2 + 0.68); grp.add(rl); }
-      onWall('z', su, 2.55, textMesh(up ? 'UPSTAIRS' : 'DOWNSTAIRS', 1.3, 0.24, '#ffffff', null, amb.neon ? '#ff5ad8' : '#ffb03a'), 0.1);
+      onWall('z', su, 1.7, BOX(1.7, 3.4, 0.1, tmat(pal.trim)), 0.05); onWall('z', su, 1.6, BOX(1.4, 3.2, 0.12, tmat(0x120c24)), 0.09);       // a tall stair opening: the flight climbs towards the next level
+      for (let i = 0; i < 4; i++) { const h = 0.28 * (i + 1), st = BOX(1.5, h, 0.34, tmat(i % 2 ? sh(pal.floor, 1.1) : sh(pal.floor, 1.3))); st.position.set(su, h / 2, -D / 2 + 0.17 + (3 - i) * 0.34); st.castShadow = st.receiveShadow = true; grp.add(st); }
+      for (const sd of [-1, 1]) { const rl = BOX(0.06, 0.9, 1.36, tmat(pal.trim)); rl.position.set(su + sd * 0.78, 0.55, -D / 2 + 0.68); grp.add(rl); }
+      onWall('z', su, 3.7, textMesh(up ? 'UPSTAIRS' : 'DOWNSTAIRS', 1.3, 0.24, '#ffffff', null, amb.neon ? '#ff5ad8' : '#ffb03a'), 0.1);
     }
     if (th.outside && amb.outside) { const n0 = noNormalPass.length; grp.add(buildParts(th.outside, pal)); shellHalos = noNormalPass.slice(n0); }                       // scenery beyond the window, only when the sky is dark enough to show it
     SPACE.lights = [];                                                                  // the only room lights are the placed pieces' (SPACE.addEntry)

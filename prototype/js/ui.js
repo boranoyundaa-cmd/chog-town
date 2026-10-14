@@ -236,17 +236,21 @@ function locationName() {
   if (inRoom()) return ROOM.title();
   const p = GAME.me ? GAME.me.position : { x: 0, z: 0 };
   for (const b of CITY.buildings) if (Math.abs(p.x - b.x) < b.w / 2 + 1.3 && Math.abs(p.z - b.z) < b.d / 2 + 1.3) return b.name;
-  if (Math.hypot(p.x, p.z) < 3) return 'Chog Crossing'; if (Math.abs(p.x) < CITY.road + 0.1 || Math.abs(p.z) < CITY.road + 0.1) return 'Chog Avenue'; return 'Downtown Chog';
+  for (const r of CITY.roads || []) if (Math.abs((r.axis === 'z' ? p.z : p.x) - r.at) < CITY.road / 2 + 0.3) return r.name;
+  for (const a of CITY.areas || []) if (p.x >= a.x0 && p.x <= a.x1 && p.z >= a.z0 && p.z <= a.z1) return a.name;
+  return 'Downtown Chog';
 }
 function drawMinimap(cv) {
   if (inHotel()) return HOTEL.drawMap(cv);
   if (inRoom()) return ROOM.drawMap(cv);
-  const S = cv.width, g = cv.getContext('2d'), k = S / (HALF * 2.83 + 4), R = Math.SQRT1_2, N = UI.skin === 'neon', RW = CITY.road;
-  const P = (x, z) => [S / 2 + (x - z) * R * k, S / 2 + (x + z) * R * k];
+  const S = cv.width, g = cv.getContext('2d'), VIEW = 46, k = S / VIEW, R = Math.SQRT1_2, N = UI.skin === 'neon', RW = CITY.road;      // a window of about 46 m round the player
+  const C = GAME.me ? GAME.me.position : { x: 0, z: 0 }, P = (x, z) => [S / 2 + ((x - C.x) - (z - C.z)) * R * k, S / 2 + ((x - C.x) + (z - C.z)) * R * k];
   g.clearRect(0, 0, S, S);
   const poly = (pts, col) => { g.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = P(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.fillStyle = col; g.fill(); };
   const rect = (x, z, hw, hd, col) => poly([[x - hw, z - hd], [x + hw, z - hd], [x + hw, z + hd], [x - hw, z + hd]], col);
-  rect(0, 0, HALF, HALF, N ? '#5a4a86' : '#d9cfc0'); rect(0, 0, RW, HALF, N ? '#2d2548' : '#8d8a9c'); rect(0, 0, HALF, RW, N ? '#2d2548' : '#8d8a9c');
+  rect(0, 0, HALF, HALF, N ? '#5a4a86' : '#d9cfc0');
+  rect(-12.75, 21.25, 18.25, 10.25, N ? '#3a6a5a' : '#a8d890'); if (CITY.plaza) rect(CITY.plaza.x, CITY.plaza.z, 10.5, 10.5, N ? '#6a5a96' : '#ece2d2');
+  for (const r of CITY.roads || []) r.axis === 'z' ? rect(0, r.at, HALF, RW / 2, N ? '#2d2548' : '#8d8a9c') : rect(r.at, 0, RW / 2, HALF, N ? '#2d2548' : '#8d8a9c');
   for (const b of CITY.buildings) rect(b.x, b.z, b.w / 2, b.d / 2, N ? '#' + new THREE.Color(b.color).multiplyScalar(0.8).getHexString() : b.color);
   if (typeof NET !== 'undefined') for (const r of NET.remotes.values()) if (r.root) { const [a, b] = P(r.root.position.x, r.root.position.z); g.beginPath(); g.arc(a, b, 3, 0, 7); g.fillStyle = '#7ad89a'; g.strokeStyle = '#1a0a2e'; g.lineWidth = 1.2; g.fill(); g.stroke(); }
   if (GAME.me) {                                                                    // the player: a gold arrow pointing the way it faces

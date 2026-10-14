@@ -6,7 +6,7 @@ const JS = path.join(__dirname, '..', 'prototype', 'js');
 const SPACE = { THEMES: {}, VIEWS: {}, PIECES: {}, LAYOUTS: {} };
 for (const f of ['space_data.js', 'space_layouts.js']) vm.runInNewContext(fs.readFileSync(path.join(JS, f), 'utf8'), { SPACE });
 // size, piece budget, light budget: the free Home, then the four tiers (server/hotel.js TEMPLATES, server/rooms.js LIMITS)
-const SIZES = [['Home', [13, 10], 80, 10, false], ['tier 1', [15, 11], 120, 12, false], ['tier 2', [18, 13], 180, 14, false], ['tier 3', [18, 13], 160, 14, true], ['tier 4', [22, 15], 200, 16, true]];   // the last flag: a room with an upper level has stairs
+const SIZES = [['Home', [20, 15], 140, 14, false], ['tier 1', [22, 16], 200, 16, false], ['tier 2', [27, 20], 300, 18, false], ['tier 3', [27, 20], 280, 18, true], ['tier 4', [33, 22], 340, 22, true]];   // the last flag: a room with an upper level has stairs
 let bad = 0;
 for (const id of Object.keys(SPACE.READY)) for (const [label, [W, D], limit, lights, stairs] of SIZES) {
   const doc = SPACE.READY[id].make(W, D, { stairs }), r = SPACE.checkDoc(doc, W, D, { limit, lights, stairs });

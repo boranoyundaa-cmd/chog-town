@@ -70,7 +70,7 @@ const CULTURE_RT = { list: [], ids: new Set(), forced: new Set(), banners: [], d
     const hang = (a, b) => { for (let i = 1; i < 8; i++) { const u = i / 8, x = a[0] + (b[0] - a[0]) * u, z = a[1] + (b[1] - a[1]) * u, y = 3.55 - Math.sin(u * Math.PI) * 0.3;
       const f = new THREE.Mesh(new THREE.CircleGeometry(0.14, 3), tmat(cols[i % 2], { em: 0.4 })); f.material.side = THREE.DoubleSide; f.position.set(x, y - 0.1, z); f.rotation.set(0, Math.atan2(b[0] - a[0], b[1] - a[1]) - Math.PI / 2, -Math.PI / 2); f.castShadow = false; g.add(f); }
       const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, Math.hypot(b[0] - a[0], b[1] - a[1]), 4), pole); wire.position.set((a[0] + b[0]) / 2, 3.42, (a[1] + b[1]) / 2); wire.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(b[0] - a[0], 0, b[1] - a[1]).normalize()); g.add(wire); };
-    const L = 1.85, P = [[-L, -L], [L, -L], [L, L], [-L, L]]; for (let i = 0; i < 4; i++) hang(P[i], P[(i + 1) % 4]);
+    const L = 6, X = CITY.plaza.x, Z = CITY.plaza.z, P = [[X - L, Z - L], [X + L, Z - L], [X + L, Z + L], [X - L, Z + L]];   // between the four lit plaza lamps for (let i = 0; i < 4; i++) hang(P[i], P[(i + 1) % 4]);
     g.traverse(o => { o.userData.noOutline = true; }); world.add(g); CITY_NODES.push(g); return g;
   }
   function makeWhale() {
@@ -82,7 +82,7 @@ const CULTURE_RT = { list: [], ids: new Set(), forced: new Set(), banners: [], d
     const a = CULTURE_RT.list.find(x => x.ev.id === 'whale_alert'), town = NPC.group.visible;
     if (!a || !town) { if (whale) whale.visible = false; return; }
     if (!whale) whale = makeWhale();
-    const s = Math.max(0, Math.min(WHALE_S, (h - a.from) * 3600)), u = s / WHALE_S, x = -9.4 + u * 18.8, z = 0.15, fade = Math.min(1, s / 3, (WHALE_S - s) / 3), u2 = whale.userData;
+    const s = Math.max(0, Math.min(WHALE_S, (h - a.from) * 3600)), u = s / WHALE_S, x = -17 + u * 22, z = 2.6, fade = Math.min(1, s / 3, (WHALE_S - s) / 3), u2 = whale.userData;
     whale.visible = fade > 0.02; whale.position.set(x, 0, z); whale.rotation.y = Math.PI / 2; whale.scale.setScalar(CHOG_SCALE * 2.5 * (0.3 + 0.7 * fade));
     const sw = Math.sin(tm * 2.6); u2.legs[0].rotation.x = sw * 0.5; u2.legs[1].rotation.x = -sw * 0.5; u2.arms[0].rotation.x = -sw * 0.4; u2.arms[1].rotation.x = sw * 0.4; u2.body.position.y = Math.abs(sw) * 0.05;
   }

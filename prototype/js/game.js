@@ -33,23 +33,24 @@ function findPath(ax, az, bx, bz) {
   const goal = nearestFree(bx, bz); if (!goal) return [];
   if (clear(ax, az, goal[0], goal[1])) return [goal];
   const si = toCell(ax), sj = toCell(az), gi = toCell(goal[0]), gj = toCell(goal[1]);
-  const g = new Float32Array(N * N).fill(1e9), from = new Int32Array(N * N).fill(-1), open = [[0, sj * N + si]]; g[sj * N + si] = 0;
+  const g = new Float32Array(N * N).fill(1e9), from = new Int32Array(N * N).fill(-1), shut = new Uint8Array(N * N), open = [[0, sj * N + si]]; g[sj * N + si] = 0;
   const h = (i, j) => Math.hypot(i - gi, j - gj);
+  const push = x => { open.push(x); let i = open.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (open[p][0] <= open[i][0]) break; [open[p], open[i]] = [open[i], open[p]]; i = p; } };   // binary heap: the 64 m town has 70k cells
+  const pop = () => { const top = open[0], last = open.pop(); if (open.length) { open[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < open.length && open[l][0] < open[m][0]) m = l; if (r < open.length && open[r][0] < open[m][0]) m = r; if (m === i) break; [open[m], open[i]] = [open[i], open[m]]; i = m; } } return top; };
   while (open.length) {
-    let bi = 0; for (let k = 1; k < open.length; k++) if (open[k][0] < open[bi][0]) bi = k;
-    const [, cur] = open.splice(bi, 1)[0], ci = cur % N, cj = (cur / N) | 0;
+    const cur = pop()[1]; if (shut[cur]) continue; shut[cur] = 1; const ci = cur % N, cj = (cur / N) | 0;
     if (ci === gi && cj === gj) break;
     for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
       if (!di && !dj) continue; const i = ci + di, j = cj + dj; if (i < 0 || j < 0 || i >= N || j >= N || GRID[j * N + i]) continue;
       if (di && dj && (GRID[cj * N + i] || GRID[j * N + ci])) continue;            // no corner cutting
-      const ng = g[cur] + Math.hypot(di, dj); if (ng < g[j * N + i]) { g[j * N + i] = ng; from[j * N + i] = cur; open.push([ng + h(i, j), j * N + i]); }
+      const ng = g[cur] + Math.hypot(di, dj); if (ng < g[j * N + i]) { g[j * N + i] = ng; from[j * N + i] = cur; push([ng + h(i, j), j * N + i]); }
     }
   }
   if (from[gj * N + gi] < 0 && !(si === gi && sj === gj)) return [];
   const cells = []; for (let c = gj * N + gi; c >= 0 && c !== sj * N + si; c = from[c]) cells.push(c); cells.reverse();
   let pts = cells.map(c => [toWorld(c % N), toWorld((c / N) | 0)]); pts.push(goal);
   const out = []; let ax2 = ax, az2 = az, k = 0;                                 // string pulling
-  while (k < pts.length) { let far = k; for (let m = pts.length - 1; m > k; m--) if (clear(ax2, az2, pts[m][0], pts[m][1])) { far = m; break; } out.push(pts[far]); ax2 = pts[far][0]; az2 = pts[far][1]; k = far + 1; }
+  while (k < pts.length) { let far = k; for (let m = k + 1; m < pts.length; m++) { if (clear(ax2, az2, pts[m][0], pts[m][1])) far = m; else if (m - far > 8) break; } out.push(pts[far]); ax2 = pts[far][0]; az2 = pts[far][1]; k = far + 1; }
   return out;
 }
 
@@ -188,11 +189,19 @@ animated.push((t, dt) => {
   GAME.ring.position.set(me.position.x, 0.04, me.position.z); GAME.ring.material.opacity = 0.55 + 0.2 * Math.sin(t * 3);
   if (GAME.markT > 0) { GAME.markT = Math.max(0, GAME.markT - dt * 1.4); GAME.mark.material.opacity = GAME.markT; GAME.mark.scale.setScalar(1 + (1 - GAME.markT) * 0.8); }
   // follow camera
-  if (GAME.camFixed) {                                                          // a room: the whole floor stays in view; zoomed in beyond that the camera follows you
-    _want.copy(GAME.camFixed);
+  const R = GAME.room;
+  if (R && R.follow && R.bounds) {                                              // a room that asks for it: open close on you (R.follow = visible width) and follow you inside its walls;
+    if (GAME._camRoom !== R) { GAME._camRoom = R; GAME.zoomT = Math.min(GAME.zoomMax, Math.max(GAME.zoomMin, R.follow)); }   // zooming out to R.zoom shows the whole room again
+    const fit = R.zoom || GAME.camFollowAt || R.follow * 1.5, t = Math.max(0, Math.min(1, (fit * 0.97 - GAME.zoomT) / Math.max(0.5, fit * 0.97 - R.follow)));
+    const c = R.center || [0, 1, 0], b = R.bounds, mx = Math.min(R.follow * 0.32, (b.x1 - b.x0) / 2), mz = Math.min(R.follow * 0.32, (b.z1 - b.z0) / 2);   // stay far enough inside the walls that little of the void shows
+    _p.set(Math.max(b.x0 + mx, Math.min(b.x1 - mx, me.position.x)), 1.1, Math.max(b.z0 + mz, Math.min(b.z1 - mz, me.position.z)));
+    _want.set(c[0], c[1], c[2]).lerp(_p, t);
+  }
+  else if (GAME.camFixed) {                                                     // a room: the whole floor stays in view; zoomed in beyond that the camera follows you
+    GAME._camRoom = null; _want.copy(GAME.camFixed);
     if (GAME.camFollowAt) { const t = Math.max(0, Math.min(1, (GAME.camFollowAt * 0.97 - GAME.zoomT) / (GAME.camFollowAt * 0.3))); if (t > 0) _want.lerp(_p.set(me.position.x + GAME.camFixed.x, 1.1, me.position.z + GAME.camFixed.z), t); }
   }
-  else { _want.set(me.position.x, 1.1, me.position.z); _want.x = Math.max(-HALF - 1, Math.min(HALF + 1, _want.x)); _want.z = Math.max(-HALF - 1, Math.min(HALF + 1, _want.z)); }
+  else { GAME._camRoom = null; _want.set(me.position.x, 1.1, me.position.z); _want.x = Math.max(-HALF - 1, Math.min(HALF + 1, _want.x)); _want.z = Math.max(-HALF - 1, Math.min(HALF + 1, _want.z)); }
   camTarget.lerp(_want, 1 - Math.exp(-dt * 5));
   FW += (GAME.zoomT - FW) * (1 - Math.exp(-dt * 10)); updateCam();
   GAME.updateHover();
