@@ -11,7 +11,7 @@ for f in ('index.html', 'gallery.html', 'space.html'):
     shutil.copy(os.path.join(SRC, f), OUT)
 for d in ('css', 'js'):
     shutil.copytree(os.path.join(SRC, d), os.path.join(OUT, d), ignore=shutil.ignore_patterns('lineup.js'))
-for f in ('owners.json', 'chogs.manual.json', 'tokens.json', 'nft_demo_1700.png'):    # tokens.json: python tools/build_tokens.py; the raw chogs.json dump stays out of the site
+for f in ('owners.json', 'chogs.manual.json', 'tokens.json', 'nft_demo_1700.png', 'shop_items.json'):    # tokens.json: python tools/build_tokens.py; the raw chogs.json dump stays out of the site
     p = os.path.join(SRC, 'data', f)
     if os.path.exists(p):
         shutil.copy(p, os.path.join(OUT, 'data', f))

@@ -35,7 +35,7 @@ const out = V.map(([no, ready, name, cat, desc]) => {
   const clean = rooms.sanitize(doc, LIMIT, SIZE);                                  // through the server's own cleaner, exactly what a player's save goes through
   if (clean.pieces.length !== doc.pieces.length) throw new Error(no + ': the cleaner dropped pieces');
   clean.pieces.forEach((q, i) => { const d = doc.pieces[i]; if (Math.abs(q.x - d.x) > 0.011 || Math.abs(q.z - d.z) > 0.011) throw new Error(no + ': the cleaner moved ' + q.p + ' (' + d.x + ',' + d.z + ' -> ' + q.x + ',' + q.z + ')'); });
-  return { id: 'v' + no, no, floor: Math.floor(no / 100), name, cat, desc, by: 'Chog Town', size: SIZE, doc: clean };
+  return { id: 'v' + no, no, floor: Math.floor(no / 100), name, cat, desc, by: 'Chog Hotel', size: SIZE, doc: clean };
 });
 if (bad) { console.log(bad + ' problems, nothing written'); process.exit(1); }
 fs.writeFileSync(path.join(__dirname, '..', 'server', 'seed_venues.json'), JSON.stringify(out));

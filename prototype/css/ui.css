@@ -1,4 +1,4 @@
-/* Chog Town HUD: STORYBOOK. Warm wood and parchment, a classic RPG frame (player frame, round minimap, chat, action bar). Rules in docs/art/art-direction.md. */
+/* Chog Hotel HUD: STORYBOOK. Warm wood and parchment, a classic RPG frame (player frame, round minimap, chat, action bar). Rules in docs/art/art-direction.md. */
 #ui { --wood0: #3a2012; --wood1: #5a3418; --wood2: #7a4a26; --wood3: #a8703c; --parch: #f6e6bd; --parch2: #ead3a0; --ink: #3a2418; --gold: #e8b83a; --red: #b8452f; --green: #5a8a3a; }
 #ui { position: fixed; inset: 0; pointer-events: none; font: 700 14px/1.3 "Nunito", "Trebuchet MS", system-ui, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
 :where(#ui) :is(button, a) { font: inherit; color: inherit; border: 0; cursor: pointer; text-decoration: none; background: none; }

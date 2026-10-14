@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Audio test</title>
+<style>
+body{font:14px system-ui,sans-serif;background:#241a33;color:#f1e9ff;margin:16px}
+button{margin:3px;padding:6px 10px;border:0;border-radius:6px;background:#6b4aa8;color:#fff;cursor:pointer}
+button:hover{background:#8660c8} h3{margin:16px 0 4px}
+label{display:inline-block;margin-right:16px}
+#flash{display:inline-block;width:40px;height:40px;border-radius:50%;background:#333;vertical-align:middle;margin-left:10px}
+</style></head><body>
+<h2>Chog Hotel audio test</h2>
+<div id="vol"></div>
+<h3>Places</h3><div id="places"></div>
+<h3>SFX</h3><div id="sfx"></div>
+<h3>Rhythm track</h3>
+<label>bpm <input id="bpm" type="number" value="120" min="60" max="200" style="width:60px"></label>
+<button id="ts">Start track</button><button id="tp">Stop track</button><span id="flash"></span> <span id="info"></span>
+<script src="js/audio.js"></script>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var s=AUDIO.settings();
+  var vol=$('vol');
+  ['master','music','sfx'].forEach(function(k){
+    var l=document.createElement('label'); l.textContent=k+' ';
+    var r=document.createElement('input'); r.type='range'; r.min=0; r.max=1; r.step=0.01; r.value=s[k];
+    r.oninput=function(){AUDIO.setVolume(k,r.value)}; l.appendChild(r); vol.appendChild(l);
+  });
+  var m=document.createElement('label'), c=document.createElement('input'); c.type='checkbox'; c.checked=s.muted;
+  c.onchange=function(){AUDIO.mute(c.checked)}; m.appendChild(c); m.appendChild(document.createTextNode(' mute')); vol.appendChild(m);
+  function btn(parent,label,fn){var b=document.createElement('button'); b.textContent=label; b.onclick=fn; parent.appendChild(b)}
+  ['town_day','town_night','lobby','hall','home','cafe','arcade','club','gallery'].forEach(function(p){btn($('places'),p,function(){AUDIO.setPlace(p)})});
+  btn($('places'),'silence (null)',function(){AUDIO.setPlace(null)});
+  ['click','hover','open','close','step','place','pickup','rotate','delete','save','error','coin','purchase','burn','toast','door','elevator_ding','chat','win','lose','tie','countdown','go','stack','stack_perfect','drop','hit_perfect','hit_good','miss','siren','brrr','gm','rug','camera_shutter','cheer','trophy']
+    .forEach(function(n){btn($('sfx'),n,function(){AUDIO.sfx(n)})});
+  var tr=null, last=-1;
+  $('ts').onclick=function(){tr=AUDIO.playTrack('club',+$('bpm').value); last=-1; $('info').textContent='start '+tr.startTime.toFixed(3)+' bpm '+tr.bpm};
+  $('tp').onclick=function(){AUDIO.stopTrack(); tr=null; $('flash').style.background='#333'};
+  function loop(){
+    if(tr){
+      var b=Math.floor((AUDIO.now()-tr.startTime)/(60/tr.bpm));
+      if(b!==last&&b>=0){last=b; var f=$('flash'); f.style.background=(b%4===0)?'#ff6bd6':'#6bffb0'; setTimeout(function(){f.style.background='#333'},80)}
+    }
+    requestAnimationFrame(loop);
+  }
+  loop();
+})();
+</script></body></html>

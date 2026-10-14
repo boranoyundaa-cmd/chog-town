@@ -3,8 +3,9 @@ const SKINS_OK = ['warm', 'neon', 'storybook'];
 const UI = { sel: null, open: null, demo: false, toastT: 0, skin: (() => { try { const k = localStorage.getItem('chog_skin'); return k && SKINS_OK.includes(k) ? k : 'warm'; } catch (e) { return 'warm'; } })() };
 const DEMO_IDS = [1700, 1557, 409, 1808, 1000, 1942];
 // venue license copy. The rules (points per rarity, tier thresholds) come from data/tokens.json via WALLET.license; the tier names are placeholders.
-const TIER_NAME = { 1: 'Stall', 2: 'Shop', 3: 'Mansion', 4: 'Landmark' };
-const TIER_SIZE = { 1: 'Small venue', 2: 'Larger venue', 3: 'Mansion-sized venue', 4: 'The biggest venue' };
+const TIER_NAME = { 1: 'Ser', 2: 'Fren', 3: 'Whale', 4: 'Legend' };
+const TIER_SIZE = { 1: 'Room', 2: 'Suite', 3: 'Floor', 4: 'Penthouse' };
+const TIER_PERK = { 1: '12 inside · game tables', 2: '20 inside · stage + DJ booth + music', 3: '32 inside · two levels with a VIP lounge', 4: '50 inside · whole floor, VIP lounge, guard at the lift' };       // what each venue tier adds (server/hotel.js TEMPLATES)
 const TIER_COL = { 1: '#8a8497', 2: '#3a8ad8', 3: '#9a5ad8', 4: '#e8a620' };
 const RARITY_COL = { Common: '#8a8497', Uncommon: '#4aa84a', Rare: '#3a8ad8', Epic: '#9a5ad8', Legendary: '#e8a620' };
 const tierPill = (t, txt) => `<span class="tp" style="--tc:${TIER_COL[t]}">${txt || 'Tier ' + t}</span>`;
@@ -29,12 +30,13 @@ const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
   chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  game: '<rect x="3" y="7" width="18" height="11" rx="5"/><path d="M8 10v5M5.5 12.5h5"/><circle cx="15.5" cy="11.5" r=".9"/><circle cx="18" cy="14" r=".9"/>',
 };
 const icon = (n, size = 24) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
 const MENU = [
   { id: 'chog', label: 'My Chog', key: 'C', icon: 'person' }, { id: 'room', label: 'My Room', key: 'R', icon: 'home' },
-  { id: 'market', label: 'Market', key: 'M', icon: 'bag', soon: 1 }, { id: 'venues', label: 'Venues', key: 'V', icon: 'pin' },
-  { id: 'settings', label: 'Settings', key: 'O', icon: 'gear' },
+  { id: 'shop', label: 'Shop', key: 'M', icon: 'bag' }, { id: 'venues', label: 'Venues', key: 'V', icon: 'pin' },
+  { id: 'settings', label: 'Settings', key: 'O', icon: 'gear' }, { id: 'games', label: 'Games', key: 'G', icon: 'game' },
 ];
 // interface skins: warm modern cards (default), neon night, storybook (the first look). cls goes on #ui and on <body> (nameplates live outside #ui)
 const SKINS = { warm: { label: 'Warm cards', cls: 'warm', sub: 'Soft cream cards, Chog purple' }, neon: { label: 'Neon night', cls: 'neon', sub: 'Dark glass, cyan and pink lines' }, storybook: { label: 'Storybook', cls: '', sub: 'Wood and parchment' } };
@@ -42,7 +44,7 @@ function applySkin() {
   const k = SKINS[UI.skin] || SKINS.warm, root = document.getElementById('ui'); if (root) root.className = k.cls;
   document.body.classList.remove('warm', 'neon'); if (k.cls) document.body.classList.add(k.cls);
 }
-function menuClick(m) { if (m.soon) { toast(m.label + ' is coming soon'); return; } if (m.id === 'room') { ROOM.toggle(); return; } UI.open = UI.open === m.id ? null : m.id; render(); }
+function menuClick(m) { if (m.soon) { toast(m.label + ' is coming soon'); return; } if (m.id === 'room') { ROOM.toggle(); return; } if (m.id === 'games') { if (typeof GAMES !== 'undefined') GAMES.toggle(); return; } if (m.id === 'shop') { if (typeof SHOP !== 'undefined') SHOP.toggle(); return; } UI.open = UI.open === m.id ? null : m.id; render(); }
 
 // ---- portraits: render a Chog once into a PNG with a second, hidden renderer
 const portraits = {};
@@ -115,6 +117,8 @@ function card(onClose) {
   c.appendChild(el('div', 'sub', holder ? (UI.demo ? 'Demo preview of a holder Chog' : 'Your Genesis Chog') : 'Free default Chog. Hold a Chog NFT to play as your own.'));
   if (holder) { const chips = el('div', 'chips'); for (const k of ['Skin', 'Body', 'Head', 'Eyes', 'Mouth', 'Aura', 'Accessory']) if (tr[k]) chips.appendChild(el('span', 'chip', `<b>${k}</b>${tr[k]}`)); c.appendChild(chips); }
   const perk = (ok, txt, soon) => `<div class="perk ${ok ? '' : 'off'}"><i>${ok ? '✓' : '🔒'}</i><span>${txt}${soon ? ' <small>(soon)</small>' : ''}</span></div>`;
+  if (typeof SHOP !== 'undefined') c.appendChild(SHOP.chogRow());                              // cosmetics bought in the shop, worn in the extra slots (shop.js)
+  if (typeof GAMES !== 'undefined') c.appendChild(GAMES.trophyRow());                       // trophies and badges from the mini-games (games.js)
   const lic = holder ? licenseCard() : null; if (lic) c.appendChild(lic);                // holders: the license card; free players see the venue ladder in Venues
   c.appendChild(el('div', 'perks', `<h3>${holder ? 'Holder perks' : 'Unlocked by holding a Chog'}</h3>` +
     perk(holder, 'Play as your own Chog, with its traits') + (holder ? '' : perk(false, 'A venue license: run your own club, shop or gallery', true))));
@@ -132,7 +136,7 @@ function card(onClose) {
   }
   const act = el('div', 'actions');
   if (WALLET.account) { const b = el('button', 'btn ghost', 'Disconnect'); b.onclick = () => { WALLET.disconnect(); chooseChog(null); }; act.appendChild(b); }
-  else { const b = el('button', 'btn', 'Connect wallet'); b.onclick = connectFlow; act.appendChild(b); }
+  else { const b = el('button', 'btn', cx('buttons', 'connect', 'Connect wallet')); b.onclick = connectFlow; act.appendChild(b); }
   if (!holder) { const a = el('a', 'btn ghost', 'Get a Chog'); a.href = 'https://opensea.io/collection/chog-genesis'; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a); }
   c.appendChild(act);
   return c;
@@ -144,7 +148,7 @@ function venuesCard(onClose) {
   c.innerHTML = `<button class="x" aria-label="Close">×</button><h2>Venues</h2><div class="sub">Your license decides what kind of place you can run</div>
     <div class="mine">${holder ? `${tierPill(cur, 'Tier ' + cur + ' · ' + TIER_NAME[cur])}<b>${L.points} points</b><small>${UI.demo ? 'Demo preview' : TIER_NAME[cur] + ' unlocked'}</small>` : '<b>Free player</b><small>Hold a Chog to open a venue</small>'}</div>
     <div class="ladder">${[...L.tiers].reverse().map(v => `<div class="rung ${v.tier === cur ? 'cur' : v.tier < cur ? '' : 'lock'}" style="--tc:${TIER_COL[v.tier]}"><div class="rk">${v.tier}</div>
-      <div><b>${TIER_NAME[v.tier]}</b><small>${v.min} point${v.min > 1 ? 's' : ''}: ${tierReq(v)}</small><small class="pk">${TIER_SIZE[v.tier]}</small></div>
+      <div><b>${TIER_NAME[v.tier]}</b><small>${v.min} point${v.min > 1 ? 's' : ''}: ${tierReq(v)}</small><small class="pk">${TIER_SIZE[v.tier]} · ${TIER_PERK[v.tier]}</small></div>
       <div class="rs">${S.total ? `${S.dist[v.tier]} of ${S.total.toLocaleString('en-US')}<br>wallets` : ''}<i>${v.tier === cur ? '★' : v.tier < cur ? '✓' : icon('lock', 18)}</i></div></div>`).join('')}</div>
     <div class="note">${S.asOf ? 'Wallet counts: snapshot of ' + new Date(S.asOf * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '. ' : ''}</div><div class="actions"></div>`;
   c.querySelector('.x').onclick = onClose;
@@ -153,7 +157,7 @@ function venuesCard(onClose) {
     c.insertBefore(VENUE.section(), c.querySelector('.note'));
     if (!VENUE.info && !VENUE.busy && !VENUE.tried && WALLET.account) { VENUE.tried = true; setTimeout(() => VENUE.refresh(), 0); }
   } else if (!holder) {
-    if (!WALLET.account) { const b = el('button', 'btn', 'Connect wallet'); b.onclick = connectFlow; act.appendChild(b); }
+    if (!WALLET.account) { const b = el('button', 'btn', cx('buttons', 'connect', 'Connect wallet')); b.onclick = connectFlow; act.appendChild(b); }
     const a = el('a', 'btn ghost', 'Get a Chog'); a.href = 'https://opensea.io/collection/chog-genesis'; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a);
   }
   return c;
@@ -162,7 +166,7 @@ function venuesCard(onClose) {
 // ---- Settings: interface skin and time of day
 function settingsCard(onClose) {
   const c = el('div', 'card hit settings');
-  c.appendChild(el('h2', '', 'Settings')); const x = el('button', 'x', '×'); x.setAttribute('aria-label', 'Close'); x.onclick = onClose; c.appendChild(x);
+  c.appendChild(el('h2', '', cx('buttons', 'settings', 'Settings'))); const x = el('button', 'x', '×'); x.setAttribute('aria-label', 'Close'); x.onclick = onClose; c.appendChild(x);
   c.appendChild(el('h3', 'sect', 'Interface style')); const sk = el('div', 'skins');
   for (const id of SKINS_OK) { const b = el('button', 'opt skin-' + id + (UI.skin === id ? ' on' : ''), `<i class="sw"><u></u><u></u><u></u></i><b>${SKINS[id].label}</b><small>${SKINS[id].sub}</small>`); b.onclick = () => { UI.skin = id; try { localStorage.setItem('chog_skin', id); } catch (e) { /* ignore */ } applySkin(); render(); }; sk.appendChild(b); }
   c.appendChild(sk);
@@ -212,7 +216,7 @@ async function connectFlow() {
 }
 function walletButton(cls = 'btn') {
   if (WALLET.account) { const p = el('button', cls + ' ghost wallet hit', `<span class="dot"></span>${shortAddr(WALLET.account)}`); p.onclick = () => menuClick(MENU[0]); return p; }
-  const b = el('button', cls + ' wallet hit', 'Connect wallet'); b.onclick = connectFlow; return b;
+  const b = el('button', cls + ' wallet hit', cx('buttons', 'connect', 'Connect wallet')); b.onclick = connectFlow; return b;
 }
 
 // ---- location + minimap (rotated to match the isometric view: screen up = world -x -z)
@@ -287,19 +291,24 @@ function playerCard() {
   c.querySelector('.x').onclick = () => NET.closeCard();
   const acts = c.querySelector('.acts'), muted = NET.isMuted(r);
   const vb = el('button', 'btn ghost', 'Invite home'); vb.title = 'Invite this player to your Home'; vb.onclick = () => { NET.invite(r.id); NET.closeCard(); }; acts.appendChild(vb);
-  const mb = el('button', 'btn ghost', muted ? 'Unmute' : 'Mute'); mb.onclick = () => { if (muted) { NET.unmute(r); NET.sys(r.name + ' is unmuted.'); } else NET.mute(r); NET.closeCard(); };
-  const rb = el('button', 'btn ghost', 'Report');
+  const mb = el('button', 'btn ghost', muted ? 'Unmute' : cx('buttons', 'mute', 'Mute')); mb.onclick = () => { if (muted) { NET.unmute(r); NET.sys(r.name + ' is unmuted.'); } else NET.mute(r); NET.closeCard(); };
+  const rb = el('button', 'btn ghost', cx('buttons', 'report', 'Report'));
   rb.onclick = () => { if (rb.dataset.sure) { NET.report(r.id, 'chat/behaviour'); NET.closeCard(); } else { rb.dataset.sure = 1; rb.textContent = 'Confirm report'; } };
+  if (typeof GAMES !== 'undefined') { const gb = el('button', 'btn', 'Challenge'); gb.title = 'Challenge this player to a game'; gb.onclick = () => GAMES.challengePlayer(r); acts.insertBefore(gb, acts.firstChild); }
   acts.appendChild(mb); acts.appendChild(rb);
   return c;
 }
 // a small card for a resident: role, one line from them, and an action for service NPCs (Juno replays the tips)
+function cx(group, key, dflt) { return typeof CULTURE !== 'undefined' && CULTURE.ui[group] && CULTURE.ui[group][key] || dflt; }          // button, error and toast texts from culture_data.js
 function npcCard() {
   const r = typeof NPC !== 'undefined' && NPC.card; if (!r) return null;
   const c = el('div', 'pcard npc paper hit', '<button class="x" aria-label="Close">×</button><h3></h3><small></small><p class="say"></p><div class="acts"></div>');
-  c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = (r.role || 'Resident') + ' · Chog Town resident'; c.querySelector('.say').textContent = '“' + r.cardLine + '”';
+  c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = (r.role || 'Resident') + ' · Chog Hotel resident'; c.querySelector('.say').textContent = '“' + r.cardLine + '”';
+  if (r.cardSrc) { const sm = el('small', 'src'); sm.textContent = r.cardSrc; c.querySelector('.say').after(sm); }      // a cameo's line: where it comes from, in small print
+  if (r.cardNote) { const sm = el('small', 'src'); sm.style.opacity = .55; sm.textContent = r.cardNote; c.querySelector('.acts').before(sm); }
   c.querySelector('.x').onclick = () => NPC.closeCard();
   const a = NPC.actionFor(r), acts = c.querySelector('.acts'); if (a) { const b = el('button', 'btn', a.label); b.onclick = a.run; acts.appendChild(b); }
+  if (typeof GAMES !== 'undefined') { const gb = el('button', 'btn', 'Challenge'); gb.title = 'Play a two-player game against this resident (NPC)'; gb.onclick = () => GAMES.challengeNpc(r); acts.appendChild(gb); }
   const cb = el('button', 'btn ghost', 'Bye'); cb.onclick = () => NPC.closeCard(); acts.appendChild(cb);
   return c;
 }
@@ -339,7 +348,7 @@ function render() {
 // the HUD is laid out for a 1440x810 window and scaled with the window height
 function fitUI() { document.getElementById('ui').style.zoom = Math.max(0.8, Math.min(1.6, innerHeight / 810)); }
 addEventListener('resize', fitUI);
-addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (typeof NPC !== 'undefined' && NPC.card) NPC.closeCard(); else if (UI.open) { UI.open = null; render(); } }
+addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[2]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (typeof NPC !== 'undefined' && NPC.card) NPC.closeCard(); else if (UI.open) { UI.open = null; render(); } }
   if ((e.code === 'Enter' || e.code === 'NumpadEnter') && _chat) { const i = _chat.querySelector('input'); if (!i.disabled) { e.preventDefault(); i.focus(); } } });
 
 (async function initUI() {
@@ -350,7 +359,7 @@ addEventListener('keydown', e => { if (e.target.matches && e.target.matches('inp
   fitUI(); render();
   WALLET.on('account', a => { if (a) toast('Connected ' + shortAddr(a)); else NET.logout(); render(); });
   WALLET.on('scan', () => render());
-  WALLET.on('error', m => { if (!document.querySelector('#ui .modal.walletm')) toast(m); });
+  WALLET.on('error', m => { if (!document.querySelector('#ui .modal.walletm')) toast(/gas/i.test(m) ? cx('errors', 'gas', m) : /not found|no wallet|install/i.test(m) ? cx('errors', 'walletNotFound', m) : /rate.?limit|too many/i.test(m) ? cx('errors', 'rateLimited', m) : m); });
   WALLET.on('owned', async ids => {
     if (!ids.length) { if (WALLET.account) toast('No Chog found in this wallet. You can still play as a Guest Chog.'); render(); return; }
     let want = ids[0]; try { const s = +localStorage.getItem('chog_sel'); if (ids.includes(s)) want = s; } catch (e) { /* ignore */ }

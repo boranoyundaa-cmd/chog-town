@@ -17,6 +17,9 @@ const pieces = {};
 for (const [id, d] of Object.entries(SPACE.PIECES)) {
   if (d.kit === 'nft' || d.kit === 'hotel') continue;                                                     // frames need the wallet feed first
   pieces[id] = { fp: d.fp, cat: d.cat, kit: d.kit, wall: WALLED(d), edit: d.parts.some(p => p.t === 'text' && p.edit) };
+  if (d.minTier) pieces[id].minTier = d.minTier;                                                          // the venue tier that unlocks it
+  if (d.shop) pieces[id].shop = d.shop;                                                                   // the shop item (ERC-1155 id) that unlocks it: the server keeps it only if the wallet owns the item
+  if (d.venue) pieces[id].venue = true;                                                                   // only inside a hotel venue
 }
 const out = { themes: Object.keys(SPACE.THEMES), views: Object.keys(SPACE.VIEWS), walls: names('WALL'), floors: names('FLOOR'), pieces };
 fs.writeFileSync(path.join(__dirname, '..', 'server', 'room_catalog.json'), JSON.stringify(out));

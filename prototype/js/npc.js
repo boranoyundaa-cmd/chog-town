@@ -1,61 +1,110 @@
-// ===== npc: the town's residents (docs/game/world.md) =====
-// A resident's position is a pure function of its schedule and the clock: no server state, every client computes the same.
-// A schedule is a list of [hour, place]; between two places the resident walks a path found on the town's blockers, then stays (stands, chats,
-// strolls an avenue, or goes inside a building and disappears). The crowd is topped up to NPC.target people: the residents shown are the first K
+// ===== npc: the town's residents (docs/game/world.md, docs/game/culture.md) =====
+// The residents are the cast of CULTURE (culture_data.js): archetypes and nickname-only cameos. A resident's position is a pure function of its schedule and the clock:
+// no server state, every client computes the same. A schedule is a list of [hour, place]; between two places the resident walks a path found on the town's blockers,
+// then stays (stands, strolls an avenue, or goes inside a building and disappears). The crowd is topped up to NPC.target people: the residents shown are the first K
 // of those that are outside, K = target - 1 (you) - players in town. NPCs are never counted anywhere (rankings, "N inside", the minimap).
-// Loaded after plates.js and net.js (it uses PLATES, NET, TOUR and the world); the receptionist of the Chog Hotel lives in hotel.js.
-const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, override: null, t0: performance.now() };
+// Dialogue only on click: the card shows one random line (CULTURE.pick) and the Chog says it in a bubble. Nothing is said by itself.
+// Loaded after culture_data.js, plates.js and net.js (it uses CULTURE, PLATES, NET, TOUR and the world); culture.js (events) and props.js (plaques, props) come after it.
+// The receptionist of the Chog Hotel lives in hotel.js. Chogs are built the first time a resident is shown (42 of them at load would be wasted work).
+const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, override: null, pins: {}, t0: performance.now() };
 (function () {
   world.add(NPC.group); CITY_NODES.push(NPC.group);                                   // rooms and the hotel hide the street together with its residents
   const DAY_S = 86400, CELL_N = 0.3, GH = HALF - 0.4, NG = Math.round(GH * 2 / CELL_N);
 
-  // ---------- places: a door (inside), a spot to stand or chat, or a beat to stroll. ry = where it faces (0 = +z, PI/2 = +x)
+  // ---------- places: a door (inside), a spot to stand, or a beat to stroll. ry = where it faces (0 = +z, PI/2 = +x). Most spots face the camera (+x +z, about 0.8)
   const door = (x, z) => ({ act: 'in', x, z, ry: 0 });
-  const stand = (x, z, ry, say, act = 'idle', mate = 0) => ({ act, x, z, ry, say, mate });
-  const beat = (ax, az, bx, bz, say) => ({ act: 'stroll', x: ax, z: az, bx, bz, len: Math.hypot(bx - ax, bz - az), ry: 0, say });
+  const stand = (x, z, ry = 0.8, act = 'idle', mate = 0) => ({ act, x, z, ry, mate });
+  const beat = (ax, az, bx, bz) => ({ act: 'stroll', x: ax, z: az, bx, bz, len: Math.hypot(bx - ax, bz - az), ry: 0 });
   const PL = {
     moka: door(-3.6, 6.75), arcade: door(4.0, 6.75), nova: door(3.85, -2.6), gallery: door(1.2, -5.1), hotel: door(-4.8, -2.7),
-    baristaPost: stand(-2.4, 5.4, 1.2, ['Fresh coffee, still warm!', 'The usual? Moka & Co opens early.'], 'wave'),
-    guidePost: stand(2.4, 3.0, 3.6, ['New in town? Your free Home is the little house by the south corner.', 'Press B inside your Home to decorate it.']),
-    guardPost: stand(3.85, -2.5, 0, ['NOVA is open tonight.', 'Evening. Enjoy the music.']),
-    cafeQ1: stand(-3.1, 6.95, 3.14, ['Mika makes the best flat white.', 'I come here every day.'], 'chat', 1), cafeQ2: stand(-4.15, 6.95, 3.14, ['The pastries sell out by noon.', 'Same time tomorrow?'], 'chat', -1),
-    arcadeFront1: stand(3.3, 6.95, 3.14, ['Sixty floors on the luggage game. A record!', 'The Arcade is always loud on Fridays.']), arcadeFront2: stand(5.2, 6.95, 3.14, ['One more round, then home.']),
-    galleryFront: stand(0.4, -4.75, 3.14, ['The Chog Wall has all 1,969 of us.', 'I like the quiet in there.']),
-    pylon: stand(4.2, -2.0, 1.57, ['Tonight\'s list is on the pylon.', 'Read the board: something is on tonight.']),
-    plazaA: stand(-0.95, -2.45, 1.2, ['Did you see the sunset?', 'Nice evening for a walk.'], 'chat', 1), plazaB: stand(-0.35, -2.6, -1.9, ['It was golden over the Hotel.', 'I could stay out all night.'], 'chat', -1),
-    busStop: stand(-2.5, 1.95, 3.14, ['The 7 is late again.', 'Still waiting for the bus.']), busStop2: stand(-5.65, 1.85, 0.4, ['Is that the 7?']),
-    scooterGuy: stand(6.4, 2.35, 2.4, ['Nice ride, right?', 'I would race you, but my scooter is shy.']),
-    cornerFolk: stand(7.3, 4.3, 2.0, ['Quiet corner. I like it.']),
-    avenueEW: beat(-7, 0.2, 7, 0.2, ['Just walking.', 'Chog Avenue never gets old.']), avenueNS: beat(-0.2, -4.9, -0.2, 7, ['Good day for it.', 'Taking the long way.']),
-    crossing: beat(-2.4, -0.2, 2.4, -0.2, ['Wait for me!', 'Race you to the lamp!']),
-    sidewalkS: beat(-8.5, 7.9, 1.0, 7.9, ['Window shopping.']), westWalk: beat(-8.6, -7.0, -8.6, 7.0, ['The air smells like rain.']), northWalk: beat(-8.5, -8.7, 8.5, -8.7, ['Quiet up here.']),
+    baristaPost: stand(-2.4, 5.4, 1.2, 'wave'), guidePost: stand(2.4, 3.0, 3.6), guardPost: stand(3.85, -2.5, 0),
+    // cafe terrace and the arcade and gallery fronts (they face the shop)
+    cafeQ1: stand(-3.1, 6.95, 3.14), cafeQ2: stand(-4.15, 6.95, 3.14), cafeT3: stand(-5.25, 6.95, 3.14), cafeT4: stand(-6.2, 6.95, 3.14),
+    arcadeFront1: stand(3.3, 6.95, 3.14), arcadeFront2: stand(5.2, 6.95, 3.14), arcadeFront3: stand(6.15, 6.95, 3.14), liqSpot: stand(6.9, 4.5, 0.9),
+    galleryFront: stand(0.4, -4.75, 3.14), galleryFront2: stand(2.3, -4.75, 3.14),
+    // park (north-west corner), in front of the hotel, the plaza ring, the street
+    parkA: stand(-8.4, -3.7, 0.8), parkB: stand(-7.6, -8.2, 0.6),
+    hf1: stand(-5.6, -1.25), hf2: stand(-4.7, -1.25), hf3: stand(-3.9, -1.25), hf4: stand(-6.5, -1.25), bankers: stand(-2.5, -1.25),
+    pz1: stand(-1.1, -1.1), pz2: stand(1.1, -1.1, -0.8), pz3: stand(1.1, 1.1, -2.3), pz4: stand(-1.1, 1.1, 2.3), pzFlag: stand(2.5, -0.9, 1.5), pzShadow: stand(0, -1.3, 0),
+    twA: stand(2.1, 0.9, -1.5, 'chat', -1), twB: stand(1.3, 0.9, 1.5, 'chat', 1),
+    pizzaStand: stand(7.6, 2.2), tourist: stand(8.3, 0.95, 1.6), larryPost: stand(-7.4, 4.7, 3.14), kolSpot: stand(7.0, -1.95), maxiSpot: stand(9.2, -7.0), exitBench: stand(2.7, 7.3, 0.4), cricketSpot: stand(9.2, 3.8),
+    c1: stand(6.3, -2.5), c2: stand(7.3, -3.6), c3: stand(8.1, -3.0), c4: stand(7.2, -5.7), c5: stand(8.5, -4.1),
+    avenueEW: beat(-7, 0.2, 7, 0.2), jeetBeat: beat(-7.5, -0.1, 7.5, -0.1), wassieBeat: beat(1.5, 9.3, 9.0, 9.3),
+    sidewalkS: beat(-8.5, 7.9, 1.0, 7.9), westWalk: beat(-8.6, -7.0, -8.6, 7.0), northWalk: beat(-8.5, -8.7, 8.5, -8.7),
   };
 
-  // ---------- the roster. prio: lower shows first when the crowd is capped. sched hours are local (the clock that lights the town)
-  const L = (hair, outfit, o = {}) => Object.assign({ hair, outfit }, o);
-  const ROSTER = [
-    { id: 'mika', name: 'Mika', role: 'Barista', look: L(0xf4c82c, 'apron', { head: 'cap', capC: 0x3a6a5c }), prio: 0, speed: 1.0, lines: ['What can I get you?', 'Try the oat flat white.'], sched: [[6.5, 'baristaPost'], [20, 'moka']] },
-    { id: 'juno', name: 'Juno', role: 'Guide', look: L(0xff4a98, 'jacket', { trim: 0x60e0f0, head: 'headset' }), prio: 1, speed: 1.0, lines: ['Ask me anything about the town.'], sched: [[8, 'guidePost'], [21.5, 'hotel']] },
-    { id: 'rex', name: 'Rex', role: 'Guard', look: L(0x3a3550, 'jacket', { trim: 0xff3aa8, head: 'cap', capC: 0x1a1030 }), prio: 2, speed: 0.9, lines: ['Doors open at eight.'], sched: [[3, 'nova'], [19.25, 'guardPost']] },
-    { id: 'pip', name: 'Pip', look: L(0xe0283a, 'jacket', { trim: 0xffd060 }), prio: 3, speed: 0.9, sched: [[6.5, 'avenueEW'], [12.5, 'cafeQ1'], [13.5, 'avenueEW'], [18.5, 'arcadeFront1'], [20.5, 'nova'], [23.5, 'hotel']] },
-    { id: 'mochi', name: 'Mochi', look: L(0x2fb58a, 'vest', { vest: 0x3a8a6a }), prio: 4, speed: 0.8, sched: [[6.8, 'avenueNS'], [12, 'galleryFront'], [13, 'gallery'], [15, 'avenueNS'], [17.5, 'busStop'], [19, 'hotel']] },
-    { id: 'biscuit', name: 'Biscuit', look: L(0xb06aff, 'vest', { vest: 0xe86a7a, scale: CHOG_SCALE * 0.78 }), prio: 5, speed: 1.2, lines: ['Catch me if you can!'], sched: [[9, 'crossing'], [16, 'scooterGuy'], [18.5, 'hotel']] },
-    { id: 'olive', name: 'Olive', look: L(0x5b35b0, 'vest'), prio: 6, speed: 0.9, mate: 'maple', sched: [[8.5, 'plazaA'], [12, 'cafeQ1'], [13, 'plazaA'], [17, 'busStop'], [20, 'hotel']] },
-    { id: 'maple', name: 'Maple', look: L(0xff4a98, 'jacket', { trim: 0xff7aa8, head: 'cap', capC: 0x2a2050 }), prio: 7, speed: 0.9, sched: [[8.6, 'plazaB'], [12.1, 'cafeQ2'], [13.1, 'plazaB'], [17.1, 'busStop2'], [20.1, 'hotel']] },
-    { id: 'pepper', name: 'Pepper', look: L(0xf48a3a, 'jacket', { trim: 0x7a4ab0 }), prio: 8, speed: 1.0, sched: [[6, 'pylon'], [11, 'avenueEW'], [14, 'galleryFront'], [16, 'gallery'], [18, 'arcadeFront2'], [21, 'hotel']] },
-    { id: 'waffle', name: 'Waffle', look: L(0x4a7ab8, 'vest', { vest: 0xffd060 }), prio: 9, speed: 1.1, sched: [[10, 'scooterGuy'], [13, 'cafeQ2'], [15.5, 'arcade'], [20.5, 'arcadeFront2'], [23, 'hotel']] },
-    { id: 'nori', name: 'Nori', look: L(0x7a5ae0, 'jacket', { trim: 0x7ae8ff }), prio: 10, speed: 1.0, sched: [[9.5, 'sidewalkS'], [11.5, 'cornerFolk'], [14, 'sidewalkS'], [19, 'arcadeFront1'], [22, 'pylon']] },
-    { id: 'sprout', name: 'Sprout', look: L(0x3aa860, 'vest', { vest: 0xf0d070 }), prio: 11, speed: 0.9, sched: [[2.5, 'hotel'], [10.5, 'northWalk'], [17, 'sidewalkS'], [21, 'nova']] },
-    { id: 'clover', name: 'Clover', look: L(0x2a9a8a, 'jacket', { trim: 0xff9ad8 }), prio: 12, speed: 0.85, sched: [[7, 'hotel'], [19, 'westWalk'], [23, 'plazaA']] },
-    { id: 'truffle', name: 'Truffle', look: L(0x9a4a28, 'vest', { vest: 0x5a3a8a }), prio: 13, speed: 0.85, sched: [[7.2, 'hotel'], [19.2, 'northWalk'], [23.2, 'plazaB']] },
-    { id: 'pudding', name: 'Pudding', look: L(0xffb0d0, 'vest', { vest: 0x6a4ac0 }), prio: 14, speed: 0.9, sched: [[7.5, 'hotel'], [21, 'busStop'], [23.5, 'pylon']] },
-  ];
+  // ---------- the roster, built from CULTURE.cast + CULTURE.cameos. Looks are real trait values (chog_hats / chog_bodies / chog_items names) that match each `look` hint; the colour of
+  // an outfit comes from the value, never from a real person. [Skin, Body, Head, Eyes, Accessory, Mouth, Aura, size]
+  const LOOK = {
+    sergm: ['Yellow', 'Farmer Shirt', 'Choggie Beanie', 'Happy', null, 'Smile'], hodler: ['Grey', 'Grey Homeless Shirt', 'Silver wreath', 'Tired', 'Cigar', 'Flat'],
+    pizza: ['Red', 'Red jacket', 'Red Peace Cap', 'Round Eye', 'SB'], larry: ['Aqua', 'Orange Holed Jacket', 'Japan Headband', 'Happy', 'Red Candle'],
+    doombear: ['Brown', 'dark jacket', 'Russian Hat', 'Tired', null, 'Sad'], nocoiner: ['White', 'Cream Tuxedo', 'Gray Bucket Cap', 'Worried', null, 'Worried'],
+    wassie: ['Blue', 'toad blue suit', null, 'Frog', 'Fwog', 'Sad', null, 0.7], midwit: ['Mint', 'White Shirt', null, 'Retro Glass', null, 'Flat'],
+    degen: ['Green', 'Orange Hoodie', null, 'Tired', 'Green Candle', 'Grit'], farmer: ['Gold', 'Army Vest', 'Blue Laser', 'Tired', null, 'Worried'],
+    saver: ['Pink', 'Cyan Shirt', null, 'Smirk', 'SB'], rugvictim: ['Rose', 'Brown Homeless Shirt', null, 'Round Crying', null, 'Sad'],
+    jeet: ['Silver', 'Red Sleeveless', 'Red Headband', 'Happy'], kol: ['Cyan', 'pink vest', null, 'Happy', null, 'Gold Tooth'],
+    maxi: ['Orange', 'Orange Hoodie', 'BTC Cap', 'Angry', 'Knife', 'Grit'], ethguy: ['Navy', 'Sky Hoodie', 'Diamond', 'Round', null, 'Smile', null, 0.96],
+    nad: ['Origin', 'Mon Hoodie', 'Mon Beanie', 'Purple laser', null, 'Smile', 'Violet'], liquidated: ['Royal', 'Tuxedo', null, 'Round Crying', 'Red Candle', 'Worried'],
+    macro: ['Yellow', 'CEO Vest', 'Taped Banana', 'Round Eye'], memekid: ['Red', 'Peach Hoodie', null, 'Happy', null, 'Bubblegum', null, 0.78],
+    sleuth: ['Black', 'Gojo', 'Durag', 'Side Eye', null, 'Flat'], linkmarine: ['Blue', 'Blue Mafia', 'Blue Bucket Cap', 'Angry', null, 'Flat'],
+    twins: ['Grey', 'Tuxedo', null, 'Flat', null, 'Flat'], oldbankers: ['White', 'White tuxedo', null, 'Tired', null, 'Flat'],
+    satoshishadow: ['Black', 'Wizard Cape', null, 'Flat', null, 'Flat', 'Smoke'],
+    duck: ['Yellow', 'Sky Hoodie', 'Orange Bucket Cap', 'Tired'], teacher: ['Aqua', 'White Shirt', null, 'Retro Glass'], host: ['Pink', 'Black Shirt', 'Head Wrap', 'Happy'],
+    milkshake: ['Rose', 'Pink Shirt', null, 'Flat', null, 'Flat'], rabbit: ['Black', 'Gangster suit', null, 'Flat', null, 'Flat', 'Smoke'], teasage: ['Green', 'White Yukata', null, 'Happy'],
+    funnyhat: ['Gold', 'White Shirt', 'Mafia Hat', 'Retro Glass'], banana: ['Yellow', 'Hawaiian Polo', null, 'Happy'], mrfour: ['Gold', 'Yellow Shirt', null, 'Happy', 'Coin'],
+    wizard: ['Orange', 'Wizard', 'Wizard Hat', 'Round Eye'], smolwassie: ['Green', 'Glitch Hoodie', null, 'Frog', null, 'Smile', null, 0.62], sweateranon: ['Brown', 'Grey Shirt', null, 'Tired', null, 'Flat'],
+    coldcoffee: ['Navy', 'Blue jacket', null, 'Round', null, 'Flat'], pyramid: ['Red', 'Blue Sleeveless', null, 'Happy', 'Coin'], cricketwhale: ['Blue', 'Electro Hoodie', null, 'Round', null, 'Smile', null, 1.55],
+    bearsuit: ['Brown', 'Shark Suit', null, 'Happy', null, 'Smile', null, 1.05],
+  };
+  const traitsOf = a => { const [skin, body, head, eyes, acc, mouth, aura] = a, o = { Background: 'Light Purple', Base: 'Origin', Form: 'Chog', Skin: skin || 'Origin', Eyes: eyes || 'Round', Mouth: mouth || 'Smile', Side: 'Right', Naked: body ? 'No' : 'Yes', Tier: 'Common' };
+    if (body) o.Body = body; if (head) o.Head = head; if (acc) o.Accessory = acc; if (aura) o.Aura = aura; return o; };
 
-  // ---------- walkable grid and paths between places (built once, cached per pair)
+  // where each resident stands for each place of its day (CULTURE hours name the place, this names the spot). 'any' = a beat to stroll
+  const SPOT = {
+    hodler: { park: 'parkA' }, pizza: { street: 'pizzaStand' }, larry: { street: 'larryPost' }, doombear: { plaza: 'pz1' }, nocoiner: { street: 'tourist' }, wassie: { any: 'wassieBeat' },
+    degen: { arcade: 'arcadeFront1' }, farmer: { cafe: 'cafeT3' }, saver: { gallery: 'galleryFront' }, rugvictim: { street: 'exitBench' }, jeet: { any: 'jeetBeat' }, kol: { street: 'kolSpot' },
+    maxi: { street: 'maxiSpot' }, ethguy: { lobby: 'hf1' }, nad: { monad_floor: 'hf2', plaza: 'pz2' }, liquidated: { arcade: 'liqSpot' }, macro: { club: 'c1' }, memekid: { plaza: 'pz3' },
+    linkmarine: { plaza: 'pzFlag' }, twins1: { plaza: 'twA' }, twins2: { plaza: 'twB' }, oldbankers: { plaza: 'bankers' }, satoshishadow: { plaza: 'pzShadow' },
+    duck: { cafe: 'cafeT4', club: 'c2' }, teacher: { lobby: 'hf3' }, host: { club: 'c3' }, milkshake: { arcade: 'arcadeFront3' }, rabbit: { plaza: 'pz4' }, teasage: { park: 'parkB' },
+    funnyhat: { club: 'c4' }, banana: { club: 'c5' }, mrfour: { lobby: 'hf4' }, wizard: { plaza: 'pz2' }, smolwassie: { any: 'sidewalkS' }, sweateranon: { arcade: 'arcadeFront2' },
+    coldcoffee: { gallery: 'galleryFront2' }, pyramid: { plaza: 'pz2' }, cricketwhale: { street: 'cricketSpot' }, bearsuit: { lobby: 'hf4' },
+  };
+  // the three service roles are cast members: the barista at Moka & Co, the guide of the town (and the tour) and the guard of NOVA. Their own day replaces the cast hours
+  const SERVICE = {
+    midwit: { role: 'Barista · Moka & Co', svc: 'barista', sched: [[6.5, 'baristaPost'], [20, 'moka']], extra: 'mika', speed: 1.0 },
+    sergm: { role: 'Guide · gm', svc: 'guide', sched: [[0, 'guidePost']], extra: 'juno', speed: 1.0 },
+    sleuth: { role: 'Guard · NOVA', svc: 'guard', sched: [[3, 'nova'], [19.25, 'guardPost']], extra: 'rex', speed: 0.9 },
+  };
+  const SPEED = { jeet: 1.4, smolwassie: 0.8, wassie: 0.85, cricketwhale: 0.8, memekid: 1.1 };
+  const line = l => (typeof l === 'string' ? { text: l } : l);
+
+  function schedOf(c, id) {                                                          // CULTURE hours [[from, to, place]] -> [[hour, spot]]; gaps become "inside the hotel" (or a poof for the rare ones)
+    const rs = c.hours.slice().sort((a, b) => a[0] - b[0]), out = []; let hasZero = false;
+    const spotOf = p => { const s = SPOT[id]; return (s && s[p]) || (s && s.any) || (p === 'any' ? 'sidewalkS' : p === 'street' ? 'tourist' : 'hf1'); };
+    for (let i = 0; i < rs.length; i++) {
+      const [from, to, place] = rs[i], sp = spotOf(place); if (from === 0) hasZero = true;
+      out.push([from, sp]);
+      const next = rs[i + 1]; if (to < 24 && !(next && next[0] === to)) { const off = c.rare ? 'poof_' + sp : 'hotel'; if (c.rare && !PL[off]) PL[off] = door(PL[sp].x, PL[sp].z); out.push([to, off]); }
+    }
+    if (!hasZero) { const off = c.rare ? 'poof_' + out[out.length - 1][1].replace(/^poof_/, '') : 'hotel'; if (c.rare && !PL[off]) PL[off] = door(PL[out[0][1]].x, PL[out[0][1]].z); out.unshift([0, off]); }
+    return out.sort((a, b) => a[0] - b[0]);
+  }
+  const ROSTER = [];
+  const addMember = (c, cameo, idOverride, mate) => {
+    const id = idOverride || c.id, sv = SERVICE[c.id], x = CULTURE.residents && sv ? CULTURE.residents[sv.extra] || [] : [];
+    const pool = c.lines.map(line).concat(x.map(line)), look = LOOK[c.id] || LOOK.twins;
+    const r = { id, name: c.name, role: sv ? sv.role : c.role, cameo, svc: sv ? sv.svc : null, pool, rare: !!c.rare, quoted: !!c.quoted, card: c.card || '',
+      traits: traitsOf(look), k: look[7] || 1, speed: sv ? sv.speed : (SPEED[c.id] || 0.9), mate, pk: {} };
+    r.sched = sv ? sv.sched : schedOf(c, id);
+    ROSTER.push(r);
+  };
+  for (const c of CULTURE.cast) { if (c.id === 'twins') { addMember(c, false, 'twins1'); addMember(c, false, 'twins2'); } else addMember(c, false); }
+  for (const c of CULTURE.cameos) addMember(c, true);
+
+  // ---------- walkable grid and paths between places (built on the first frame, so props.js can add its blockers first and call NPC.invalidate())
   const gi = v => Math.max(0, Math.min(NG - 1, Math.floor((v + GH) / CELL_N))), gw = c => (c + 0.5) * CELL_N - GH;
   const G = new Uint8Array(NG * NG);
   const blockedAt = (x, z, r = 0.28) => { if (Math.abs(x) > GH || Math.abs(z) > GH) return true; for (const b of WORLD_BLOCKERS) if (Math.abs(x - b.x) < b.hw + r && Math.abs(z - b.z) < b.hd + r) return true; return false; };
-  for (let j = 0; j < NG; j++) for (let i = 0; i < NG; i++) G[j * NG + i] = blockedAt(gw(i), gw(j)) ? 1 : 0;
   function freeNear(x, z) {
     const ci = gi(x), cj = gi(z); if (!G[cj * NG + ci]) return [x, z];
     for (let r = 1; r < 12; r++) for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) { if (Math.max(Math.abs(di), Math.abs(dj)) !== r) continue; const i = ci + di, j = cj + dj; if (i >= 0 && j >= 0 && i < NG && j < NG && !G[j * NG + i]) return [gw(i), gw(j)]; }
@@ -90,9 +139,9 @@ const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, overri
     const cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
     return { pts, cum, len: cum[cum.length - 1] };
   }
-  const ROUTES = {};
+  let ROUTES = {}, planned = false;
   const routeBetween = (a, b) => ROUTES[a + '>' + b] || (ROUTES[a + '>' + b] = route(PL[a].x, PL[a].z, PL[b].x, PL[b].z));
-  for (const k in PL) { const p = PL[k], [x, z] = freeNear(p.x, p.z); if (Math.hypot(x - p.x, z - p.z) > 0.05) { if (p.act !== 'in') console.warn('npc place moved', k, p.x, p.z, '->', x, z); p.x = x; p.z = z; } }
+  const PL0 = {}; for (const k in PL) PL0[k] = { x: PL[k].x, z: PL[k].z };
 
   // ---------- the day of a resident: segments built once; 'go' = walking a route, 'stay' = at a place
   function plan(r) {
@@ -110,54 +159,67 @@ const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, overri
     };
     const first = run(-DAY_S); r.segs = run(first.arr - DAY_S).segs;                  // the second pass knows when the last place of the previous day was reached
   }
+  function planAll() {                                                              // grid from the blockers as they are now, spots nudged to free ground, every day planned
+    for (let j = 0; j < NG; j++) for (let i = 0; i < NG; i++) G[j * NG + i] = blockedAt(gw(i), gw(j)) ? 1 : 0;
+    ROUTES = {};
+    for (const k in PL) { const p = PL[k], o = PL0[k], [x, z] = freeNear(o.x, o.z); if (Math.hypot(x - o.x, z - o.z) > 0.05 && p.act !== 'in') console.warn('npc place moved', k, o.x, o.z, '->', x, z); if (p.act !== 'in') { p.x = x; p.z = z; } else { p.x = o.x; p.z = o.z; } }
+    for (const r of ROSTER) plan(r);
+    planned = true;
+  }
 
   // ---------- where is a resident at time t (seconds of the day)? -> {x, z, ry, moving, inside, place}
   const tri = p => { const q = ((p % 2) + 2) % 2; return q < 1 ? q : 2 - q; };
+  const atPlace = (p, t, since, speed) => {
+    if (p.act === 'in') return { x: p.x, z: p.z, ry: p.ry, moving: false, inside: true, place: p };
+    if (p.act === 'stroll') {
+      const ph = (t - since) * speed / p.len, f = tri(ph), dir = (((ph % 2) + 2) % 2) < 1 ? 1 : -1, ang = Math.atan2(p.bx - p.x, p.bz - p.z);
+      return { x: p.x + (p.bx - p.x) * f, z: p.z + (p.bz - p.z) * f, ry: dir > 0 ? ang : ang + Math.PI, moving: true, inside: false, place: p };
+    }
+    return { x: p.x, z: p.z, ry: p.ry, moving: false, inside: false, place: p };
+  };
   function where(r, t) {
+    const pin = NPC.pins[r.id]; if (pin && PL[pin]) return atPlace(PL[pin], t, 0, r.speed);      // an event keeps this resident somewhere (culture.js)
     const s = r.segs.find(g => t >= g.t0 && t < g.t1) || r.segs[r.segs.length - 1];
     if (s.kind === 'go') {
       const d = Math.min(s.rt.len, (t - s.t0) * r.speed), c = s.rt.cum; let i = 1; while (i < c.length - 1 && c[i] < d) i++;
       const a = s.rt.pts[i - 1], b = s.rt.pts[i], u = (d - c[i - 1]) / Math.max(1e-6, c[i] - c[i - 1]);
       return { x: a[0] + (b[0] - a[0]) * u, z: a[1] + (b[1] - a[1]) * u, ry: Math.atan2(b[0] - a[0], b[1] - a[1]), moving: true, inside: false, place: PL[s.to] };
     }
-    const p = PL[s.place];
-    if (p.act === 'in') return { x: p.x, z: p.z, ry: p.ry, moving: false, inside: true, place: p };
-    if (p.act === 'stroll') {
-      const ph = (t - s.since) * r.speed / p.len, f = tri(ph), dir = (((ph % 2) + 2) % 2) < 1 ? 1 : -1, ang = Math.atan2(p.bx - p.x, p.bz - p.z);
-      return { x: p.x + (p.bx - p.x) * f, z: p.z + (p.bz - p.z) * f, ry: dir > 0 ? ang : ang + Math.PI, moving: true, inside: false, place: p };
-    }
-    return { x: p.x, z: p.z, ry: p.ry, moving: false, inside: false, place: p };
+    return atPlace(PL[s.place], t, s.since, r.speed);
   }
 
   // ---------- the bodies
-  const PERIODS = [[5, 'morning'], [11, 'day'], [17, 'evening'], [22, 'night']];
-  const GENERIC = { morning: ['Good morning!', 'Early bird, huh?', 'Another fresh day in Chog Town.'], day: ['Lovely day.', 'Have you seen the Gallery yet?', 'Busy day in town.'], evening: ['The lights are coming on.', 'Evenings are the best here.', 'Going to NOVA later?'], night: ['Shhh, the town is sleeping.', 'I love it when it is quiet.', 'Look at all those neon lights.'] };
-  const periodOf = h => { let p = 'night'; for (const [a, n] of PERIODS) if (h >= a) p = n; return p; };
   const hash = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0); };
   NPC.now = () => NPC.override !== null ? NPC.override : (DAY.mode === 'real' ? DAY.hour * 3600 : (DAY.fixedHour * 3600 + (performance.now() - NPC.t0) / 1000));
-  NPC.lineFor = (r, t, k = 0) => {
-    const h = (t / 3600) % 24, pool = []; const w = r.w; if (w && w.place && w.place.say) pool.push(...w.place.say); if (r.lines) pool.push(...r.lines); pool.push(...GENERIC[periodOf(h)]);
-    return pool[(hash(r.id + Math.floor(t / 30)) + k) % pool.length];
-  };
-  for (const r of ROSTER) {
-    plan(r); r.base = r.look.scale || CHOG_SCALE;
-    const c = chog(r.look); c.userData.netName = r.name; c.userData.npc = r; c.userData.onClick = () => NPC.openCard(r); c.visible = false; NPC.group.add(c);
-    r.c = c; r.f = 0; r.show = false; r.t0 = (hash(r.id) % 600) / 100; r.w = null; r.ry = 0; r.plate = PLATES.add(c, r.role || 'Resident'); r.sayAt = -1;
-    walkers.push({ c, npc: r }); NPC.list.push(r);
+  const today = () => (typeof CULTURE_RT !== 'undefined' ? CULTURE_RT.date() : new Date());
+  const rtOn = id => typeof CULTURE_RT !== 'undefined' && CULTURE_RT.isActive(id);
+  const dayRoll = id => hash(id + today().toDateString()) / 4294967296;                 // the same number for everyone on one day
+  function gateOf(r) {                                                              // rare residents come on some days only
+    if (r.id === 'satoshishadow') return rtOn('satoshi_shadow') || NPC.forced === 'satoshishadow';
+    return !r.rare || dayRoll(r.id) < 0.5 || NPC.forced === r.id;
   }
+  function build(r) {
+    const c = chogFromTraits(r.traits, { scale: CHOG_SCALE * r.k });
+    c.userData.netName = r.name; c.userData.npc = r; c.userData.onClick = () => NPC.openCard(r); c.visible = false; NPC.group.add(c);
+    r.c = c; r.plate = PLATES.add(c, r.role || 'Resident'); walkers.push({ c, npc: r });
+  }
+  for (const r of ROSTER) { r.base = CHOG_SCALE * r.k; r.f = 0; r.show = false; r.t0 = (hash(r.id) % 600) / 100; r.w = null; r.ry = 0; r.c = null; NPC.list.push(r); }
+  const key = (r, slot) => r.svc ? -1 : (r.rare ? 0 : 1 + (hash(r.id + slot) % 1000) / 1000);      // service first, rare guests, then a shuffle that turns every two hours
 
   // ---------- per frame: place everyone, cap the crowd, animate
   let acc = 1;
   animated.push((tm, dt) => {
     if (!NPC.group.visible) return;                                                 // inside a room or the hotel
+    if (!planned) planAll();
     const t = NPC.now() % DAY_S;
     acc += dt; const sel = acc > 0.4; if (sel) acc = 0;
     for (const r of NPC.list) r.w = where(r, t);
     if (sel || NPC.dirty) {
-      NPC.dirty = false; const room = Math.max(0, Math.min(NPC.list.length, NPC.target - 1 - (typeof NET !== 'undefined' ? NET.remotes.size : 0))); let n = 0;
-      for (const r of NPC.list.slice().sort((a, b) => a.prio - b.prio)) { r.show = !r.w.inside && n < room; if (r.show) n++; }
+      NPC.dirty = false; const room = Math.max(0, Math.min(NPC.list.length, NPC.target - 1 - (typeof NET !== 'undefined' ? NET.remotes.size : 0))); let n = 0, slot = Math.floor(t / 7200);
+      for (const r of NPC.list.slice().sort((a, b) => key(a, slot) - key(b, slot))) { r.show = !r.w.inside && gateOf(r) && n < room; if (r.show) { n++; if (!r.c) build(r); } }
     }
     for (const r of NPC.list) {
+      if (!r.c) continue;
       const c = r.c, w = r.w, u = c.userData;
       r.f += ((r.show ? 1 : 0) - r.f) * Math.min(1, dt * 4); if (r.show && r.f > 0.98) r.f = 1; if (!r.show && r.f < 0.02) r.f = 0;
       c.visible = r.f > 0; if (!c.visible) continue; c.scale.setScalar(Math.max(0.001, r.base * (0.25 + 0.75 * r.f)));
@@ -173,23 +235,33 @@ const NPC = { list: [], group: new THREE.Group(), target: 12, card: null, overri
       }
       const blink = Math.sin(tm * 0.9 + r.t0 * 5) > 0.985 ? 0.12 : 1; u.eyes.forEach(e => e.scale.y = (e.userData.by || 0.095) * blink);
     }
-    // a resident near you now and then says a line above the head (a bubble, not chat: it never enters the log)
-    if (GAME.me && sel) {
-      const slot = Math.floor(t / 20);
-      for (const r of NPC.list) {
-        if (!r.show || r.f < 1 || r.w.moving || r.sayAt === slot) continue;
-        if (Math.hypot(r.w.x - GAME.me.position.x, r.w.z - GAME.me.position.z) > 6) continue;
-        r.sayAt = slot; if (hash(r.id + slot) % 4 === 0) PLATES.say(r.plate, NPC.lineFor(r, t));
-      }
-    }
     if (NPC.card && (!NPC.card.show || NPC.card.f < 0.5)) NPC.closeCard();
   });
 
-  // ---------- the card (ui.js draws it): who, what they do, one line from them, an action for service NPCs
-  NPC.openCard = r => { NPC.card = r; r.cardLine = NPC.lineFor(r, NPC.now() % DAY_S, 7); if (typeof render === 'function') render(); };
+  // ---------- lines: only when you click (no proximity bubbles). One random line of the pool, never the same twice in a row
+  function poolOf(r) {
+    const d = today(), m = d.getMonth() + 1, dd = d.getDate();
+    const ok = l => !l.when || ((!l.when.month || l.when.month === m) && (!l.when.dayFrom || dd >= l.when.dayFrom) && (!l.when.dayTo || dd <= l.when.dayTo));
+    const p = r.pool.filter(ok); if (rtOn('oct10')) p.push({ text: 'October 10. Nineteen billion. We remember.' });
+    return p;
+  }
+  NPC.sayLine = r => {
+    const l = CULTURE.pick(poolOf(r), r.pk) || { text: '...' }; let text = l.text;
+    if (rtOn('gm_hour') && !/^gm\b/i.test(text)) text = 'gm. ' + text;               // the gm hour: every resident starts with gm
+    return { text, src: l.src || '' };
+  };
+  const short = s => (s.length > 110 ? s.slice(0, 107).replace(/\s+\S*$/, '') + '…' : s);
+  NPC.openCard = r => {
+    if (typeof PROPS !== 'undefined' && PROPS.closeCard) PROPS.closeCard();
+    NPC.card = r; const l = NPC.sayLine(r); r.cardLine = l.text; r.cardSrc = l.src; r.cardNote = r.cameo ? CULTURE.cameoNote : (r.card || '');
+    if (r.plate) { PLATES.say(r.plate, short(l.text)); if (r.plate.say) r.plate.say.style.fontSize = rtOn('sunday_scaries') && r.id === 'doombear' ? '1.3em' : ''; }
+    if (typeof render === 'function') render();
+  };
   NPC.closeCard = () => { NPC.card = null; if (typeof render === 'function') render(); };
-  NPC.actionFor = r => (r.id === 'juno' ? { label: 'Show me around', run: () => { NPC.closeCard(); if (typeof TOUR !== 'undefined') TOUR.restart(); } } : null);
+  NPC.actionFor = r => (r.svc === 'guide' ? { label: 'Show me around', run: () => { NPC.closeCard(); if (typeof TOUR !== 'undefined') TOUR.restart(); } } : null);
   NPC.setTime = s => { NPC.override = s === null ? null : s; NPC.dirty = true; };             // testing: NPC.setTime(14 * 3600) pins the schedule clock
-  NPC.where = (id, s) => { const r = NPC.list.find(x => x.id === id); return r ? where(r, s % DAY_S) : null; };
+  NPC.where = (id, s) => { const r = NPC.list.find(x => x.id === id); if (!planned) planAll(); return r ? where(r, s % DAY_S) : null; };
+  NPC.invalidate = () => { planned = false; NPC.dirty = true; };                             // props.js added blockers: plan again on the next frame
+  NPC.byId = id => NPC.list.find(x => x.id === id);
   NPC.PL = PL; NPC.ROSTER = ROSTER; NPC.blockedAt = blockedAt;
 })();

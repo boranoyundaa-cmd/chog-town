@@ -9,10 +9,11 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   const rad = d => d * Math.PI / 180, H = 3.3, wait = ms => new Promise(r => setTimeout(r, ms));
   const LOB = { w: 11, d: 8 };                                                        // lobby floor: x -5.5..5.5, z -4..4
   const FLH = 8, ELEV = 3, SLOT = 6.5, FAC_D = 1.6;                                      // a floor: half size of the hall, the corner the elevator takes, metres of wall per slot, how far a facade reaches into the hall
-  const CAT_COL = { Club: 0xff5ab8, 'Café': 0x3fb8a0, Arcade: 0xffc23a, Gallery: 0xe8e0d0, Lounge: 0x8a5ad8, Spooky: 0xff7a1a, Workshop: 0x4a8ad8 };
+  const CAT_COL = { Winner: 0xffc23a, Club: 0xff5ab8, 'Café': 0x3fb8a0, Arcade: 0xffc23a, Gallery: 0xe8e0d0, Lounge: 0x8a5ad8, Spooky: 0xff7a1a, Workshop: 0x4a8ad8 };
   const colOf = cat => CAT_COL[cat] ?? 0x9a8ab8, hexOf = c => '#' + new THREE.Color(c).getHexString();
   const pal = () => SPACE.THEMES.studio.pal;
   const slotOf = no => no % 100;
+  const isShut = v => v.state === 'closed' || v.state === 'frozen';                      // a frozen venue (its owner holds too little) is a shut door too
   const wallOfSlot = s => (s <= 2 ? 'z' : 'x'), slotU = s => -FLH + ELEV + SLOT * ((s - 1) % 2);        // slots 1, 2 on the north wall; 3, 4 on the west wall; where a slot starts along its wall
   // the runs of wall a venue holds on its own floor: one per wall it touches ({wall, a, b} = first and last slot, u0 and u1 along the wall)
   function runsOf(no, span) {
@@ -27,8 +28,8 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
 
   // ------------------------------------------------------------------ scene state (rebuilt on every floor change)
   let G = null, walk = [], rects = [], spots = [], plates = [], notes = [], anims = [], lights = [], halos = [], npc = null, npcPlate = null, guards = [], saved = null, mapRects = [], mapDoors = [];
-  const venuesOn = f => ((HOTEL.info && HOTEL.info.venues) || []).filter(v => v.floor === f).sort((a, b) => a.no - b.no);
-  const listed = () => ((HOTEL.info && HOTEL.info.venues) || []).filter(v => v.state !== 'closed' || v.id === HOTEL.mineId);                   // the directory lists open rooms (and yours), closed doors only show in the corridor
+  const venuesOn = f => f === 'E' ? (typeof EXH !== 'undefined' && EXH.data ? EXH.pageItems() : []) : ((HOTEL.info && HOTEL.info.venues) || []).filter(v => v.floor === f).sort((a, b) => a.no - b.no);
+  const listed = () => ((HOTEL.info && HOTEL.info.venues) || []).filter(v => !isShut(v) || v.id === HOTEL.mineId);                   // the directory lists open rooms (and yours), closed doors only show in the corridor
 
   function blocked(x, z, r) {
     let ok = false; for (const w of walk) if (x > w[0] && x < w[1] && z > w[2] && z < w[3]) { ok = true; break; }
@@ -111,12 +112,12 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const p = { v, cv, n: -1, tex: null };
     p.draw = () => {
       const c = cv.getContext('2d'); c.clearRect(0, 0, 512, 192);
-      const shut = v.state === 'closed'; c.fillStyle = '#2b1d44'; c.strokeStyle = shut ? '#7a6a98' : hexOf(colOf(v.cat)); c.lineWidth = 8; c.beginPath(); c.roundRect ? c.roundRect(6, 6, 500, 180, 26) : c.rect(6, 6, 500, 180); c.fill(); c.stroke();
-      c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = hexOf(colOf(v.cat)); c.font = '700 64px "Fredoka", sans-serif'; c.fillText('#' + v.no, 30, 62);
+      const shut = isShut(v), frozen = v.state === 'frozen'; c.fillStyle = '#2b1d44'; c.strokeStyle = frozen ? '#7ab8e8' : shut ? '#7a6a98' : hexOf(colOf(v.cat)); c.lineWidth = 8; c.beginPath(); c.roundRect ? c.roundRect(6, 6, 500, 180, 26) : c.rect(6, 6, 500, 180); c.fill(); c.stroke();
+      c.textBaseline = 'middle'; c.textAlign = 'left'; c.fillStyle = hexOf(colOf(v.cat)); c.font = '700 64px "Fredoka", sans-serif'; c.fillText(v.tag || '#' + v.no, 30, 62);
       c.fillStyle = '#ffffff'; let px = 44; c.font = `700 ${px}px "Fredoka", sans-serif`; while (c.measureText(v.name).width > 300 && px > 22) { px -= 3; c.font = `700 ${px}px "Fredoka", sans-serif`; }
       c.textAlign = 'right'; c.fillText(v.name, 482, 62);
-      const n = HOTEL.counts[v.id] || 0; c.textAlign = 'left'; c.font = '700 36px "Fredoka", sans-serif'; c.fillStyle = shut ? '#ff7a8a' : n ? '#7ad89a' : '#a898c8'; c.fillText(shut ? '✕ CLOSED' : n ? '● ' + n + ' inside' : '○ empty', 30, 140);
-      c.textAlign = 'right'; c.fillStyle = '#c8b8e8'; c.font = '600 30px "Fredoka", sans-serif'; c.fillText(v.cat + (v.levels > 1 ? ' · 2 levels' : ''), 482, 140);
+      const n = HOTEL.counts[v.id] || 0, cap = v.cap || 0, full = cap && n >= cap, ct = n + (cap ? ' / ' + cap : ''); c.textAlign = 'left'; c.font = '700 36px "Fredoka", sans-serif'; c.fillStyle = v.ex ? '#ffd84a' : frozen ? '#7ab8e8' : shut ? '#ff7a8a' : full ? '#ffb03a' : n ? '#7ad89a' : '#a898c8'; c.fillText(v.ex ? v.line : frozen ? '❄ FROZEN' : shut ? '✕ CLOSED' : (full ? '● FULL ' : n ? '● ' : '○ ') + ct, 30, 140);
+      c.textAlign = 'right'; c.fillStyle = '#c8b8e8'; c.font = '600 30px "Fredoka", sans-serif'; c.fillText((v.sub || v.cat) + (v.vip ? ' · VIP' : v.levels > 1 ? ' · 2 levels' : ''), 482, 140);
       p.n = n; if (p.tex) p.tex.needsUpdate = true;
     };
     p.draw(); p.tex = new THREE.CanvasTexture(cv); p.tex.anisotropy = 4;
@@ -152,8 +153,9 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   const GUARD_LINES = { holders: 'Chog holders only. Play as your own Chog to come in.', list: 'Guest list only. Is your name on it?' };
   function buildGuard(g, o, v) {
     const d = doorOf(v.no, v.span), side = 1.2, c = chog({ hair: 0x3a3550, outfit: 'jacket', trim: 0xff3aa8, head: 'cap', capC: 0x1a1030, scale: CHOG_SCALE * 1.02 });
-    if (d.wall === 'z') { c.position.set(d.stand.x + side, 0, d.stand.z); c.rotation.y = 0; } else { c.position.set(d.stand.x, 0, d.stand.z + side); c.rotation.y = Math.PI / 2; }
-    c.userData.netName = v.rule === 'holders' ? 'Holders only' : 'Guest list'; c.userData.onClick = () => toast(GUARD_LINES[v.rule] || 'Welcome.'); c.userData.t0 = Math.random() * 6;
+    if ((v.span || 1) >= 4) { c.position.set(-FLH + ELEV + 0.2, 0, -FLH + 1.5); c.rotation.y = 0.5; block(c.position.x, c.position.z, 0.3, 0.3); }              // a whole-floor venue is the floor: its guard stands at the elevator
+    else if (d.wall === 'z') { c.position.set(d.stand.x + side, 0, d.stand.z); c.rotation.y = 0; } else { c.position.set(d.stand.x, 0, d.stand.z + side); c.rotation.y = Math.PI / 2; }
+    c.userData.netName = v.rule === 'holders' ? 'Holders only' : 'Guest list'; if ((v.span || 1) >= 4) c.userData.netName += ' · Floor ' + v.floor; c.userData.onClick = () => toast(GUARD_LINES[v.rule] || 'Welcome.'); c.userData.t0 = Math.random() * 6;
     g.add(c); guards.push({ c, v, plate: PLATES.add(c, 'Guard') });
   }
   HOTEL.guardSays = reason => {                                                          // a refusal at a door: show it as the guard's own line
@@ -194,8 +196,9 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     shell(g, o);
     const m = 0.3; walk = [[-FLH + m, FLH - m, -FLH + m, FLH - m]]; mapRects = [[-FLH, FLH, -FLH, FLH]]; mapDoors = [];
     const trim = tmat(pal().trim);
-    elevator(g, o, 'z', -FLH + ELEV / 2); onWall(g, o, 'z', -FLH + ELEV / 2, 3.07, sign('FLOOR ' + f, 1.2, 0.24, '#ffe9a8', null, '#ffb03a'), 0.12);
-    onWall(g, o, 'x', -FLH + ELEV / 2, 1.7, BOX(1.5, 1.3, 0.1, trim), 0.05); onWall(g, o, 'x', -FLH + ELEV / 2, 1.7, new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.1), new THREE.MeshBasicMaterial({ color: SPACE.VIEWS[SPACE.viewKey(null)].window })), 0.11);
+    elevator(g, o, 'z', -FLH + ELEV / 2); onWall(g, o, 'z', -FLH + ELEV / 2, 3.07, f === 'E' ? sign('EXHIBITION', 2.0, 0.24, '#ffe9a8', null, '#ffb03a') : sign('FLOOR ' + f, 1.2, 0.24, '#ffe9a8', null, '#ffb03a'), 0.12);
+    if (f === 'E') notePlate(g, o, 'x', -FLH + ELEV / 2, 1.9, ['THIS WEEK', (typeof EXH !== 'undefined' && EXH.theme()) || '…'], 0xffc23a);         // the weekly theme, on the wall beside the elevator
+    else { onWall(g, o, 'x', -FLH + ELEV / 2, 1.7, BOX(1.5, 1.3, 0.1, trim), 0.05); onWall(g, o, 'x', -FLH + ELEV / 2, 1.7, new THREE.Mesh(new THREE.PlaneGeometry(1.3, 1.1), new THREE.MeshBasicMaterial({ color: SPACE.VIEWS[SPACE.viewKey(null)].window })), 0.11); }
     spots = [{ x: -FLH + ELEV / 2, z: -FLH + 1.7, r: 1.5, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-FLH + ELEV / 2, 2.9, -FLH + 0.5] }];
     // the hall: a rug and a sitting corner in the middle, plants at the open corners, a pendant lamp over each part of the floor
     const rug = new THREE.Mesh(new THREE.PlaneGeometry(7, 4.4), new THREE.MeshBasicMaterial({ color: 0x8a4a78 })); rug.rotation.x = -Math.PI / 2; rug.position.set(1.9, 0.012, 2.6); g.add(rug);
@@ -206,22 +209,22 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     // the rooms: per venue its door run, the other wall of a whole-floor venue, and (one floor up) the upper level of the venues below
     const taken = new Set(), list = venuesOn(f), below = venuesOn(f - 1).filter(v => (v.levels || 1) > 1);
     for (const v of list) {
-      const runs = runsOf(v.no, v.span || 1), d = doorOf(v.no, v.span || 1), own = HOTEL.mineId === v.id, shut = v.state === 'closed', col = shut ? 0x5a4a78 : colOf(v.cat);
+      const runs = runsOf(v.no, v.span || 1), d = doorOf(v.no, v.span || 1), own = HOTEL.mineId === v.id, shut = isShut(v), col = v.state === 'frozen' ? 0x6a8ab0 : shut ? 0x5a4a78 : colOf(v.cat);
       const fac = (HOTEL.facadeBy[f] || []).find(x => x.id === v.id);
       for (let s = v.no % 100; s < (v.no % 100) + (v.span || 1); s++) taken.add(s);
       if (!fac) shopfront(g, o, d.wall, d.u, d.w, col, shut);
       door(g, o, d.wall, d.u, col); plateFor(g, o, d.wall, d.u, v);
       for (const r of runs.slice(1)) reserved(g, o, r.wall, r.u0, r.u1, v, 'PENTHOUSE');
-      spots.push({ x: d.stand.x, z: d.stand.z, r: 1.3, label: shut ? (own ? 'Enter your venue (closed)' : 'Closed') : 'Enter ' + v.name, run: () => (shut && !own ? toast(v.name === 'Opening soon' ? 'This room is not open yet.' : v.name + ' is closed right now.') : HOTEL.enterVenue(v)), at: d.wall === 'z' ? [d.u, 2.45, -FLH + 0.4] : [-FLH + 0.4, 2.45, d.u], v });
-      mapDoors.push({ x: d.wall === 'z' ? d.u : -FLH, z: d.wall === 'z' ? -FLH : d.u, col: shut ? '#7a6a98' : hexOf(colOf(v.cat)) });
+      spots.push({ x: d.stand.x, z: d.stand.z, r: 1.3, label: v.ex ? 'View ' + v.name : shut ? (own ? 'Enter your venue (' + (v.state === 'frozen' ? 'frozen' : 'closed') + ')' : v.state === 'frozen' ? 'Frozen' : 'Closed') : 'Enter ' + v.name + (v.cap && (HOTEL.counts[v.id] || 0) >= v.cap ? ' (full)' : ''), run: () => (shut && !own ? toast(v.state === 'frozen' ? v.name + ' is frozen: its owner no longer holds enough Chogs.' : v.name === 'Opening soon' ? 'This room is not open yet.' : v.name + ' is closed right now.') : HOTEL.enterVenue(v)), at: d.wall === 'z' ? [d.u, 2.45, -FLH + 0.4] : [-FLH + 0.4, 2.45, d.u], v });
+      mapDoors.push({ x: d.wall === 'z' ? d.u : -FLH, z: d.wall === 'z' ? -FLH : d.u, col: v.state === 'frozen' ? '#7ab8e8' : shut ? '#7a6a98' : hexOf(colOf(v.cat)) });
     }
     for (const v of below) for (const r of runsOf(v.no, v.span || 1)) { reserved(g, o, r.wall, r.u0, r.u1, v, 'UPPER LEVEL'); for (let s = r.a; s <= r.b; s++) taken.add(s); }
     for (let s = 1; s <= 4; s++) if (!taken.has(s)) {                                          // a free room: nobody holds it yet
       const w = wallOfSlot(s), u0 = slotU(s), u = u0 + SLOT / 2;
-      notePlate(g, o, w, u, 2.1, ['ROOM #' + (f * 100 + s), 'free for a Chog holder'], 0x6a5a88);
+      notePlate(g, o, w, u, 2.1, f === 'E' ? ['EMPTY SLOT', 'enter your Home'] : ['ROOM #' + (f * 100 + s), 'free for a Chog holder'], 0x6a5a88);
     }
     for (const it of HOTEL.facadeBy[f] || []) buildFacade(g, o, it);
-    for (const v of list) if (v.state === 'open' && v.rule && v.rule !== 'public') buildGuard(g, o, v);
+    for (const v of list) if (v.state === 'open' && v.rule && v.rule !== 'public') buildGuard(g, o, v);                // a whole-floor venue's guard is at the elevator (buildGuard)
     G = g; return { spawn: { x: -FLH + ELEV / 2, z: -FLH + 2.6, ry: 0 } };
   }
 
@@ -238,7 +241,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   HOTEL.fade = fn => fade(fn);
   async function fade(fn) { const f = HOTEL.fadeEl; f.classList.add('on'); await wait(360); try { return await fn(); } finally { await wait(80); f.classList.remove('on'); } }
   async function loadInfo() { if (HOTEL.info && Date.now() - (HOTEL.infoAt || 0) < 20000) return true; NET.send({ t: 'hotelinfo' }); const r = await NET.waitFor(['hotel'], 6000); if (r) HOTEL.onInfo(r); return !!HOTEL.info; }
-  HOTEL.onInfo = m => { HOTEL.info = { floors: m.floors, venues: m.venues || [] }; HOTEL.infoAt = Date.now(); HOTEL.counts = m.counts || {}; if (HOTEL.panel) HOTEL.refreshUI(); };
+  HOTEL.onInfo = m => { HOTEL.info = { floors: m.floors, venues: m.venues || [] }; try { localStorage.setItem('chog_hotel_floors', String(m.floors || 0)); } catch (e) { /* the town tower keeps its old height */ } HOTEL.infoAt = Date.now(); HOTEL.counts = m.counts || {}; if (HOTEL.panel) HOTEL.refreshUI(); };
   HOTEL.setCounts = c => { HOTEL.counts = c || {}; for (const p of plates) if (p.n !== (HOTEL.counts[p.v.id] || 0)) p.draw(); if (HOTEL.panel === 'dir' || HOTEL.panel === 'lift') HOTEL.refreshList(); };
 
   // show a floor (0 = lobby). The server move comes first: if it says no, nothing on screen changes.
@@ -246,6 +249,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const me = GAME.me, a = spawn || (floor === 0 ? { x: 3.6, z: -2.0, ry: 0 } : { x: -FLH + ELEV / 2, z: -FLH + 2.6, ry: 0 });
     const r = await NET.enter({ space: 'hotel', floor, x: a.x, z: a.z, ry: a.ry || 0 }); if (!r || r.t !== 'entered') return false;
     if (r.counts) HOTEL.counts = r.counts;
+    if (floor === 'E' && typeof EXH !== 'undefined') await EXH.load();
     if (floor > 0) { NET.send({ t: 'hotelfloor', floor }); for (let i = 0; i < 3; i++) { const fr = await NET.waitFor(['facades'], 3000); if (!fr || fr.floor === floor) break; } }
     if (!saved) { const sc = sun.shadow.camera; saved = { zoom: GAME.zoomT, shadow: { l: sc.left, r: sc.right, t: sc.top, b: sc.bottom, f: sc.far } }; ROOM.showTown(false); DAY.pause(); }
     clearScene(); const out = floor === 0 ? buildLobby() : buildFloor(floor); world.add(G);
@@ -294,7 +298,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   HOTEL.goTo = v => HOTEL.goFloor(v.floor, v);
   HOTEL.enterVenue = async function (v) {
     if (HOTEL.busy || ROOM.busy || !HOTEL.active) return; HOTEL.busy = true;
-    HOTEL.lastDoor = v.id; try { await fade(async () => { await ROOM.enterVenue(v); }); } finally { HOTEL.busy = false; }
+    HOTEL.lastDoor = v.id; try { await fade(async () => { if (v.ex) await EXH.enter(v); else await ROOM.enterVenue(v); }); } finally { HOTEL.busy = false; }
   };
   HOTEL.returnFromVenue = async function (v) {
     if (HOTEL.busy) return; HOTEL.busy = true;
@@ -326,8 +330,8 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     } else prompt.style.display = 'none';
   });
   HOTEL.title = () => 'Chog Hotel';
-  HOTEL.where = () => (HOTEL.floor === 0 ? 'Lobby' : 'Floor ' + HOTEL.floor);
-  HOTEL.hint = () => (HOTEL.floor === 0 ? 'Click to walk · E at the reception for the directory, at the elevator for the floors' : 'Click to walk · E at a door to go in · E at the elevator to change floor');
+  HOTEL.where = () => (HOTEL.floor === 0 ? 'Lobby' : HOTEL.floor === 'E' ? 'Exhibition' : 'Floor ' + HOTEL.floor);
+  HOTEL.hint = () => (HOTEL.floor === 0 ? 'Click to walk · E at the reception for the directory, at the elevator for the floors' : HOTEL.floor === 'E' ? 'Click to walk · E at a door to view a Home, vote inside · E at the elevator to change floor' : 'Click to walk · E at a door to go in · E at the elevator to change floor');
 
   // ------------------------------------------------------------------ the HUD: top bar and the two panels (directory, elevator)
   const btn = (cls, txt, fn, title) => { const b = el('button', 'btn hit ' + cls, ''); b.textContent = txt; b.onclick = fn; if (title) b.title = title; return b; };
@@ -339,6 +343,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const bar = el('div', 'roombar hit'), nm = el('div', 'rn'); const t = el('b'); t.textContent = HOTEL.title(); nm.appendChild(t); const s = el('small'); s.textContent = HOTEL.where(); nm.appendChild(s); bar.appendChild(nm);
     bar.appendChild(btn(HOTEL.panel === 'dir' ? '' : 'ghost', 'Directory', () => (HOTEL.panel === 'dir' ? HOTEL.closePanel() : HOTEL.openPanel('dir')), 'Find a room: search, categories, go to its door'));
     bar.appendChild(btn(HOTEL.panel === 'lift' ? '' : 'ghost', 'Elevator', () => (HOTEL.panel === 'lift' ? HOTEL.closePanel() : HOTEL.openPanel('lift'))));
+    if (HOTEL.floor === 'E' && typeof EXH !== 'undefined') { s.textContent = EXH.summary(); EXH.bar(bar, btn, 'hall'); }
     bar.appendChild(btn('ghost', 'Street', () => HOTEL.leave(), 'Leave the hotel')); u.appendChild(bar);
     if (HOTEL.panel) u.appendChild(HOTEL.panel === 'dir' ? dirPanel() : liftPanel());
   };
@@ -346,7 +351,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     const row = el('div', 'hv'), no = el('div', 'no'), tx = el('div', 'tx'), n = HOTEL.counts[v.id] || 0, here = HOTEL.active && v.floor === HOTEL.floor;
     no.innerHTML = '#' + v.no + '<small>Floor ' + v.floor + '</small>'; row.appendChild(no);
     tx.innerHTML = '<b></b><span></span><i></i>'; tx.querySelector('b').textContent = v.name; tx.querySelector('span').textContent = v.desc;
-    const tag = tx.querySelector('i'); tag.textContent = v.cat + (v.rule === 'holders' ? ' · Holders only' : v.rule === 'list' ? ' · Guest list' : '') + (n ? ' · ' + n + ' inside' : ''); tag.style.setProperty('--cc', hexOf(colOf(v.cat))); row.appendChild(tx);
+    const tag = tx.querySelector('i'); tag.textContent = v.cat + (v.rule === 'holders' ? ' · Holders only' : v.rule === 'list' ? ' · Guest list' : '') + (v.vip ? ' · VIP lounge' : '') + (v.cap ? ' · ' + n + ' / ' + v.cap : n ? ' · ' + n + ' inside' : '') + (v.cap && n >= v.cap ? ' · FULL' : '') + (v.event ? ' · TONIGHT: ' + v.event : ''); tag.style.setProperty('--cc', hexOf(colOf(v.cat))); row.appendChild(tx);
     row.appendChild(btn('', here ? 'Walk to it' : 'Go to room', () => HOTEL.goTo(v), 'Takes you to the door, not inside')); return row;
   }
   function dirPanel() {
@@ -355,7 +360,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Escape') { inp.blur(); HOTEL.closePanel(); } }; inp.oninput = () => { HOTEL.q = inp.value; HOTEL.refreshList(); }; p.appendChild(inp);
     const cats = ['All', ...new Set(listed().map(v => v.cat))], chips = el('div', 'rp-cats');
     for (const c of cats) { const b = el('button', HOTEL.cat === c ? 'on' : ''); b.textContent = c; b.onclick = () => { HOTEL.cat = c; HOTEL.refreshUI(); }; chips.appendChild(b); } p.appendChild(chips);
-    p.appendChild(el('div', 'hp-list')); p.appendChild(el('div', 'rp-note', 'Rooms made by Chog Town and by Chog holders. A closed door is only shown in the hall.')); setTimeout(() => HOTEL.refreshList(), 0); return p;
+    p.appendChild(el('div', 'hp-list')); p.appendChild(el('div', 'rp-note', 'Rooms made by Chog Hotel and by Chog holders. A closed door is only shown in the hall.')); setTimeout(() => HOTEL.refreshList(), 0); return p;
   }
   HOTEL.refreshList = function () {
     const list = HOTEL.ui && HOTEL.ui.querySelector('.hp-list'); if (!list) return; list.innerHTML = '';
@@ -365,9 +370,10 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   function liftPanel() {
     const p = el('div', 'rp hp lift card hit'), h = el('div', 'rp-head'), t = el('b'); t.textContent = 'Elevator'; h.appendChild(t); p.appendChild(h);
     const body = el('div', 'hp-list'), n = (HOTEL.info && HOTEL.info.floors) || 0;
+    const ex = el('button', 'hf' + (HOTEL.floor === 'E' ? ' here' : '')); ex.disabled = HOTEL.floor === 'E'; ex.innerHTML = '<b>E</b><span></span>'; ex.querySelector('span').textContent = 'Exhibition · the weekly Home contest'; ex.onclick = () => HOTEL.goFloor('E'); body.appendChild(ex);
     for (let f = n; f >= 0; f--) {
-      const vs = venuesOn(f).filter(v => v.state !== 'closed'), inside = vs.reduce((s, v) => s + (HOTEL.counts[v.id] || 0), 0), b = el('button', 'hf' + (f === HOTEL.floor ? ' here' : '')); b.disabled = f === HOTEL.floor;
-      b.innerHTML = '<b>' + (f === 0 ? 'G' : f) + '</b><span></span>'; const up = f > 0 && !vs.length && venuesOn(f - 1).find(v => (v.levels || 1) > 1 && v.state !== 'closed'); b.querySelector('span').textContent = f === 0 ? 'Lobby · reception · street' : up ? 'Floor ' + f + ' · upper level of #' + up.no : 'Floor ' + f + ' · ' + vs.length + ' room' + (vs.length === 1 ? '' : 's') + (inside ? ' · ' + inside + ' inside' : '');
+      const vs = venuesOn(f).filter(v => !isShut(v)), inside = vs.reduce((s, v) => s + (HOTEL.counts[v.id] || 0), 0), b = el('button', 'hf' + (f === HOTEL.floor ? ' here' : '')); b.disabled = f === HOTEL.floor;
+      b.innerHTML = '<b>' + (f === 0 ? 'G' : f) + '</b><span></span>'; const up = f > 0 && !vs.length && venuesOn(f - 1).find(v => (v.levels || 1) > 1 && !isShut(v)); b.querySelector('span').textContent = f === 0 ? 'Lobby · reception · street' : up ? 'Floor ' + f + ' · upper level of #' + up.no : 'Floor ' + f + ' · ' + vs.length + ' room' + (vs.length === 1 ? '' : 's') + (inside ? ' · ' + inside + ' inside' : '');
       b.onclick = () => HOTEL.goFloor(f); body.appendChild(b);
     }
     p.appendChild(body); return p;

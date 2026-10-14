@@ -185,7 +185,9 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
   }
 
   // ---------- the district
-  building({ name: 'Chog Hotel', x: -4.8, z: -4.8, w: 3.6, d: 3.4, floors: 5, fh: 1.45, body: F[0], balcony: true, pitch: 1.2, roof: { tank: true, antenna: true, garden: true },
+  // the tower is as tall as the hotel has floors (the server's count, remembered by hotel.js from the last visit; the penthouses sit on the top ones): 5 until it is known
+  const HOTEL_FLOORS = (() => { try { const n = +localStorage.getItem('chog_hotel_floors'); return n >= 1 ? Math.max(3, Math.min(12, Math.round(n))) : 5; } catch (e) { return 5; } })();
+  building({ name: 'Chog Hotel', x: -4.8, z: -4.8, w: 3.6, d: 3.4, floors: HOTEL_FLOORS, fh: 1.45, body: F[0], balcony: true, pitch: 1.2, roof: { tank: true, antenna: true, garden: true },
     shop: { h: 2.1, door: 0.0, doorColor: 0x4a8a78, in1: '#fff0c8', in2: '#f0b878', sign: { text: 'CHOG HOTEL', w: 2.6, h: 0.42, fg: '#3a2f4a', bg: '#fff6e0', px: 54, font: '"Fredoka", sans-serif', y: 2.5 } } });
   building({ name: 'NOVA Club', x: 4.75, z: -4.7, w: 3.8, d: 3.4, floors: 2, fh: 1.6, body: F[1], roof: { antenna: true },
     shop: { h: 2.2, door: -0.9, doorColor: 0x1a1030, in1: '#ff9ad8', in2: '#6a3aa0', sign: { text: 'NOVA', w: 2.0, h: 0.62, fg: '#ff5ab8', glow: '#ff2a98', px: 78, y: 3.0, glowColor: 0xff3aa8 } },
@@ -206,7 +208,7 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
   for (const [x, z] of [[-2.5, HALF - 0.8], [2.5, HALF - 0.8], [-HALF + 0.8, 2.5], [HALF - 0.8, 2.5], [HALF - 0.8, -2.5], [-HALF + 0.8, -2.5], [-HALF + 0.8, -7.4], [-6.9, -HALF + 0.8]]) tree(x, z, 0.95);
   tree(-2.1, 4.6, 0.9); tree(2.1, 4.6, 0.9); tree(-2.1, -4.4, 0.9); tree(2.1, -3.4, 0.9);
   bench(-2.1, 3.1, Math.PI / 2); bench(2.15, 5.9, -Math.PI / 2); bench(3.4, 2.15, Math.PI); bench(-3.6, -2.15, 0);   // the seat faces the road (local +z), the back leans on the shops
-  bin(5.4, 2.0); bin(-2.3, -2.3, 0x5a6ad0); bin(2.9, -2.2, 0x4a8a78);
+  bin(5.4, 2.0); bin(-2.3, -2.3, 0x5a6ad0); bin(1.3, -2.4, 0x4a8a78);
   busStop(-4.0, 2.4, Math.PI); scooters(5.8, 1.9, 0); scooters(-6.4, -1.9, Math.PI);
   car(-5.0, 0.95, 0, 0xff7a6a); car(4.2, -0.95, Math.PI, 0x5ad6c0); car(0.95, 5.6, Math.PI / 2, 0xffd84a);
   planter(5.0, 2.45); planter(-6.0, -2.4, 1.6);
@@ -214,7 +216,7 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
   {                                                                                       // the town's bulletin pylon, glowing at night
     const g = new THREE.Group(); g.position.set(5.3, 0, -2.25); { const pb = cbox(1.3, 0.24, 1.3, P.curb, 1); pb.position.y = 0.12; g.add(pb); }
     g.add(CYL(0.4, 0.44, 0.5, tmat(P.trim), 0, 0.38, 0, 14)); g.add(CYL(0.32, 0.32, 2.4, tmat(0xfdfaf2, { em: 0.2 }), 0, 1.65, 0, 14));
-    const scr = sign('CHOG\nTOWN', 0.8, 1.3, { fg: '#ffffff', bg: '#7a3ac8', px: 84, font: '"Bungee", sans-serif', glow: '#ff6ad8' }); scr.position.set(0, 2.0, 0.33); g.add(scr);
+    const scr = sign('CHOG\nHOTEL', 0.8, 1.3, { fg: '#ffffff', bg: '#7a3ac8', px: 72, font: '"Bungee", sans-serif', glow: '#ff6ad8' }); scr.position.set(0, 2.0, 0.33); g.add(scr);
     const scr2 = scr.clone(); scr2.position.set(0.33, 2.0, 0); scr2.rotation.y = Math.PI / 2; g.add(scr2);
     const hs = halo(0xc07aff, 4, 0.4); hs.position.set(0, 2.0, 0.6); g.add(hs); g.add(CYL(0.36, 0.36, 0.14, tmat(P.trim), 0, 2.95, 0, 14)); world.add(g); block(5.3, -2.25, 0.55, 0.55);
   }

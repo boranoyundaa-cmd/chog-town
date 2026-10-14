@@ -21,11 +21,17 @@ const ROOM = {
   // a wall piece hangs ON a back wall, whatever size the room had when it was saved (the server does the same when it stores a room)
   const snapWalls = (doc, W, D) => { for (const it of doc.pieces) { const d = SPACE.PIECES[it.p]; if (!d || !isWall(d)) continue; if (rotated(it)) { it.ry = 90; it.x = -W / 2; it.z = Math.max(-D / 2, Math.min(D / 2, it.z)); } else { delete it.ry; it.z = -D / 2; it.x = Math.max(-W / 2, Math.min(W / 2, it.x)); } } return doc; };
   const defOf = it => SPACE.PIECES[it.p];
-  const CATS = [['all', 'All'], ['seat', 'Seating'], ['table', 'Tables'], ['sleep', 'Beds'], ['storage', 'Storage'], ['light', 'Lights'], ['ceiling', 'Ceiling'], ['deco', 'Decor'], ['floor', 'Rugs'], ['wall', 'Wall'], ['media', 'Media'], ['tech', 'Tech'], ['work', 'Work'], ['kitchen', 'Kitchen']];
+  const CATS = [['all', 'All'], ['seat', 'Seating'], ['table', 'Tables'], ['sleep', 'Beds'], ['storage', 'Storage'], ['light', 'Lights'], ['ceiling', 'Ceiling'], ['deco', 'Decor'], ['floor', 'Rugs'], ['wall', 'Wall'], ['media', 'Media'], ['tech', 'Tech'], ['work', 'Work'], ['kitchen', 'Kitchen'], ['venue', 'Stage & games']];
   const TINTS = ['#7a3ac8', '#ff7aa8', '#6fbdb0', '#ffc23a', '#e8553a', '#3a8ad8', '#4aa84a', '#f4f0e8', '#2b2140'];
   const save$ = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
   const load$ = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
   const draftKey = () => (ROOM.kind === 'venue' ? (ROOM.level === 2 ? 'chog_venue2_' : 'chog_venue_') : ROOM.kind === 'facade' ? 'chog_facade_' : 'chog_room_') + ((ROOM.owner || (WALLET.account || 'guest')) + '').toLowerCase();
+  // the tier that unlocks pieces here: a venue's own tier, else the wallet's license (0 until it is read). A piece with `minTier` needs it; a `venue` piece only goes into a hotel venue.
+  const tierNow = () => ((ROOM.kind === 'venue' || ROOM.kind === 'facade') && ROOM.venue && ROOM.venue.tier) || (typeof VENUE !== 'undefined' && VENUE.info && VENUE.info.tier) || 0;
+  const tierName = t => (typeof TIER_NAME !== 'undefined' && TIER_NAME[t]) || 'tier ' + t;
+  const lockedFor = d => ((d.minTier || 0) > tierNow() ? 'Requires ' + tierName(d.minTier) : d.shop && !(typeof SHOP !== 'undefined' && SHOP.owns(d.shop)) ? 'Buy in the Shop' : '');      // shop pieces (kit 'shop') need the soulbound item; the server checks it again on save
+  const usable = d => !d.venue || ROOM.kind === 'venue';
+  ROOM.lockedFor = lockedFor;
   const limitNow = () => ((ROOM.kind === 'venue' || ROOM.kind === 'facade') && ROOM.venue && ROOM.venue.limit) || LIMIT;                        // pieces: the free room, or the venue's tier budget (the server enforces the same number)
 
   // ------------------------------------------------------------------ the town door
@@ -99,7 +105,7 @@ const ROOM = {
         if (!doc) doc = SPACE.starterRoom();
       }
       if (!doc) doc = SPACE.starterRoom();                                                       // an upper level nobody has decorated yet
-      ROOM.setup(doc, { kind: 'venue', owner: r.owner || null, ownerName: null, mine: !!r.mine, savedAt: r.doc ? Date.now() : null, draft, venue: ven, level, spawn }); return true;
+      ROOM.setup(doc, { kind: 'venue', owner: r.owner || null, ownerName: null, mine: !!r.mine, savedAt: r.doc ? Date.now() : null, draft, venue: ven, level, spawn }); if (typeof VENUE !== 'undefined' && VENUE.onEnterVenue) VENUE.onEnterVenue(ven); return true;
     } finally { ROOM.busy = false; ROOM.refreshUI(); }
   };
   // the stairs of a two-level venue: the other level is a room of its own (the server keeps presence and chat per level)
@@ -108,7 +114,7 @@ const ROOM = {
     const v = ROOM.venue, to = ROOM.level === 1 ? 2 : 1; setEdit(false);
     if (typeof HOTEL !== 'undefined' && HOTEL.fade) await HOTEL.fade(() => ROOM.enterVenue(v, to)); else await ROOM.enterVenue(v, to);
   };
-  ROOM.exitVenueScene = function () { setEdit(false); ROOM.venue = null; leaveScene(true); ROOM.refreshUI(); if (typeof render === 'function') render(); };
+  ROOM.exitVenueScene = function () { setEdit(false); ROOM.venue = null; if (typeof VENUE !== 'undefined' && VENUE.onLeaveVenue) VENUE.onLeaveVenue(); leaveScene(true); ROOM.refreshUI(); if (typeof render === 'function') render(); };
   ROOM.setup = function (doc, info) {
     if (!Array.isArray(doc.pieces)) doc.pieces = [];
     const ven = info.venue; SPACE.size = (ven && ven.size) || HOME; doc.pieces = doc.pieces.filter(it => SPACE.PIECES[it.p]).slice(0, (ven && ven.limit) || LIMIT);
@@ -135,7 +141,7 @@ const ROOM = {
     ROOM.stash = { doc: ROOM.doc, info: { kind: 'venue', owner: ROOM.owner, ownerName: null, mine: true, savedAt: ROOM.savedAt, draft: ROOM.dirty, venue: ROOM.venue, level: ROOM.level, spawn: { x: me.position.x, z: me.position.z, ry: me.rotation.y } } };
     let doc = m.facade ? JSON.parse(JSON.stringify(m.facade)) : facadeStarter(), draft = false; const dr = load$('chog_facade_' + (ROOM.owner || '')); if (dr && dr.doc) { doc = dr.doc; draft = true; }
     SPACE.doorAt = { wall: 'z', u: 0 }; setEdit(false);
-    ROOM.setup(doc, { kind: 'facade', owner: ROOM.owner, ownerName: null, mine: true, savedAt: m.hasFacade ? Date.now() : null, draft, venue: { id: m.id, no: m.no, floor: m.floor, name: m.name, size: m.facadeSize || [7, 1.6], limit: tpl.facade }, spawn: { x: 0, z: 0.4, ry: 0 } });
+    ROOM.setup(doc, { kind: 'facade', owner: ROOM.owner, ownerName: null, mine: true, savedAt: m.hasFacade ? Date.now() : null, draft, venue: { id: m.id, no: m.no, floor: m.floor, name: m.name, tier: m.tier, size: m.facadeSize || [7, 1.6], limit: tpl.facade }, spawn: { x: 0, z: 0.4, ry: 0 } });
     setEdit(true);
   };
   ROOM.endFacade = function () {
@@ -146,7 +152,7 @@ const ROOM = {
   ROOM.visit = (who, inv) => { if (!ROOM.busy) enterRoom({ kind: 'visit', who, inv }); };
   ROOM.resync = function () {                                                              // the server connection came back (it starts every connection in the town): rejoin this room
     if (!ROOM.active) return; const me = GAME.me, pos = { x: me.position.x, z: me.position.z, ry: me.rotation.y };
-    if (ROOM.venue) { NET.enter(Object.assign({ space: 'venue', id: ROOM.venue.id }, pos)); return; }
+    if (ROOM.venue) { NET.enter(Object.assign({ space: ROOM.venue.exhibit ? 'exhibit' : 'venue', id: ROOM.venue.id }, pos)); return; }
     NET.enter(Object.assign({ space: ROOM.kind === 'solo' || !ROOM.owner ? 'solo' : 'room', who: ROOM.owner }, pos));
   };
   ROOM.onDoc = function (doc) { if (!ROOM.active || ROOM.mine) return; ROOM.doc = snapWalls(doc, SPACE.size[0], SPACE.size[1]); SPACE.build(doc); rebuildNav(); toast(ROOM.kind === 'venue' ? 'The owner changed the room.' : 'The owner changed the Home.'); };       // the owner saved while we are visiting
@@ -267,7 +273,7 @@ const ROOM = {
   function rotateHeld() {
     const h = ROOM.held; if (!h || isWall(defOf(h.it))) return; h.it.ry = ((h.it.ry || 0) + 90) % 360; if (ghost) ghost.g.rotation.y = rad(h.it.ry);
   }
-  ROOM.hold = p => { if (!ROOM.editing() || (ROOM.doc.pieces.length >= limitNow())) { if (ROOM.doc && ROOM.doc.pieces.length >= limitNow()) toast('This room is full (' + limitNow() + ' pieces).'); return; } cancelHeld(); const d = SPACE.PIECES[p], t = d.parts.find(x => x.edit && x.t === 'text'); hold(Object.assign({ p, x: 0, z: 0, ry: 0 }, t ? { txt: t.txt } : {})); };
+  ROOM.hold = p => { const lock = SPACE.PIECES[p] && lockedFor(SPACE.PIECES[p]); if (lock) { toast(lock + ' to place the ' + SPACE.PIECES[p].name.toLowerCase() + '.'); return; } if (!ROOM.editing() || (ROOM.doc.pieces.length >= limitNow())) { if (ROOM.doc && ROOM.doc.pieces.length >= limitNow()) toast('This room is full (' + limitNow() + ' pieces).'); return; } cancelHeld(); const d = SPACE.PIECES[p], t = d.parts.find(x => x.edit && x.t === 'text'); hold(Object.assign({ p, x: 0, z: 0, ry: 0 }, t ? { txt: t.txt } : {})); };
   ROOM.rotate = rotateHeld; ROOM.drop = deleteHeld; ROOM.cancel = cancelHeld;
   ROOM.retint = c => { const h = ROOM.held; if (!h) return; if (c) h.it.c = c; else delete h.it.c; setGhost(h.it); ROOM.refreshUI(); if (typeof render === 'function') render(); };
   ROOM.retext = t => { const h = ROOM.held; if (!h) return; h.it.txt = t.slice(0, 24); setGhost(h.it); };
@@ -377,7 +383,7 @@ const ROOM = {
   const btn = (cls, txt, fn, title) => { const b = el('button', 'btn hit ' + cls, ''); b.textContent = txt; b.onclick = fn; if (title) b.title = title; return b; };
   function topBar() {
     const bar = el('div', 'roombar hit'), name = el('div', 'rn'); const t = el('b'); t.textContent = ROOM.title(); name.appendChild(t);
-    const s = el('small'); s.textContent = ROOM.kind === 'facade' ? (ROOM.dirty ? 'Unsaved changes' : 'The strip around your door') : ROOM.kind === 'venue' && ROOM.mine ? 'Your venue · Room ' + ROOM.venue.no + (ROOM.venue.levels > 1 ? ' · ' + (ROOM.level === 2 ? 'Upper level' : 'Entrance level') : '') + ' · ' + (ROOM.dirty ? 'Unsaved changes' : (typeof VENUE !== 'undefined' && VENUE.mine && VENUE.mine.state === 'open' ? 'Open' : 'Closed to visitors')) : ROOM.kind === 'venue' ? 'Room ' + ROOM.venue.no + ' · Floor ' + (ROOM.venue.floor + ROOM.level - 1) + ' · ' + (ROOM.venue.by || 'Chog Hotel') : ROOM.kind === 'visit' ? 'Visiting ' + (ROOM.ownerName || shortAddr(ROOM.owner || '0x0000000000')) : ROOM.mine ? (ROOM.kind === 'solo' ? 'Not saved to the server' : ROOM.dirty ? 'Unsaved changes' : ROOM.savedAt ? 'Saved' : 'New Home') : '';
+    const s = el('small'); s.textContent = ROOM.kind === 'facade' ? (ROOM.dirty ? 'Unsaved changes' : 'The strip around your door') : ROOM.kind === 'venue' && ROOM.mine ? 'Your venue · Room ' + ROOM.venue.no + (ROOM.venue.levels > 1 ? ' · ' + (ROOM.level === 2 ? 'Upper level' : 'Entrance level') : '') + ' · ' + (ROOM.dirty ? 'Unsaved changes' : (typeof VENUE !== 'undefined' && VENUE.mine && VENUE.mine.state === 'open' ? 'Open' : 'Closed to visitors')) : ROOM.kind === 'venue' && ROOM.venue.exhibit ? EXH.subtitle() : ROOM.kind === 'venue' ? 'Room ' + ROOM.venue.no + ' · Floor ' + (ROOM.venue.floor + ROOM.level - 1) + ' · ' + (ROOM.venue.by || 'Chog Hotel') : ROOM.kind === 'visit' ? 'Visiting ' + (ROOM.ownerName || shortAddr(ROOM.owner || '0x0000000000')) : ROOM.mine ? (ROOM.kind === 'solo' ? 'Not saved to the server' : ROOM.dirty ? 'Unsaved changes' : ROOM.savedAt ? 'Saved' : 'New Home') : '';
     name.appendChild(s); bar.appendChild(name);
     if (ROOM.mine) {
       if (ROOM.kind !== 'facade') bar.appendChild(btn(ROOM.mode === 'edit' ? '' : 'ghost', ROOM.mode === 'edit' ? 'Done' : 'Decorate (B)', () => setEdit(ROOM.mode !== 'edit')));
@@ -385,8 +391,9 @@ const ROOM = {
       if (ROOM.kind === 'venue' && ROOM.venue && ROOM.venue.levels > 1) bar.appendChild(btn('ghost', ROOM.level === 2 ? 'Downstairs' : 'Upstairs', () => ROOM.goLevel(), 'The upper level is a room of its own: decorate and save it separately'));
       if (ROOM.kind === 'venue') { bar.appendChild(btn('ghost', 'Facade', () => ROOM.editFacade(), 'Decorate the hall wall around your door')); if (typeof VENUE !== 'undefined') { const open = VENUE.mine && VENUE.mine.state === 'open'; bar.appendChild(btn(open ? 'ghost' : '', open ? 'Close venue' : 'Open venue', () => VENUE.toggleOpen(), open ? 'Visitors can no longer come in' : 'Let visitors in (the room must be saved)')); } }
       else if (ROOM.kind === 'facade') bar.appendChild(btn('', 'Done', () => ROOM.endFacade(), 'Back to your venue'));
-      else { bar.appendChild(btn('ghost', 'Invite link', () => ROOM.invite(), 'Copy a link that lets people in for a week')); bar.appendChild(btn('ghost', 'Reset link', () => ROOM.invite(true), 'Make a new link; the old one stops working')); }
+      else { bar.appendChild(btn('ghost', 'Enter contest', () => EXH.enterContest(), 'Put a copy of your saved Home into the weekly contest on the Exhibition floor')); bar.appendChild(btn('ghost', 'Invite link', () => ROOM.invite(), 'Copy a link that lets people in for a week')); bar.appendChild(btn('ghost', 'Reset link', () => ROOM.invite(true), 'Make a new link; the old one stops working')); }
     }
+    if (ROOM.venue && ROOM.venue.exhibit && typeof EXH !== 'undefined') EXH.bar(bar, btn, 'entry');
     if (ROOM.kind !== 'facade') bar.appendChild(btn('ghost', 'Leave', () => ROOM.leave())); return bar;
   }
 
@@ -426,10 +433,10 @@ const ROOM = {
   function piecesTab() {
     const w = el('div'), chips = el('div', 'rp-cats');
     for (const [id, lb] of CATS) { const c = el('button', ROOM.cat === id ? 'on' : ''); c.textContent = lb; c.onclick = () => { ROOM.cat = id; ROOM.refreshUI(); }; chips.appendChild(c); } w.appendChild(chips);
-    const grid = el('div', 'rp-grid'), kit = ROOM.doc.theme, ids = Object.keys(SPACE.PIECES).filter(id => { const d = SPACE.PIECES[id]; return (d.kit === 'stock' || d.kit === kit) && (ROOM.cat === 'all' || d.cat === ROOM.cat); });
+    const grid = el('div', 'rp-grid'), kit = ROOM.doc.theme, ids = Object.keys(SPACE.PIECES).filter(id => { const d = SPACE.PIECES[id]; return (d.kit === 'stock' || d.kit === 'shop' || d.kit === kit) && usable(d) && (ROOM.cat === 'all' || d.cat === ROOM.cat); });
     for (const id of ids) {
       const d = SPACE.PIECES[id], tile = el('button', 'tile'), im = document.createElement('img'), nm = el('span'); nm.textContent = d.name; im.alt = ''; tile.appendChild(im); tile.appendChild(nm);
-      if (d.kit !== 'stock') tile.classList.add('kit'); tile.onclick = () => ROOM.hold(id); thumb(id, im); grid.appendChild(tile);
+      if (d.kit !== 'stock') tile.classList.add('kit'); const lock = lockedFor(d); if (lock) { tile.classList.add('locked'); tile.title = lock; tile.style.opacity = '0.45'; nm.textContent = d.name + ' · ' + lock; } tile.onclick = () => ROOM.hold(id); thumb(id, im); grid.appendChild(tile);
     }
     w.appendChild(grid); if (!ids.length) w.appendChild(el('div', 'rp-note', 'Nothing in this group for this theme.')); return w;
   }

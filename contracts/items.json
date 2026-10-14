@@ -1,0 +1,221 @@
+{
+  "_note": "priceChog is in whole CHOG tokens (script multiplies by 10^18). Placeholder prices computed at about 0.0016 USD per CHOG on 2026-10-15 (1 USD = ~625 CHOG). minTier: 0 none, 1 Ser, 2 Fren, 3 Whale, 4 Legend; enforced by the game, not on chain. maxPerWallet 0 = unlimited.",
+  "items": [
+    {
+      "id": 1,
+      "kind": "decor",
+      "name": "Degen neon sign",
+      "priceChog": 300,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 2,
+      "kind": "decor",
+      "name": "Bull statue",
+      "priceChog": 600,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 3,
+      "kind": "decor",
+      "name": "Bear rug",
+      "priceChog": 300,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 4,
+      "kind": "decor",
+      "name": "Halloween pumpkin set",
+      "priceChog": 600,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 5,
+      "kind": "decor",
+      "name": "Retro arcade cabinet",
+      "priceChog": 1200,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 6,
+      "kind": "decor",
+      "name": "Cyberpunk lamp pair",
+      "priceChog": 600,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 7,
+      "kind": "decor",
+      "name": "Gold trophy shelf",
+      "priceChog": 1200,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 8,
+      "kind": "decor",
+      "name": "Whale tank aquarium",
+      "priceChog": 1900,
+      "minTier": 3,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 9,
+      "kind": "cosmetic",
+      "name": "Aura: purple glow",
+      "priceChog": 600,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 10,
+      "kind": "cosmetic",
+      "name": "Aura: green candle flare",
+      "priceChog": 1200,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 11,
+      "kind": "cosmetic",
+      "name": "Held item: coffee cup",
+      "priceChog": 300,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 12,
+      "kind": "cosmetic",
+      "name": "Held item: diamond hands",
+      "priceChog": 1200,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 13,
+      "kind": "cosmetic",
+      "name": "Badge: early fren",
+      "priceChog": 300,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 14,
+      "kind": "cosmetic",
+      "name": "Badge: diamond",
+      "priceChog": 600,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 15,
+      "kind": "cosmetic",
+      "name": "Name plate: gold",
+      "priceChog": 600,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 16,
+      "kind": "cosmetic",
+      "name": "Name plate: neon pink",
+      "priceChog": 300,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 17,
+      "kind": "cosmetic",
+      "name": "Laser eyes: red",
+      "priceChog": 1200,
+      "minTier": 0,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 18,
+      "kind": "cosmetic",
+      "name": "Laser eyes: rainbow",
+      "priceChog": 2400,
+      "minTier": 4,
+      "maxPerWallet": 1,
+      "active": true
+    },
+    {
+      "id": 19,
+      "kind": "venue",
+      "name": "Extra light budget +4",
+      "priceChog": 600,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 20,
+      "kind": "venue",
+      "name": "Extra piece budget +20",
+      "priceChog": 900,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 21,
+      "kind": "venue",
+      "name": "Extra piece budget +60",
+      "priceChog": 1800,
+      "minTier": 3,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 22,
+      "kind": "venue",
+      "name": "Event / festival (24h)",
+      "priceChog": 1500,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 23,
+      "kind": "venue",
+      "name": "Security camera",
+      "priceChog": 1200,
+      "minTier": 0,
+      "maxPerWallet": 0,
+      "active": true
+    },
+    {
+      "id": 24,
+      "kind": "venue",
+      "name": "Penthouse mega-event (24h)",
+      "priceChog": 3000,
+      "minTier": 4,
+      "maxPerWallet": 0,
+      "active": true
+    }
+  ]
+}

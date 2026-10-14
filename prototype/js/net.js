@@ -33,6 +33,7 @@ const NET = {
     if (r.plate) r.plate.root = c; else r.plate = PLATES.add(c);
     r.plate.tierColor = traits.Tier && r.token ? hex(chogOptionsFromTraits(traits).tier) : null;
     if (old) dispose(old);
+    if (typeof SHOP !== 'undefined') SHOP.applyRemote(r);                                 // cosmetics in the extra slots (shop.js)
   }
   async function look(r) {                                          // default Chog now, the real traits once they load
     if (!r.root) build(r, DEFAULT_TRAITS);
@@ -45,7 +46,8 @@ const NET = {
     if (!r) { r = { id: p.id, x: p.x, z: p.z, ry: p.ry, tx: p.x, tz: p.z, tr: p.ry, mv: !!p.mv, root: null, plate: null, token: null, name: '' }; NET.remotes.set(p.id, r); }
     const changed = r.token !== (p.token || null) || !r.root; r.token = p.token || null; r.name = p.name;
     if (r.root) r.root.userData.netName = r.name;
-    if (changed) look(r);
+    r.cos = p.cos || null;
+    if (changed) look(r); else if (typeof SHOP !== 'undefined') SHOP.applyRemote(r);
     return r;
   }
   function remove(id) { const r = NET.remotes.get(id); if (!r) return; NET.remotes.delete(id); if (r.plate) PLATES.remove(r.plate); if (r.root) dispose(r.root); if (NET.card === id) NET.closeCard(); refreshChat(); }

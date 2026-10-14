@@ -12,12 +12,16 @@ const TOUR = { ui: null, cur: -1, f: {}, done: false, hidden: false };
   if (QS.has('room')) TOUR.done = true;                                                        // an invite link: the visitor came for a room, not for the tips
 
   const CARDS = [
-    { t: 'Welcome to Chog Town', b: 'Click the ground, or use WASD, to walk around.' },
+    { t: 'Welcome to Chog Hotel', b: 'Click the ground, or use WASD, to walk around.' },
     { t: 'You have a free Home', b: 'Walk to the little house with the HOME sign and press E at its glowing door. It is yours, and it is free.' },
     { t: 'Make it yours', b: 'Press B, or the Decorate button, to start decorating.' },
     { t: 'Place something', b: 'Pick a piece on the right, then click a spot in the room. Click a piece in the room to move it.' },
     { t: 'Keep it', b: () => (WALLET.account ? 'Press Save and sign in your wallet (free). Then send an invite link to a friend.' : 'Connect a wallet to keep your Home on the server and invite friends. Without one it stays on this device.') },
   ];
+  if (typeof CULTURE !== 'undefined' && CULTURE.ui.tour) {                                    // the card texts come from culture_data.js (a short how-to stays at the end where the joke would hide it)
+    const HINT = ['', ' Press E at its glowing door.', ' Press B, or the Decorate button.', ' Click a piece in the room to move it.', null];
+    CULTURE.ui.tour.forEach((x, i) => { const c = CARDS[i]; if (!c) return; c.t = x.title; if (i === 4) { const orig = c.b; c.b = () => x.text + ' ' + orig(); } else c.b = x.text + HINT[i]; });
+  }
 
   // which card fits what the player has done so far; null = nothing to show right now
   function want() {
