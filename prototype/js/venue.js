@@ -1,15 +1,17 @@
-// ===== venue: your own venue in the Chog Hotel (docs/game/world.md) =====
-// A holder activates a venue from the license (the server reads the wallet's Chogs on chain and gives the tier's room). It starts CLOSED: its door in the hotel hall
-// shows "closed" and only the owner can walk in. The owner decorates it with the same editor as the Home (room.js, bigger budget), saves it (wallet signature) and
-// presses "Open venue". This file holds the state the server reports (VENUE.info, VENUE.mine, VENUE.offer = a move the license allows: upgrade / downsize / restore), the card in the Venues window,
-// the venue music (DJ booth, AUDIO.setPlace) and the clicks on the game tables. Tier perks (docs/project/build-plan.md): capacity, stage and DJ booth (Fren), VIP lounge (Whale), tables (all). Loaded after hotel.js.
-const VENUE = { info: null, mine: null, offer: null, archived: false, inside: null, busy: false, tried: false, draft: { name: '', cat: 'Lounge', desc: '' }, err: '' };
+// ===== venue: your own room in the Chog Hotel (docs/game/world.md) =====
+// Every wallet player has one room, free to start with (tier 0, 14 x 10 m): `checkIn()` asks for it (a free wallet signature). A holder asks the receptionist for the bigger room of their Chog tier (`upgrade()`):
+// it grows in place when the neighbouring wall units are free, otherwise it gets a new door. A free room nobody entered for 30 days moves to the basement (`reactivate()` brings it back). The owner can lock the door (`setLock()`).
+// This file holds the state the server reports (VENUE.info = the license, VENUE.mine = the room, VENUE.offer = a move the license allows: upgrade / downsize, VENUE.inv = the stored pieces), the calls the receptionist's
+// dialogs use, the card in the Venues window, the venue music (DJ booth, AUDIO.setPlace) and the clicks on the game tables. A holder's venue starts closed until the owner opens it; entry rules, music and a VIP lounge are
+// venue perks (docs/project/build-plan.md). Every call returns the server's answer ({ ok, ... } or { ok: false, reason }), or null when another call is still running. Loaded after hotel.js.
+const VENUE = { info: null, mine: null, offer: null, inv: null, inside: null, busy: false, tried: false, draft: { name: '', cat: 'Lounge', desc: '' }, err: '' };
 (function () {
   const CATS = ['Club', 'Café', 'Arcade', 'Gallery', 'Lounge', 'Spooky', 'Workshop', 'Other'];
   const RULES = [['public', 'Anyone'], ['holders', 'Chog holders only'], ['list', 'Guest list']];
   const redraw = () => { if (typeof render === 'function') render(); };
+  const hexOf = s => '0x' + [...new TextEncoder().encode(s)].map(b => b.toString(16).padStart(2, '0')).join('');
   VENUE.onMine = m => { VENUE.mine = m || null; if (typeof HOTEL !== 'undefined') HOTEL.mineId = m ? m.id : null; if (typeof ROOM !== 'undefined' && ROOM.refreshUI) ROOM.refreshUI(); redraw(); };
-  VENUE.onInfo = m => { VENUE.info = { tier: m.tier, points: m.points, tokens: m.tokens, templates: m.templates, music: m.music || MUSIC.map(x => x[0]) }; VENUE.offer = m.offer || null; VENUE.archived = !!m.archived; VENUE.onMine(m.mine); };
+  VENUE.onInfo = m => { VENUE.info = { tier: m.tier, points: m.points, tokens: m.tokens, templates: m.templates, music: m.music || MUSIC.map(x => x[0]) }; VENUE.offer = m.offer || null; VENUE.onMine(m.mine); };
   const MUSIC = [['', 'Automatic (by kind)'], ['lobby', 'Lobby lounge'], ['cafe', 'Café jazz'], ['arcade', 'Arcade chiptune'], ['club', 'Club beat'], ['gallery', 'Gallery ambient'], ['home', 'Home chill']];
   const AUTO = { Club: 'club', 'Café': 'cafe', Arcade: 'arcade', Gallery: 'gallery' };
   const setPlace = id => { try { if (window.AUDIO && AUDIO.setPlace) AUDIO.setPlace(id); } catch (e) { /* the sound is optional */ } };
@@ -18,11 +20,13 @@ const VENUE = { info: null, mine: null, offer: null, archived: false, inside: nu
   VENUE.onLeaveVenue = () => { VENUE.inside = null; if (VENUE.closeDj) VENUE.closeDj(); setPlace('lobby'); };
   // messages that only this file cares about (NET calls every waiter for every message)
   if (typeof NET !== 'undefined' && NET.waiters) NET.waiters.add(m => {
-    if (m.t === 'venuemine') { if ('offer' in m) VENUE.offer = m.offer || null; if ('archived' in m) VENUE.archived = !!m.archived; }
+    if (m.t === 'venuemine') { if ('offer' in m) VENUE.offer = m.offer || null; }
+    else if (m.t === 'checkin' || m.t === 'upgrade' || m.t === 'reactivate' || m.t === 'lock') { if (m.mine) { VENUE.onMine(m.mine); if (m.t === 'upgrade' && m.ok) VENUE.offer = null; } }
+    else if (m.t === 'inventory') { VENUE.inv = { items: m.items || [], max: m.max || 400 }; if (typeof ROOM !== 'undefined' && ROOM.refreshUI) ROOM.refreshUI(); }
     else if (m.t === 'venuemusic') { if (VENUE.inside && VENUE.inside.id === m.id) { VENUE.inside.music = m.music; setPlace(VENUE.trackOf(VENUE.inside)); } }
-    else if (m.t === 'kicked') { if (typeof ROOM !== 'undefined' && ROOM.active && ROOM.venue) { toast('You were asked to leave the venue.'); ROOM.leave(); } }
+    else if (m.t === 'kicked') { if (typeof ROOM !== 'undefined' && ROOM.active && ROOM.venue) { toast('You were asked to leave the room.'); ROOM.leave(); } }
   });
-  WALLET.on('account', () => { VENUE.info = null; VENUE.mine = null; VENUE.offer = null; VENUE.archived = false; VENUE.tried = false; if (typeof HOTEL !== 'undefined') HOTEL.mineId = null; });
+  WALLET.on('account', () => { VENUE.info = null; VENUE.mine = null; VENUE.offer = null; VENUE.inv = null; VENUE.tried = false; if (typeof HOTEL !== 'undefined') HOTEL.mineId = null; });
   // ask the server (needs the wallet signed in); quiet when there is nothing to ask
   VENUE.refresh = async function () {
     if (VENUE.busy || !WALLET.account || NET.status !== 'online' || !NET.hotel) return;
@@ -30,19 +34,44 @@ const VENUE = { info: null, mine: null, offer: null, archived: false, inside: nu
     try { if (!await NET.authenticate()) return; NET.send({ t: 'venueinfo' }); await NET.waitFor(['venueinfo', 'roomfail'], 12000); } finally { VENUE.busy = false; redraw(); }
   };
   const call = async (msg, until) => { if (VENUE.busy) return null; VENUE.busy = true; VENUE.err = ''; redraw(); try { if (!await NET.authenticate()) return null; NET.send(msg); return await NET.waitFor(until, 12000); } finally { VENUE.busy = false; redraw(); } };
-  VENUE.make = async function () {
-    const r = await call({ t: 'venuemake', name: VENUE.draft.name, cat: VENUE.draft.cat, desc: VENUE.draft.desc }, ['venuemine', 'roomfail']);
-    if (r && r.t === 'venuemine') { VENUE.onMine(r.mine); toast('Your venue is ready, and closed. Go to its door, decorate it, then open it.'); }
+  const offline = () => (!WALLET.account ? 'Connect your wallet first.' : NET.status !== 'online' || !NET.hotel ? 'The town server is offline right now.' : '');
+  const failed = r => (r && r.t === 'roomfail' ? { ok: false, reason: r.reason } : r || { ok: false, reason: 'The server did not answer.' });
+
+  // ---- the calls the receptionist's dialogs make
+  // check in: the hotel sets the wallet up with a free room (14 x 10 m, 80 pieces) at the first free wall unit. The wallet signs a short message (free, no transaction), like a username claim.
+  // -> { ok: true, already, no, floor, mine } | { ok: false, reason }
+  VENUE.checkIn = async function () {
+    const off = offline(); if (off) { toast(off); return { ok: false, reason: off }; }
+    if (VENUE.busy) return null; VENUE.busy = true; redraw();
+    try {
+      if (!await NET.authenticate()) return { ok: false, reason: 'Signing in with your wallet did not work.' };
+      NET.send({ t: 'checkinprep' }); const pr = failed(await NET.waitFor(['checkinprep', 'roomfail'], 8000)); if (pr.ok === false) return pr;
+      let sig = ''; if (!pr.has) {
+        toast('Sign the message in your wallet to check in (free, no transaction).');
+        try { sig = await WALLET.provider.request({ method: 'personal_sign', params: [hexOf(pr.message), WALLET.account] }); } catch (e) { toast(e && e.code === 4001 ? 'Not checked in: you declined the signature.' : 'Could not sign.'); return { ok: false, reason: 'declined' }; }
+      }
+      NET.send({ t: 'checkin', ts: pr.ts, sig }); const r = failed(await NET.waitFor(['checkin', 'roomfail'], 8000)); if (r.ok) VENUE.onMine(r.mine); return r;
+    } finally { VENUE.busy = false; redraw(); }
   };
+  // upgrade: the room size of the license's tier. -> { ok: true, moved, no, floor, from: {no, floor}, tier, mine } | { ok: false, code, reason }  (code: no-room, tier-low, max, smaller, chain, busy)
+  // moved = false: it grew in place (same door). moved = true: it got a new door (the old place had no space), `from` is the old one.
+  VENUE.upgrade = async function () { const r = failed(await call({ t: 'upgrade' }, ['upgrade', 'roomfail'])); if (r.ok) { VENUE.offer = null; VENUE.onMine(r.mine); } return r; };
+  // reactivate: a room that went to the basement (30 days without a visit) moves back up. -> { ok: true, no, floor, from, mine } | { ok: false, reason }
+  VENUE.reactivate = async function () { const r = failed(await call({ t: 'reactivate' }, ['reactivate', 'roomfail'])); if (r.ok) VENUE.onMine(r.mine); return r; };
+  // lock or unlock the door: while locked only the owner gets in (people inside can stay). -> { ok: true, locked, mine } | { ok: false, reason }
+  VENUE.setLock = async function (locked) { const r = failed(await call({ t: 'roomlock', locked: !!locked }, ['lock', 'roomfail'])); if (r.ok) VENUE.onMine(r.mine); else if (r.reason) toast(r.reason); return r; };
+  // the stored pieces: those that no longer fit a room. -> VENUE.inv = { items: [{ p, c?, txt?, locked? }], max }
+  VENUE.loadInventory = function () { if (NET.status === 'online' && NET.hotel && NET.authed) NET.send({ t: 'invget' }); };
+
   VENUE.set = async function (patch) { const r = await call(Object.assign({ t: 'venueset' }, patch), ['venuemine', 'roomfail']); if (r && r.t === 'venuemine') VENUE.onMine(r.mine); return r; };
-  // the license changed: move into the room of the new tier (bigger, smaller, or out of the archive); the server keeps a copy of the old documents
+  // the license fell: move into the smaller room of the new tier in place (same door); what does not fit goes to the inventory, a copy of the old documents is kept
   VENUE.move = async function () {
     const o = VENUE.offer; if (!o) return;
     const r = await call({ t: 'venuemove' }, ['venuemine', 'roomfail']);
-    if (r && r.t === 'venuemine') { VENUE.onMine(r.mine); VENUE.offer = null; VENUE.archived = false; toast(o.kind === 'upgrade' ? 'Your venue moved into a bigger room. Check the pieces, then open it.' : 'Your venue moved into the room of your tier. Check the pieces, then open it.'); }
+    if (r && r.t === 'venuemine') { VENUE.onMine(r.mine); VENUE.offer = null; toast(o.kind === 'upgrade' ? 'Your room moved into a bigger one. Check the pieces.' : 'Your venue shrank to the room of your tier. What did not fit is in your inventory (Stored tab).'); }
   };
   VENUE.toggleOpen = async function () {
-    if (!VENUE.mine) return;
+    if (!VENUE.mine || !VENUE.mine.tier) return;
     if (typeof ROOM !== 'undefined' && ROOM.active && ROOM.kind === 'venue' && ROOM.dirty) { toast('Save the room first (the wallet signs it), then open the venue.'); return; }
     const open = VENUE.mine.state !== 'open', r = await VENUE.set({ open });
     if (r && r.t === 'venuemine') toast(open ? 'Your venue is open. Visitors can come in.' : 'Your venue is closed. Only you can enter.');
@@ -53,62 +82,69 @@ const VENUE = { info: null, mine: null, offer: null, archived: false, inside: nu
     if (typeof HOTEL !== 'undefined' && HOTEL.active) HOTEL.goTo(v); else HOTEL.gotoVenue(v);
     redraw();
   };
+  const upgradeToast = r => (r.ok ? (r.moved ? 'Your room moved to door #' + r.no + ': the old one had no space to grow. Decor came along.' : 'Your room grew in place. Door #' + r.no + ' stays.') : r.reason || 'That did not work.');
 
-  // ---- the card inside the Venues window (holders only)
+  // ---- the card inside the Venues window
   const field = (label, node) => { const l = el('label', 'vf'); const s = el('span'); s.textContent = label; l.appendChild(s); l.appendChild(node); return l; };
   const input = (key, max, ph) => { const i = document.createElement('input'); i.type = 'text'; i.maxLength = max; i.placeholder = ph || ''; i.value = VENUE.draft[key] || ''; i.oninput = () => { VENUE.draft[key] = i.value; }; i.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') i.blur(); }; return i; };
   const catSel = () => { const s = document.createElement('select'); for (const c of CATS) s.appendChild(new Option(c, c)); s.value = VENUE.draft.cat || 'Lounge'; s.onchange = () => { VENUE.draft.cat = s.value; }; return s; };
   VENUE.section = function () {
-    const box = el('div', 'vsec'), t = VENUE.info && VENUE.info.templates && VENUE.info.templates[VENUE.info.tier];
-    if (!WALLET.account || NET.status !== 'online' || !NET.hotel) { box.appendChild(el('p', 'vnote', !WALLET.account ? 'Connect your wallet to open your venue.' : 'The town server is offline, so venues cannot be managed right now.')); return box; }
-    if (!VENUE.info) { const b = el('button', 'btn', VENUE.busy ? 'Checking your wallet…' : 'Check my venue'); b.disabled = VENUE.busy; b.onclick = () => VENUE.refresh(); box.appendChild(el('p', 'vnote', 'The server reads your Chogs on the chain to confirm your tier.')); box.appendChild(b); return box; }
-    if (!VENUE.info.tier) { box.appendChild(el('p', 'vnote', 'This wallet holds no Chog, so there is no venue to open.')); return box; }
+    const box = el('div', 'vsec');
+    if (!WALLET.account || NET.status !== 'online' || !NET.hotel) { box.appendChild(el('p', 'vnote', !WALLET.account ? 'Connect your wallet to get a room of your own in the Hotel.' : 'The town server is offline, so rooms cannot be managed right now.')); return box; }
+    if (!VENUE.info) { const b = el('button', 'btn', VENUE.busy ? 'Checking your wallet…' : 'Check my room'); b.disabled = VENUE.busy; b.onclick = () => VENUE.refresh(); box.appendChild(el('p', 'vnote', 'The server looks up your room and reads your Chogs on the chain to confirm your tier.')); box.appendChild(b); return box; }
     const m = VENUE.mine, off = VENUE.offer, tn = t => (typeof TIER_SIZE !== 'undefined' && TIER_SIZE[t]) || 'room';
-    if (!m && VENUE.archived) {
-      box.appendChild(el('h3', '', 'Your old venue is kept'));
-      box.appendChild(el('p', 'vnote', 'You held fewer Chogs than it needed for 7 days, so its slot was freed. Its decor is saved.' + (off ? ' You can move it into a ' + tn(off.tier) + ' now.' : '')));
-      if (off) { const b = el('button', 'btn', VENUE.busy ? 'Working…' : 'Move it into a ' + tn(off.tier)); b.disabled = VENUE.busy; b.onclick = () => VENUE.move(); box.appendChild(b); box.appendChild(el('p', 'vnote', 'Pieces that do not fit the room or the tier are dropped; the original is kept.')); }
-    } else if (!m) {
-      box.appendChild(el('h3', '', 'Open your venue'));
-      if (t) box.appendChild(el('p', 'vnote', 'Your license gives a room of ' + t.size[0] + ' × ' + t.size[1] + ' m with ' + t.pieces + ' pieces' + (t.levels > 1 ? ' on each of its 2 levels (joined by stairs)' : '') + ', and ' + (t.span === 1 ? 'a segment of wall' : t.span === 2 ? 'a whole wall' : 'a whole floor') + ' in the hotel hall to decorate as its front (' + t.facade + ' pieces).'));
-      box.appendChild(field('Name', input('name', 32, 'e.g. Skyline Club'))); box.appendChild(field('Kind', catSel())); box.appendChild(field('Description', input('desc', 120, 'One line for the directory')));
-      const b = el('button', 'btn', VENUE.busy ? 'Working…' : 'Activate venue'); b.disabled = VENUE.busy; b.onclick = () => VENUE.make(); box.appendChild(b);
-      box.appendChild(el('p', 'vnote', 'It starts closed: the door shows "Closed" and only you can go in. Decorate it, then press Open venue.'));
+    if (!m) {
+      box.appendChild(el('h3', '', 'Your room'));
+      box.appendChild(el('p', 'vnote', 'You just moved to Chog Town, so the hotel sets you up with a room: 14 × 10 m, 80 pieces, free. Anyone can visit unless you lock the door. Checking in costs nothing, the wallet only signs a short message.'));
+      const b = el('button', 'btn', VENUE.busy ? 'Working…' : 'Check in'); b.disabled = VENUE.busy; b.onclick = () => VENUE.checkIn().then(r => r && r.ok && toast('Welcome. Your room is #' + r.no + ' on floor ' + r.floor + '.')); box.appendChild(b);
     } else {
-      const open = m.state === 'open', frozen = m.state === 'frozen', head = el('div', 'vhead'); head.innerHTML = '<b></b><span></span>'; head.querySelector('b').textContent = m.name;
-      const sp = head.querySelector('span'); sp.textContent = (frozen ? 'Frozen' : open ? 'Open' : 'Closed') + ' · Room ' + m.no + ' · Floor ' + m.floor + ' · ' + (typeof TIER_SIZE !== 'undefined' ? TIER_SIZE[m.tier] : 'tier ' + m.tier) + ' · up to ' + m.cap + ' inside'; sp.className = open ? 'on' : 'off'; box.appendChild(head);
-      if (frozen) box.appendChild(el('p', 'vnote err', 'Frozen: this wallet holds fewer Chogs than the venue needs. It is closed, your decor is kept. Hold the tier again within ' + (m.daysLeft || 0) + ' day' + (m.daysLeft === 1 ? '' : 's') + ' and it reopens; after that the slot is freed.'));
+      const open = m.state === 'open', frozen = m.state === 'frozen', free = !m.tier, head = el('div', 'vhead'); head.innerHTML = '<b></b><span></span>'; head.querySelector('b').textContent = m.name;
+      const sp = head.querySelector('span'); sp.textContent = (m.locked ? 'Locked' : frozen ? 'Frozen' : free ? 'Free room' : open ? 'Open' : 'Closed') + ' · Room ' + (m.tag || m.no) + ' · ' + (m.basement ? 'Basement' : 'Floor ' + m.floor) + (free ? '' : ' · ' + (typeof TIER_SIZE !== 'undefined' ? TIER_SIZE[m.tier] : 'tier ' + m.tier)); sp.className = open && !m.locked ? 'on' : 'off'; box.appendChild(head);
+      if (m.basement) {
+        box.appendChild(el('p', 'vnote err', 'Nobody entered your room for 30 days, so it moved to the basement (cold storage). Your decor is untouched.'));
+        const b = el('button', 'btn', VENUE.busy ? 'Working…' : 'Move it back up'); b.disabled = VENUE.busy; b.onclick = () => VENUE.reactivate().then(r => r && r.ok && toast('Your room is back upstairs: #' + r.no + ' on floor ' + r.floor + '.')); box.appendChild(b);
+      }
+      if (frozen) box.appendChild(el('p', 'vnote err', 'Frozen: this wallet holds fewer Chogs than the venue needs. It is closed, your decor is kept. Hold the tier again within ' + (m.daysLeft || 0) + ' day' + (m.daysLeft === 1 ? '' : 's') + ' and it reopens; after that the room shrinks to what your Chogs allow.'));
       if (off) {
-        const up = off.kind === 'upgrade', b = el('button', 'btn' + (up ? '' : ' ghost'), VENUE.busy ? 'Working…' : up ? 'Upgrade venue to a ' + tn(off.tier) : 'Move to a smaller room (' + tn(off.tier) + ')'); b.disabled = VENUE.busy; b.onclick = () => VENUE.move(); box.appendChild(b);
-        box.appendChild(el('p', 'vnote', up ? 'Your license grew. The venue moves to a new slot of the bigger room (the door number may change) and the old slot is freed. Your decor comes with it.' : 'The venue moves to the room of your tier. Pieces that do not fit are dropped; a copy of the original is kept.'));
+        const up = off.kind === 'upgrade', b = el('button', 'btn' + (up ? '' : ' ghost'), VENUE.busy ? 'Working…' : up ? 'Ask for a ' + tn(off.tier) + ' (upgrade)' : 'Shrink to a ' + tn(off.tier)); b.disabled = VENUE.busy;
+        b.onclick = () => (up ? VENUE.upgrade().then(r => r && toast(upgradeToast(r))) : VENUE.move()); box.appendChild(b);
+        box.appendChild(el('p', 'vnote', up ? 'Your Chogs grew. The room grows in place if the next wall units are free, otherwise it gets a new door (the old number is freed) and your decor comes along. The receptionist can do this too.' : 'The venue shrinks to the room of your tier, in place (the door number stays). Pieces that do not fit go to your inventory; a copy of the original is kept.'));
       }
       box.appendChild(el('p', 'vnote', m.size[0] + ' × ' + m.size[1] + ' m room' + (m.levels > 1 ? ' on 2 levels' : '') + ' · ' + (m.template ? m.template.pieces : '') + ' pieces' + (m.levels > 1 ? ' each' : '') + ' · ' + (m.hasDoc ? 'room saved' : 'room not decorated yet')));
       const row = el('div', 'actions');
-      const go = el('button', 'btn', 'Go to my venue'); go.onclick = () => VENUE.goToDoor(); row.appendChild(go);
-      const tg = el('button', 'btn ' + (open ? 'ghost' : ''), open ? 'Close venue' : 'Open venue'); tg.disabled = VENUE.busy || frozen || (!open && !m.hasDoc); tg.title = frozen ? 'Frozen: hold the tier again' : !open && !m.hasDoc ? 'Decorate and save the room first' : ''; tg.onclick = () => VENUE.toggleOpen(); row.appendChild(tg); box.appendChild(row);
-      const rs = document.createElement('select'); for (const [k, lb] of RULES) rs.appendChild(new Option(lb, k)); rs.value = m.rule || 'public'; rs.onchange = () => VENUE.set({ rule: rs.value }); box.appendChild(field('Who may enter', rs));
-      if (VENUE.draft.lists !== m.id) Object.assign(VENUE.draft, { guests: (m.guests || []).join(', '), bans: (m.bans || []).join(', '), lists: m.id });
-      const ta = (key, ph) => { const t = document.createElement('textarea'); t.rows = 2; t.maxLength = 700; t.placeholder = ph; t.value = VENUE.draft[key] || ''; t.oninput = () => { VENUE.draft[key] = t.value; }; t.onkeydown = e => e.stopPropagation(); return t; };
-      const names = s => String(s || '').split(/[\s,;]+/).filter(Boolean);
-      if (m.rule === 'list') box.appendChild(field('Guest list', ta('guests', 'usernames, separated by commas')));
-      box.appendChild(field('Banned', ta('bans', 'usernames the guard turns away')));
-      const sl = el('button', 'btn ghost', 'Save lists'); sl.onclick = () => VENUE.set({ guests: names(VENUE.draft.guests), bans: names(VENUE.draft.bans) }).then(r => r && r.t === 'venuemine' && toast('Lists saved.')); box.appendChild(sl);
-      box.appendChild(el('p', 'vnote', 'Lists use usernames, not wallet addresses. Players claim a username in My Chog. A player without a wallet has none, so a guest list keeps them out.'));
-      const tpl = m.template || {};
-      if (tpl.music) { const ms = document.createElement('select'); for (const [k, lb] of MUSIC) ms.appendChild(new Option(lb, k)); ms.value = m.music || ''; ms.onchange = () => VENUE.set({ music: ms.value }); box.appendChild(field('Venue music', ms)); box.appendChild(el('p', 'vnote', 'Also set from your DJ booth: click it inside the venue.')); }
-      if (tpl.vip) {
-        const vs = document.createElement('select'); for (const [k, lb] of [['public', 'No VIP lounge (anyone may go up)'], ['holders', 'VIP: Chog holders only'], ['list', 'VIP: guest list']]) vs.appendChild(new Option(lb, k)); vs.value = m.vipRule || 'public'; vs.onchange = () => VENUE.set({ vipRule: vs.value }); box.appendChild(field('Upper level (VIP)', vs));
-        if (m.vipRule === 'list') {
-          if (VENUE.draft.vipFor !== m.id) Object.assign(VENUE.draft, { vipGuests: (m.vipGuests || []).join(', '), vipFor: m.id });
-          const vt = document.createElement('textarea'); vt.rows = 2; vt.maxLength = 700; vt.placeholder = 'usernames, separated by commas'; vt.value = VENUE.draft.vipGuests || ''; vt.oninput = () => { VENUE.draft.vipGuests = vt.value; }; vt.onkeydown = e => e.stopPropagation(); box.appendChild(field('VIP guest list', vt));
-          const vb = el('button', 'btn ghost', 'Save VIP list'); vb.onclick = () => VENUE.set({ vipGuests: String(VENUE.draft.vipGuests || '').split(/[\s,;]+/).filter(Boolean) }).then(r => r && r.t === 'venuemine' && toast('VIP list saved.')); box.appendChild(vb);
+      const go = el('button', 'btn', 'Go to my room'); go.onclick = () => VENUE.goToDoor(); row.appendChild(go);
+      const lk = el('button', 'btn ghost', m.locked ? 'Unlock the door' : 'Lock the door'); lk.disabled = VENUE.busy; lk.title = 'While locked only you can come in; people inside can stay'; lk.onclick = () => VENUE.setLock(!m.locked).then(r => r && r.ok && toast(r.locked ? 'Your door is locked.' : 'Your door is open.')); row.appendChild(lk);
+      if (!free) { const tg = el('button', 'btn ' + (open ? 'ghost' : ''), open ? 'Close venue' : 'Open venue'); tg.disabled = VENUE.busy || frozen || (!open && !m.hasDoc); tg.title = frozen ? 'Frozen: hold the tier again' : !open && !m.hasDoc ? 'Decorate and save the room first' : ''; tg.onclick = () => VENUE.toggleOpen(); row.appendChild(tg); }
+      box.appendChild(row);
+      if (free) {
+        if (VENUE.draft.nameFor !== m.id) Object.assign(VENUE.draft, { name: m.name, nameFor: m.id });
+        box.appendChild(field('Name', input('name', 32, 'e.g. My place'))); const sv = el('button', 'btn ghost', 'Save name'); sv.onclick = () => VENUE.set({ name: VENUE.draft.name }).then(r => r && r.t === 'venuemine' && toast('Name saved.')); box.appendChild(sv);
+        box.appendChild(el('p', 'vnote', 'Entry rules, music, a stage and the hall wall around your door come with a Chog venue. Hold a Chog and ask the receptionist.'));
+      } else {
+        const rs = document.createElement('select'); for (const [k, lb] of RULES) rs.appendChild(new Option(lb, k)); rs.value = m.rule || 'public'; rs.onchange = () => VENUE.set({ rule: rs.value }); box.appendChild(field('Who may enter', rs));
+        if (VENUE.draft.lists !== m.id) Object.assign(VENUE.draft, { guests: (m.guests || []).join(', '), bans: (m.bans || []).join(', '), lists: m.id });
+        const ta = (key, ph) => { const t = document.createElement('textarea'); t.rows = 2; t.maxLength = 700; t.placeholder = ph; t.value = VENUE.draft[key] || ''; t.oninput = () => { VENUE.draft[key] = t.value; }; t.onkeydown = e => e.stopPropagation(); return t; };
+        const names = s => String(s || '').split(/[\s,;]+/).filter(Boolean);
+        if (m.rule === 'list') box.appendChild(field('Guest list', ta('guests', 'usernames, separated by commas')));
+        box.appendChild(field('Banned', ta('bans', 'usernames the guard turns away')));
+        const sl = el('button', 'btn ghost', 'Save lists'); sl.onclick = () => VENUE.set({ guests: names(VENUE.draft.guests), bans: names(VENUE.draft.bans) }).then(r => r && r.t === 'venuemine' && toast('Lists saved.')); box.appendChild(sl);
+        box.appendChild(el('p', 'vnote', 'Lists use usernames, not wallet addresses. Players claim a username in My Chog. A player without a wallet has none, so a guest list keeps them out.'));
+        const tpl = m.template || {};
+        if (tpl.music) { const ms = document.createElement('select'); for (const [k, lb] of MUSIC) ms.appendChild(new Option(lb, k)); ms.value = m.music || ''; ms.onchange = () => VENUE.set({ music: ms.value }); box.appendChild(field('Venue music', ms)); box.appendChild(el('p', 'vnote', 'Also set from your DJ booth: click it inside the venue.')); }
+        if (tpl.vip) {
+          const vs = document.createElement('select'); for (const [k, lb] of [['public', 'No VIP lounge (anyone may go up)'], ['holders', 'VIP: Chog holders only'], ['list', 'VIP: guest list']]) vs.appendChild(new Option(lb, k)); vs.value = m.vipRule || 'public'; vs.onchange = () => VENUE.set({ vipRule: vs.value }); box.appendChild(field('Upper level (VIP)', vs));
+          if (m.vipRule === 'list') {
+            if (VENUE.draft.vipFor !== m.id) Object.assign(VENUE.draft, { vipGuests: (m.vipGuests || []).join(', '), vipFor: m.id });
+            const vt = document.createElement('textarea'); vt.rows = 2; vt.maxLength = 700; vt.placeholder = 'usernames, separated by commas'; vt.value = VENUE.draft.vipGuests || ''; vt.oninput = () => { VENUE.draft.vipGuests = vt.value; }; vt.onkeydown = e => e.stopPropagation(); box.appendChild(field('VIP guest list', vt));
+            const vb = el('button', 'btn ghost', 'Save VIP list'); vb.onclick = () => VENUE.set({ vipGuests: String(VENUE.draft.vipGuests || '').split(/[\s,;]+/).filter(Boolean) }).then(r => r && r.t === 'venuemine' && toast('VIP list saved.')); box.appendChild(vb);
+          }
+          box.appendChild(el('p', 'vnote', 'The server checks this rule when someone takes the stairs to the upper level.'));
         }
-        box.appendChild(el('p', 'vnote', 'The server checks this rule when someone takes the stairs to the upper level.'));
+        if (typeof SHOP !== 'undefined') box.appendChild(SHOP.venueExtras(m));                       // shop extras: event, security camera, budget (shop.js)
+        if (!VENUE.draft.loaded || VENUE.draft.id !== m.id) Object.assign(VENUE.draft, { name: m.name, cat: m.cat, desc: m.desc, loaded: true, id: m.id });
+        box.appendChild(field('Name', input('name', 32))); box.appendChild(field('Kind', catSel())); box.appendChild(field('Description', input('desc', 120)));
+        const sv = el('button', 'btn ghost', 'Save details'); sv.onclick = () => VENUE.set({ name: VENUE.draft.name, cat: VENUE.draft.cat, desc: VENUE.draft.desc }).then(r => r && r.t === 'venuemine' && toast('Details saved.')); box.appendChild(sv);
       }
-      if (typeof SHOP !== 'undefined') box.appendChild(SHOP.venueExtras(m));                       // shop extras: event, security camera, budget (shop.js)
-      if (!VENUE.draft.loaded || VENUE.draft.id !== m.id) Object.assign(VENUE.draft, { name: m.name, cat: m.cat, desc: m.desc, loaded: true, id: m.id });
-      box.appendChild(field('Name', input('name', 32))); box.appendChild(field('Kind', catSel())); box.appendChild(field('Description', input('desc', 120)));
-      const sv = el('button', 'btn ghost', 'Save details'); sv.onclick = () => VENUE.set({ name: VENUE.draft.name, cat: VENUE.draft.cat, desc: VENUE.draft.desc }).then(r => r && r.t === 'venuemine' && toast('Details saved.')); box.appendChild(sv);
     }
     if (VENUE.err) box.appendChild(el('p', 'vnote err', VENUE.err));
     return box;

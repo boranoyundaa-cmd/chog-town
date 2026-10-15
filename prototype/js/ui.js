@@ -5,7 +5,7 @@ const DEMO_IDS = [1700, 1557, 409, 1808, 1000, 1942];
 // venue license copy. The rules (points per rarity, tier thresholds) come from data/tokens.json via WALLET.license; the tier names are placeholders.
 const TIER_NAME = { 1: 'Ser', 2: 'Fren', 3: 'Whale', 4: 'Legend' };
 const TIER_SIZE = { 1: 'Room', 2: 'Suite', 3: 'Floor', 4: 'Penthouse' };
-const TIER_PERK = { 1: '12 inside · game tables', 2: '20 inside · stage + DJ booth + music', 3: '32 inside · two levels with a VIP lounge', 4: '50 inside · whole floor, VIP lounge, guard at the lift' };       // what each venue tier adds (server/hotel.js TEMPLATES)
+const TIER_PERK = { 1: '2 wall units · game tables', 2: 'a whole wall · stage + DJ booth + music', 3: 'a whole wall, two levels · VIP lounge', 4: 'whole floor, two levels · VIP lounge, guard at the lift' };       // what each venue tier adds (server/hotel.js TEMPLATES)
 const TIER_COL = { 1: '#8a8497', 2: '#3a8ad8', 3: '#9a5ad8', 4: '#e8a620' };
 const RARITY_COL = { Common: '#8a8497', Uncommon: '#4aa84a', Rare: '#3a8ad8', Epic: '#9a5ad8', Legendary: '#e8a620' };
 const tierPill = (t, txt) => `<span class="tp" style="--tc:${TIER_COL[t]}">${txt || 'Tier ' + t}</span>`;
@@ -161,10 +161,11 @@ function venuesCard(onClose) {
     <div class="note">${S.asOf ? 'Wallet counts: snapshot of ' + new Date(S.asOf * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + '. ' : ''}</div><div class="actions"></div>`;
   c.querySelector('.x').onclick = onClose;
   const act = c.querySelector('.actions');
-  if (holder && typeof VENUE !== 'undefined') {
+  if (WALLET.account && typeof VENUE !== 'undefined') {                                  // every wallet has a room in the Hotel; a holder's can be upgraded
     c.insertBefore(VENUE.section(), c.querySelector('.note'));
-    if (!VENUE.info && !VENUE.busy && !VENUE.tried && WALLET.account) { VENUE.tried = true; setTimeout(() => VENUE.refresh(), 0); }
-  } else if (!holder) {
+    if (!VENUE.info && !VENUE.busy && !VENUE.tried) { VENUE.tried = true; setTimeout(() => VENUE.refresh(), 0); }
+  }
+  if (!holder) {
     if (!WALLET.account) { const b = el('button', 'btn', cx('buttons', 'connect', 'Connect wallet')); b.onclick = connectFlow; act.appendChild(b); }
     const a = el('a', 'btn ghost', 'Get a Chog'); a.href = 'https://opensea.io/collection/chog-genesis'; a.target = '_blank'; a.rel = 'noopener'; act.appendChild(a);
   }
@@ -313,7 +314,6 @@ function playerCard() {
   const im = el('img', 'art'); im.alt = ''; im.src = artOf(r.token); im.onerror = () => { im.onerror = null; im.src = GUEST_ART; }; c.insertBefore(im, c.firstChild.nextSibling);      // their NFT (or the guest drawing) beside the name
   c.querySelector('.x').onclick = () => NET.closeCard();
   const acts = c.querySelector('.acts'), muted = NET.isMuted(r);
-  const vb = el('button', 'btn ghost', 'Invite home'); vb.title = 'Invite this player to your Home'; vb.onclick = () => { NET.invite(r.id); NET.closeCard(); }; acts.appendChild(vb);
   const mb = el('button', 'btn ghost', muted ? 'Unmute' : cx('buttons', 'mute', 'Mute')); mb.onclick = () => { if (muted) { NET.unmute(r); NET.sys(r.name + ' is unmuted.'); } else NET.mute(r); NET.closeCard(); };
   const rb = el('button', 'btn ghost', cx('buttons', 'report', 'Report'));
   rb.onclick = () => { if (rb.dataset.sure) { NET.report(r.id, 'chat/behaviour'); NET.closeCard(); } else { rb.dataset.sure = 1; rb.textContent = 'Confirm report'; } };

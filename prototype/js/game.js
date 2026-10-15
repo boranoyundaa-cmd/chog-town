@@ -191,6 +191,7 @@ animated.push((t, dt) => {
   const blink = Math.sin(t * 0.9) > 0.985 ? 0.12 : 1; u.eyes.forEach(e => e.scale.y = (e.userData.by || 0.095) * blink);
   GAME.ring.position.set(me.position.x, 0.04, me.position.z); GAME.ring.material.opacity = 0.55 + 0.2 * Math.sin(t * 3);
   if (GAME.markT > 0) { GAME.markT = Math.max(0, GAME.markT - dt * 1.4); GAME.mark.material.opacity = GAME.markT; GAME.mark.scale.setScalar(1 + (1 - GAME.markT) * 0.8); }
+  if (GAME.cine && GAME.cine(t, dt)) { GAME.updateHover(); return; }          // Inspect (hotel_live.js) owns the camera and the zoom limit while it runs
   // follow camera
   const R = GAME.room;
   if (R && R.follow && R.bounds) {                                              // a room: open close on you (R.follow = visible width) and follow you inside its walls

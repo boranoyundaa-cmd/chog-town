@@ -2,6 +2,7 @@
 // Plaques are simple signs in the game's style (a post and a board, chalk or graffiti on the pavement, a poster on two legs with the text in big letters on a coloured field).
 // Click one to read it (a card). Interactive props: gm wall, touch grass, liquidation button, seed-phrase vending machine, money printer, draw-a-line whiteboard,
 // gas station bench, laser-eyes photo booth. Everything solid registers a walking blocker (WORLD_BLOCKERS and game.js BLOCKERS) away from doors and the residents' spots.
+// Live Hotel boards (hotel_live.js feeds them): the advertising column by NOVA, the plaza street board, and the Inspect stand by the Hotel door.
 // Lobby / elevator / hotel-hall plaques and props are not placed here: PROPS.forPlace(placeId) returns their data for hotel.js. Loaded after npc.js and culture.js.
 const PROPS = { roots: [], placed: [], group: new THREE.Group(), card: null, count: 0 };
 (function () {
@@ -366,7 +367,7 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
   // ordinary signage (no jokes), and three hidden things: a tiny plate on a park bench, a faded old poster, one item on the cafe menu (the pinned receipt is on the notice board)
   const ST = { street: { bg: '#2f6a5c', fg: '#ffffff', border: '#e8f0e8' }, bus: { bg: '#ffd84a', fg: INK, border: INK }, hours: { bg: CREAM, fg: INK, border: '#8a6a3a' }, park: { bg: '#2f6a5c', fg: '#ffffff', border: '#e8f0e8' }, noskate: { bg: '#ffffff', fg: '#c02a2a', border: '#c02a2a' }, parking: { bg: '#3a74d8', fg: '#ffffff', border: '#ffffff' } };
   const SIGNS = [
-    { id: 'sg_street', title: 'Street sign', text: 'Chog Avenue / Hotel Street', disp: 'Chog Avenue', style: ST.street, at: [6.0, 5.8] },
+    { id: 'sg_street', title: 'Street sign', text: 'Chog Avenue / Hotel Street', disp: 'Chog Avenue', style: ST.street, at: [6.0, 5.8], live: true },
     { id: 'sg_bus', title: 'Bus 7 timetable', text: 'Bus 7: every 30 minutes, 06:30 to 22:00.', disp: 'Bus 7\n07:10  07:40\n08:10  08:40', style: ST.bus, at: [-10.2, 11.2] },
     { id: 'sg_moka', title: 'Opening hours', text: 'Moka & Co: open 06:30 to 20:00.', disp: 'Moka & Co\nOpen 06:30 - 20:00', style: ST.hours, at: [-22.6, -12.4] },
     { id: 'sg_arcade', title: 'Opening hours', text: 'Arcade: open 15:00 to 02:00.', disp: 'Arcade\nOpen 15:00 - 02:00', style: ST.hours, at: [19.8, 5.6] },
@@ -377,10 +378,86 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
     { id: 'hid_gox', title: 'Bench plaque', text: 'Goxxed, 2014', disp: 'Goxxed, 2014', kind: 'bench', at: [-14.0, 16.9] },
     { id: 'hid_poster', title: 'Old poster', text: 'BULL RUN. Nov 10, 2021. (Torn.)', disp: 'BULL RUN\nNov 2021', kind: 'poster', faded: true, col: '#9a8f86', at: [20.0, -3.2] },
   ];
+  BASE = reachable().map(String);                                                 // targets that are already cut off stay allowed (otherwise no post could be placed at all)
   for (const p of SIGNS) {
     const k = kindOf(p), q = fit(p.at[0], p.at[1], 0.3, 1.2, false, k === 'ground' ? 0 : k === 'post' ? 0.2 : 0.5); if (!q) { console.warn('sign has no room', p.id); continue; }
-    makePlaque(p, q[0], q[1]);
+    if (p.live) (PROPS.liveQ = PROPS.liveQ || []).push([p, q[0], q[1]]); else makePlaque(p, q[0], q[1]);
   }
+
+  // ---------- live billboards: the Hotel's news (tonight's events, the busiest room, the Exhibition winner) on canvas, one page at a time, rotating every few seconds
+  // Pages come from HLIVE.pages() (hotel_live.js, loaded later: read lazily); with no data one calm default page. A click walks you to the Hotel door (FIRST.goPlace, the first-steps auto-walk).
+  const LIVE = { boards: [], pages: [{ k: 'default', size: '' }], page: 0, from: null, fade: 1, t: 0, rev: -1 };
+  const HCOL = { events: '#e0408a', busiest: '#d99a10', winner: '#1f9a88', default: '#7a3ac8' }, HHEAD = { events: 'TONIGHT', busiest: 'BUSIEST ROOM', winner: 'EXHIBITION', default: 'CHOG HOTEL' };
+  function paintLive(g, w, h, pg, foot, inset) {
+    const hh = Math.round(h * 0.17), ft = Math.round(h * 0.085), y0 = hh + 8, y1 = h - ft - 8, ch = y1 - y0, tw = w - inset, sc = Math.min(h, w) / 300;
+    g.save(); g.fillStyle = CREAM; rrect(g, 6, 6, w - 12, h - 12, 26); g.fill(); g.clip(); g.fillStyle = HCOL[pg.k]; g.fillRect(0, 0, w, hh); g.restore();
+    g.lineWidth = 8; g.strokeStyle = '#7a3ac8'; rrect(g, 6, 6, w - 12, h - 12, 26); g.stroke();
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
+    { let hp = Math.round(hh * 0.52); g.font = `${hp}px ${FONT2}`; while (hp > 14 && g.measureText(HHEAD[pg.k]).width > tw) { hp -= 2; g.font = `${hp}px ${FONT2}`; } } g.lineWidth = 7; g.strokeStyle = INK; g.fillStyle = CREAM; g.strokeText(HHEAD[pg.k], w / 2, hh / 2 + 5); g.fillText(HHEAD[pg.k], w / 2, hh / 2 + 5);
+    g.font = `600 ${Math.round(ft * 0.66)}px ${FONT}`; g.fillStyle = 'rgba(43,33,64,.55)'; g.fillText(foot, w / 2, h - ft / 2 - 10);
+    const line = (txt, y, px0, pxMin, font, color, maxW) => { const f = wrapText(g, txt, maxW || tw, 1, Math.round(px0), Math.round(pxMin), font) || { lines: [String(txt).slice(0, 14)], px: Math.round(pxMin) }; g.font = `600 ${f.px}px ${font}`; g.fillStyle = color; g.fillText(f.lines[0], w / 2, y); return f.px; };
+    if (pg.k === 'events') {
+      const n = pg.rows.length, slot = ch / Math.max(n, 1);
+      pg.rows.forEach((r, i) => { const cy = y0 + slot * (i + 0.5) - (pg.more && i === n - 1 ? 8 * sc : 0), tp = Math.min(slot * 0.4, 46 * sc);
+        const px = line(r.title, cy - tp * 0.28, tp, 16 * sc, FONT, INK); line(r.sub, cy + px * 0.62, tp * 0.56, 12 * sc, FONT, '#6a5a86');
+        if (i < n - 1) { g.strokeStyle = 'rgba(122,58,200,.2)'; g.lineWidth = 2; g.beginPath(); g.moveTo(40, y0 + slot * (i + 1)); g.lineTo(w - 40, y0 + slot * (i + 1)); g.stroke(); } });
+      if (pg.more) { g.font = `600 ${Math.round(15 * sc)}px ${FONT}`; g.fillStyle = '#7a3ac8'; g.fillText('+' + pg.more + ' more', w / 2, y1 - 1 * sc); }
+    } else if (pg.k === 'busiest') {
+      line('Room ' + pg.door, y0 + ch * 0.3, 70 * sc, 26 * sc, FONT2, INK);
+      line(pg.inside + ' inside', y0 + ch * 0.62, 44 * sc, 18 * sc, FONT, '#e0408a');
+      if (pg.name) line(pg.name, y0 + ch * 0.86, 26 * sc, 14 * sc, FONT, '#6a5a86');
+    } else if (pg.k === 'winner') {
+      g.fillStyle = '#e8a817'; g.strokeStyle = INK; g.lineWidth = 5; g.beginPath(); const cx = w / 2, cy = y0 + ch * 0.22, R = 24 * sc; for (let i = 0; i < 10; i++) { const r = i % 2 ? R * 0.45 : R, a = -Math.PI / 2 + i * Math.PI / 5; g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } g.closePath(); g.stroke(); g.fill();
+      line("This week's winner", y0 + ch * 0.5, 28 * sc, 14 * sc, FONT, '#6a5a86'); line(pg.name, y0 + ch * 0.78, 50 * sc, 18 * sc, FONT, INK);
+    } else {
+      line('rooms for every', y0 + ch * 0.32, 44 * sc, 18 * sc, FONT, INK); line('new arrival', y0 + ch * 0.58, 44 * sc, 18 * sc, FONT, INK);
+      if (pg.size) line(pg.size, y0 + ch * 0.85, 24 * sc, 12 * sc, FONT, '#7a3ac8');
+    }
+  }
+  function liveMat(w, h, foot, inset = 76) {
+    const m = canvasMat(w, h, (g, cw, ch) => { const cur = LIVE.pages[LIVE.page] || LIVE.pages[0]; paintLive(g, cw, ch, cur, foot, inset); if (LIVE.fade < 1 && LIVE.from) { g.save(); g.globalAlpha = 1 - LIVE.fade; paintLive(g, cw, ch, LIVE.from, foot, inset); g.restore(); } });
+    dimMats.pop(); LIVE.boards.push(redraws[redraws.length - 1]); return m;                     // a screen: lit at night, not dimmed like the painted boards
+  }
+  const goHotel = () => { if (typeof HLIVE !== 'undefined') HLIVE.goHotel(); sfx('click'); };
+  function liveBoard(p, x, z) {                                                                  // the plaza's street board: a post with a bigger lit screen
+    const g = new THREE.Group(), trim = tmat(0x3f3850); g.position.set(x, 0, z); g.rotation.y = ROT;
+    for (const s of [-1, 1]) g.add(CYL(0.035, 0.045, 1.5, trim, s * 0.55, 0.75, -0.02, 6));
+    g.add(BOX(1.74, 1.1, 0.07, tmat(0x3f3850), 0, 1.5, 0)); const pl = new THREE.Mesh(new THREE.PlaneGeometry(1.64, 1.0), liveMat(512, 312, 'Chog Avenue')); pl.position.set(0, 1.5, 0.041); g.add(pl);
+    g.traverse(o => { if (o.isMesh) { o.userData.noOutline = true; o.castShadow = o.geometry.type !== 'PlaneGeometry'; } });
+    addBlock(x, z, 0.65, 0.3); reg(g, goHotel, 1.1); PROPS.placed.push({ id: p.id, x, z, kind: 'live' }); taken.push({ x, z, r: 0.8 }); PROPS.count++;
+  }
+  (function () {                                                                                 // the advertising column by NOVA: a curved screen on a dark pillar with a teal cap
+    const q = fit(11.4, -22.5, 0.75, 1.0, false, 0.7); if (!q) { console.warn('ad column has no room'); return; }
+    const g = new THREE.Group(), trim = tmat(0x3f3850), R = 0.62, arc = 2.6; g.position.set(q[0], 0, q[1]); g.rotation.y = ROT;
+    g.add(CYL(0.78, 0.82, 0.22, tmat(0xcfc4b4), 0, 0.11, 0, 24)); g.add(CYL(R - 0.02, R - 0.02, 3.0, trim, 0, 1.7, 0, 24));
+    const scr = new THREE.Mesh(new THREE.CylinderGeometry(R, R, 2.1, 36, 1, true, -arc / 2, arc), liveMat(480, 540, 'Click to walk to the Hotel', 170)); scr.position.y = 1.7; g.add(scr);
+    g.add(CYL(0.74, 0.74, 0.2, tmat(0x4a8a78), 0, 3.3, 0, 24)); const dome = new THREE.Mesh(new THREE.SphereGeometry(0.62, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), tmat(0x4a8a78)); dome.position.y = 3.4; g.add(dome);
+    const gl = glowSprite(0xffe9c0, 3.4, 0.5); gl.position.set(0, 1.7, 0.9); noNormalPass.push(gl); DAY.glow(gl, 0.4); g.add(gl);
+    g.traverse(o => { if (o.isMesh) { o.userData.noOutline = true; o.castShadow = o !== scr; } });
+    addBlock(q[0], q[1], 0.8, 0.8); reg(g, goHotel, 1.2); PROPS.placed.push({ id: 'adcolumn', x: q[0], z: q[1], kind: 'live' }); taken.push({ x: q[0], z: q[1], r: 0.9 }); PROPS.count++;
+  })();
+  ticks.push(dt => {
+    const H = typeof HLIVE !== 'undefined' ? HLIVE : null;
+    if (H && H.rev !== LIVE.rev) {                                                              // new data: keep the page you are on when it still exists (the server repeats the message)
+      LIVE.rev = H.rev; const cur = LIVE.pages[LIVE.page] || LIVE.pages[0], np = H.pages(), same = np.findIndex(x => x.k === cur.k);
+      LIVE.pages = np; if (same >= 0) LIVE.page = same; else { LIVE.from = cur; LIVE.page = 0; LIVE.fade = 0; } LIVE.boards.forEach(f => f());
+    }
+    LIVE.t += dt; if (LIVE.t > 6 && LIVE.pages.length > 1) { LIVE.t = 0; LIVE.from = LIVE.pages[LIVE.page]; LIVE.page = (LIVE.page + 1) % LIVE.pages.length; LIVE.fade = 0; }
+    if (LIVE.fade < 1) { LIVE.fade = Math.min(1, LIVE.fade + dt * 2.2); LIVE.boards.forEach(f => f()); }
+  });
+  PROPS.live = LIVE; for (const a of PROPS.liveQ || []) liveBoard(...a);
+
+  // ---------- the Inspect stand by the Hotel door: a brass plaque and a little viewer pointed at the tower; the prompt and the camera are in hotel_live.js
+  (function () {
+    const q = fit(-8.6, -22.5, 0.5, 0.8, false, 0.25); if (!q) { console.warn('inspect stand has no room'); return; }
+    const g = new THREE.Group(), trim = tmat(0x3f3850), brass = tmat(0xd8aa4a, { em: 0.25 }); g.position.set(q[0], 0, q[1]); g.rotation.y = ROT;
+    g.add(CYL(0.14, 0.18, 0.06, trim, 0, 0.03, 0, 10)); g.add(CYL(0.04, 0.05, 1.0, trim, 0, 0.52, 0, 6));
+    g.add(BOX(0.74, 0.28, 0.05, tmat(0x3f3850), 0, 0.82, 0.02)); const pl = new THREE.Mesh(new THREE.PlaneGeometry(0.68, 0.22), boardMat(0.68, 0.22, 'INSPECT', { bg: '#ecc977', fg: '#3a2a14', border: '#8a6a2a', px: 96 })); pl.position.set(0, 0.82, 0.05); g.add(pl);
+    const yoke = BOX(0.1, 0.16, 0.1, trim, 0, 1.08, 0); g.add(yoke); const tube = CYL(0.06, 0.085, 0.62, brass, 0, 0, 0, 12); const tp = new THREE.Group(); tp.position.set(0, 1.2, 0); tp.rotation.set(-0.95, 0, 0); tube.position.y = 0.2; tp.add(tube); tp.add(CYL(0.09, 0.09, 0.05, trim, 0, 0.53, 0, 12).translateY(-0.2)); g.add(tp);
+    g.traverse(o => { if (o.isMesh) { o.userData.noOutline = true; o.castShadow = true; } });
+    addBlock(q[0], q[1], 0.28, 0.28); reg(g, () => { if (typeof HLIVE !== 'undefined') HLIVE.inspect(); }, 0.9); PROPS.placed.push({ id: 'inspect', x: q[0], z: q[1], kind: 'stand' }); taken.push({ x: q[0], z: q[1], r: 0.6 }); PROPS.count++;
+    PROPS.inspectSpot = { x: q[0], z: q[1], y: 1.5 };
+  })();
 
   // ---------- per frame, dimming at night, and tell the residents the blockers changed
   let dimK = -1;

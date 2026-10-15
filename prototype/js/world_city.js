@@ -5,6 +5,8 @@ const HALF = 32;                                          // half size of the sl
 const world = new THREE.Group(); scene.add(world);
 const WORLD_BLOCKERS = [], occluders = [], walkers = [], occ = [];
 const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       // doors: where the town's enterable doors are (room.js)
+// The Chog Hotel tower: a fixed base (lobby, entrance, signs) and crown, one storey per above-ground floor in between. HTOWER.set(n) rebuilds the middle (hotel_live.js calls it when the server's count changes).
+const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base: 3.0, crownH: 0, root: null, mid: null, crown: null, glass: null, set: null, height() { return this.base + this.floors * this.fh + this.crownH; } };
 (function () {
   const P = { road: 0x7c7a8c, walk: 0xd2c8bc, curb: 0xe8dfd2, trim: 0x3f3850, roofc: 0xb8b4c4, tree: 0x5eb868, slab: 0xb8ad9f, face: [0xf0d6c0, 0xa6d8c8, 0xf0aebb, 0xb4c0ee, 0xf1cf78, 0xf4c19a], glassTint: 0x9ccdf2 };
   const F = P.face, sh = (c, k) => new THREE.Color(c).multiplyScalar(k).getHex();
@@ -53,7 +55,7 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
     }
   }
   function buildWindows(g, w, d, specs) {
-    const n = specs.length; if (!n) return;
+    const n = specs.length; if (!n) return null;
     const glass = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0xffffff }), n);
     const frames = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), tmat(P.trim), n * 2), o = new THREE.Object3D(), flags = [];
     const put = (s, off, sx, sy, sz, yy) => { if (s.face === 'z') o.position.set(s.u, yy, d / 2 + off); else o.position.set(w / 2 + off, yy, -s.u); o.rotation.set(0, s.face === 'z' ? 0 : Math.PI / 2, 0); o.scale.set(sx, sy, sz); o.updateMatrix(); return o.matrix; };
@@ -64,7 +66,7 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
       flags.push({ r: rnd(), cool: rnd() < 0.18, g: rnd() < 0.5 ? 0 : 1, v: rnd() });
     });
     for (const m of [glass, frames]) { m.frustumCulled = false; g.add(m); } frames.receiveShadow = true;
-    DAY.addWindows(glass, flags);
+    DAY.addWindows(glass, flags); return glass;
   }
   function storefront(g, face, w, d, o) {
     const len = face === 'z' ? w : d, h = o.h || 2.1, gw = len - 0.6;
@@ -102,7 +104,7 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
       if (shop && face === 'z') storefront(g, 'z', w, d, shop); else if (shopSide && face === 'x') storefront(g, 'x', w, d, shopSide); else winGrid(face, w, d, 1, 0.2, fh, specs, bal);
       if (floors > 0) winGrid(face, w, d, floors, sh0 - 0.15, fh, specs, bal, { balcony, pitch: o.pitch });
     }
-    g.add(bal); buildWindows(g, w, d, specs); roofKit(g, w, d, H, Object.assign({ body }, roof));
+    g.add(bal); buildWindows(g, w, d, specs); if (!o.noRoof) roofKit(g, w, d, H, Object.assign({ body }, roof));
     if (o.vsign) { const v = o.vsign; onFace(g, 'z', w, d, sign(v.text, v.w, v.h, v), v.u, v.y, 0.3); if (v.glow) onFace(g, 'z', w, d, halo(new THREE.Color(v.glowColor || v.fg), v.h * 2.4, 0.5), v.u, v.y, 0.4); }
     world.add(g); g.updateMatrixWorld(true); occluders.push({ g, min: 0.12 }); block(x, z, w / 2 + 0.02, d / 2 + 0.02);
     CITY.buildings.push({ name, x, z, w, d, color: '#' + new THREE.Color(body).getHexString() }); return g;
@@ -243,15 +245,70 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
 
   // ---------- the district: Hotel Street (north), Moka Lane (west), Arcade Road (east), the plaza in the middle, Lantern Park (south-west), Maple Row homes (south-east).
   // The camera looks from +x +z, so every front faces +z or +x.
-  const HOTEL_FLOORS = (() => { try { const n = +localStorage.getItem('chog_hotel_floors'); return n >= 1 ? Math.max(3, Math.min(12, Math.round(n))) : 5; } catch (e) { return 5; } })();
+  HTOWER.floors = (() => { try { const n = +localStorage.getItem('chog_hotel_floors'); return n >= 1 ? Math.min(HTOWER.max, Math.round(n)) : 5; } catch (e) { return 5; } })();   // the last count the server told us, until the next one arrives
   const NF = -24, EF = 4, WF = -24;                                           // building fronts: north row (+z faces at z = -24), east row (+z at z = 4), west row (+x at x = -24)
   const north = o => building(Object.assign({}, o, { z: NF - o.d / 2 })), east = o => building(Object.assign({}, o, { z: EF - o.d / 2 })), west = o => building(Object.assign({}, o, { x: WF - o.w / 2 }));
   const shopF = (text, bg, fg, door, extra = {}) => Object.assign({ h: 2.4, door, doorColor: 0x2f3a4a, in1: '#fff0c8', in2: '#f0b878', sign: { text, w: Math.min(4.2, 0.6 + text.length * 0.32), h: 0.5, fg, bg, px: 52, font: '"Fredoka", sans-serif', y: 3.05 } }, extra);
   north({ name: 'Gallery', x: -26, w: 8, d: 6, floors: 1, fh: 2.2, body: 0xf8f4ee, roof: { garden: true },
     shop: { h: 2.8, door: 1.2, doorColor: 0xd8d0c4, in1: '#fffaf0', in2: '#efe2d0', sign: { text: 'GALLERY', w: 2.8, h: 0.5, fg: '#2a2630', px: 46, font: '"Fredoka", sans-serif', y: 3.4 } } });
   north({ name: 'Booksellers', x: -15, w: 5, d: 5, floors: 2, fh: 1.6, body: F[4], shop: shopF('Books', '#5a3a2a', '#fff3da', -1.2, { awning: [0x7a4a3a, 0xf4e4c8] }) });
-  north({ name: 'Chog Hotel', x: -6, w: 12, d: 8, floors: HOTEL_FLOORS, fh: 1.7, body: F[0], balcony: true, pitch: 1.4, roof: { tank: true, antenna: true, garden: true },
+  const hotelBase = north({ name: 'Chog Hotel', x: HTOWER.x, w: HTOWER.w, d: HTOWER.d, floors: 0, fh: HTOWER.fh, body: F[0], noRoof: true,
     shop: { h: 2.8, door: 0.0, doorColor: 0x4a8a78, in1: '#fff0c8', in2: '#f0b878', awning: [0x4a8a78, 0xfff0d8], sign: { text: 'CHOG HOTEL', w: 4.6, h: 0.7, fg: '#3a2f4a', bg: '#fff6e0', px: 54, font: '"Fredoka", sans-serif', y: 3.55 } } });
+  {                                                                          // the Hotel grows from the middle: base (above) and crown stay, the storeys between are rebuilt by HTOWER.set(n)
+    const T = HTOWER, W = T.w, D = T.d, fh = T.fh, root = T.root = new THREE.Group(); T.z = hotelBase.position.z; root.position.set(T.x, 0, T.z); world.add(root);
+    const bandM = tmat(sh(F[0], 0.8)), pierM = tmat(sh(F[0], 0.9)), slabM = tmat(0xdad4d0), railM = new THREE.MeshBasicMaterial({ color: 0x9ccdf2, transparent: true, opacity: 0.55 }), leafM = tmat(P.tree);
+    const o4 = new THREE.Object3D();
+    const inst = (geo, mat, list, put) => { const m = new THREE.InstancedMesh(geo, mat, list.length); list.forEach((q, i) => { put(o4, q, i); o4.updateMatrix(); m.setMatrixAt(i, o4.matrix); }); m.frustumCulled = false; return m; };
+    const disposeTree = g => g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.userData.own) for (const m of [].concat(o.material)) { if (m.map) m.map.dispose(); m.dispose(); } });
+    function slab(w, h, d, color, y0, cast) {                              // a concrete block; y0 = its bottom
+      const b = texBox(w, h, d, color, TXT.concrete, 2.2); b.position.y = y0 + h / 2; b.castShadow = cast; b.userData.own = true; return b;
+    }
+    function buildMid(n) {
+      const g = new THREE.Group(); g.position.y = T.base; const low = Math.min(n, 10);   // only the lowest storeys cast a shadow: the shadow box covers 48 m around the player
+      g.add(slab(W, low * fh, D, F[0], 0, true)); if (n > low) g.add(slab(W, (n - low) * fh, D, F[0], low * fh, false));
+      g.add(inst(new THREE.BoxGeometry(1, 1, 1), bandM, Array.from({ length: n + 1 }, (_, k) => k), (o, k) => { o.position.set(0, k * fh, 0); o.rotation.set(0, 0, 0); o.scale.set(W + 0.14, 0.1, D + 0.14); }));
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const p = BOX(0.34, n * fh, 0.34, pierM, sx * (W / 2 - 0.02), n * fh / 2, sz * (D / 2 - 0.02)); p.castShadow = false; g.add(p); }
+      const specs = [], bal = [];
+      for (const face of ['z', 'x']) {
+        const s0 = specs.length; winGrid(face, W, D, n, 0, fh, specs, null, { pitch: 1.4 }); const cols = (specs.length - s0) / n;
+        for (let i = s0; i < specs.length; i++) { const f = Math.floor((i - s0) / cols), c = (i - s0) % cols; if (f > 0 && (f + c) % 2 === 0) bal.push(specs[i]); }
+      }
+      const put = (off, sx, sy, sz, dy) => (o, s) => { if (s.face === 'z') o.position.set(s.u, s.y - s.wh / 2 + dy, D / 2 + off); else o.position.set(W / 2 + off, s.y - s.wh / 2 + dy, -s.u); o.rotation.set(0, s.face === 'z' ? 0 : Math.PI / 2, 0); o.scale.set(s.ww + sx, sy, sz); };
+      g.add(inst(new THREE.BoxGeometry(1, 1, 1), slabM, bal, put(0.3, 0.5, 0.08, 0.5, -0.08)));
+      g.add(inst(new THREE.BoxGeometry(1, 1, 1), railM, bal, put(0.54, 0.5, 0.28, 0.04, 0.1)));
+      const plants = bal.filter(() => rnd() < 0.5), jit = plants.map(() => rnd() - 0.5);
+      g.add(inst(new THREE.SphereGeometry(0.14, 6, 5), leafM, plants, (o, s, i) => { const k = jit[i] * s.ww * 0.6; o.rotation.set(0, 0, 0); o.scale.set(1, 1, 1); if (s.face === 'z') o.position.set(s.u + k, s.y - s.wh / 2 + 0.2, D / 2 + 0.3); else o.position.set(W / 2 + 0.3, s.y - s.wh / 2 + 0.2, -(s.u + k)); }));
+      T.glass = buildWindows(g, W, D, specs); return g;
+    }
+    // the crown: stepped setbacks, a lit lantern, a spire with a beacon
+    function buildCrown() {
+      const g = new THREE.Group(); let y = 0.3;
+      g.add(BOX(W + 0.5, 0.3, D + 0.5, bandM, 0, 0.15, 0));
+      [[10.4, 6.8, 3, 1.6], [8.4, 5.4, 3, 1.55], [6.2, 4.0, 3, 1.5], [4.2, 2.8, 2, 1.45]].forEach(([w, d, n, f], i) => {
+        const h = n * f, sub = new THREE.Group(), specs = []; sub.position.y = y; g.add(slab(w, h, d, sh(F[0], 0.97 - i * 0.02), y, true));
+        for (const face of ['z', 'x']) winGrid(face, w, d, n, 0, f, specs, null, { pitch: 1.4 }); buildWindows(sub, w, d, specs); g.add(sub);
+        g.add(BOX(w + 0.36, 0.22, d + 0.36, bandM, 0, y + h + 0.11, 0)); y += h + 0.22;
+      });
+      const lh = 1.5; for (const sx of [-1, 1]) for (const sz of [-1, 1]) g.add(BOX(0.12, lh, 0.12, tmat(P.trim), sx * 1.25, y + lh / 2, sz * 0.8));
+      g.add(BOX(2.5, lh - 0.1, 1.6, glowMat(0xffefc0), 0, y + lh / 2, 0)); y += lh;
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), tmat(0x4a8a78)); roof.rotation.y = Math.PI / 4; roof.scale.set(3.3, 1.7, 2.4); roof.position.y = y + 0.85; roof.castShadow = true; g.add(roof); y += 1.7;
+      g.add(CYL(0.03, 0.07, 3.0, tmat(P.trim), 0, y + 1.4, 0, 5)); y += 2.9;
+      const beacon = SPH(0.14, glowMat(0xff4a5a), 0, y + 0.1, 0); g.add(beacon); animated.push(t => beacon.material.color.setHex(Math.floor(t * 1.3) % 2 ? 0xff4a5a : 0x7a2030));
+      const h1 = halo(0xff6a5a, 2.4, 0.8); h1.position.set(0, y + 0.1, 0); g.add(h1);
+      const h2 = halo(0xffe4a0, 7, 0.55); h2.position.set(0, y - 4.5, 0); g.add(h2);
+      T.crownH = y + 0.25; return g;
+    }
+    T.crown = buildCrown(); root.add(T.crown);
+    T.set = function (n) {
+      n = Math.max(1, Math.min(T.max, Math.round(+n) || 0)); if (n === T.floors && T.mid) return false;
+      T.floors = n; const old = T.mid, oldGlass = T.glass; T.mid = buildMid(n); root.add(T.mid);
+      if (old) { root.remove(old); disposeTree(old); DAY.windowSets = DAY.windowSets.filter(s => s.mesh !== oldGlass); }
+      T.crown.position.y = T.base + n * fh;
+      T.crown.traverse(o => { if (!o.isMesh || o.isInstancedMesh) return; if (o.userData.cs === undefined) o.userData.cs = o.castShadow; o.castShadow = o.userData.cs && n <= 14; });
+      return true;
+    };
+    T.set(T.floors);
+  }
   north({ name: 'NOVA Club', x: 16, w: 9, d: 7, floors: 2, fh: 1.8, body: F[1], roof: { antenna: true },
     shop: { h: 2.6, door: -0.9, doorColor: 0x1a1030, in1: '#ff9ad8', in2: '#6a3aa0', sign: { text: 'NOVA', w: 3.0, h: 0.9, fg: '#ff5ab8', glow: '#ff2a98', px: 78, y: 3.5, glowColor: 0xff3aa8 } },
     vsign: { text: 'CLUB', w: 0.9, h: 3.0, fg: '#7ae8ff', glow: '#2ad8ff', px: 70, u: 3.6, y: 5.2, glowColor: 0x3ad8ff } });
