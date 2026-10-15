@@ -335,16 +335,6 @@ function npcCard() {
   const cb = el('button', 'btn ghost', 'Bye'); cb.onclick = () => NPC.closeCard(); acts.appendChild(cb);
   return c;
 }
-// an invitation to somebody's Home: go or not now (a Home is private, this is the way in)
-function inviteCards() {
-  const now = Date.now(); NET.invites = NET.invites.filter(i => i.exp > now); if (!NET.invites.length) return null;
-  const w = el('div', 'invwrap');
-  for (const i of NET.invites.slice(-3)) {
-    const c = el('div', 'invcard paper hit', '<b></b><small>invites you to their Home</small><div class="acts"></div>'); c.querySelector('b').textContent = i.from;
-    const a = c.querySelector('.acts'), go = el('button', 'btn', 'Go'); go.onclick = () => NET.acceptInvite(i.owner); const no = el('button', 'btn ghost', 'Not now'); no.onclick = () => NET.dismissInvite(i.owner); a.appendChild(go); a.appendChild(no); w.appendChild(c);
-  }
-  return w;
-}
 const toastEl = () => { const t = el('div', ''); t.id = 'toast'; return t; };
 const dock = (cls, withLabels) => { const d = el('div', cls); for (const m of MENU) { const b = el('button', 'dk hit' + (m.soon ? ' soon' : '') + (UI.open === m.id ? ' on' : ''), `<span class="ic">${icon(m.icon, 26)}</span>${withLabels ? `<span class="lb">${m.label}</span>` : ''}<span class="kb">${m.key}</span>`); b.title = m.label; b.onclick = () => menuClick(m); d.appendChild(b); } return d; };
 
@@ -366,7 +356,6 @@ function render() {
   const w = el('div', 'win' + (['chog', 'settings', 'venues'].includes(UI.open) ? ' open' : '') + (UI.open === 'venues' ? ' venues' : ''));
   w.appendChild(UI.open === 'settings' ? settingsCard(closeWin) : UI.open === 'venues' ? venuesCard(closeWin) : card(closeWin)); root.appendChild(w);
   const pc = playerCard() || npcCard(); if (pc) root.appendChild(pc);
-  const iv = inviteCards(); if (iv) root.appendChild(iv);
   root.appendChild(toastEl());
 }
 // the HUD is laid out for a 1440x810 window and scaled with the window height

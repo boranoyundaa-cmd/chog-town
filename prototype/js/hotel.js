@@ -183,12 +183,6 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   // ------------------------------------------------------------------ the two scenes
   // ---- lobby: ordinary signs, and three small hidden things (the rug tag, the print in the corner; the elevator one is in the panel). Restraint: most of it is plain hotel.
   const RUG = { x: 0.3, z: 1.7, hw: 1.5, hd: 1.0, pulledAt: -1e9, until: 0, grp: null, victims: [], baseX: 0.3 };
-  const RECEP = ['Welcome to the Chog Hotel.', 'Rooms are on the floors. The elevator is on your left.', 'The directory lists every open room.', 'Check-out is at 11:00.', 'Breakfast is a coffee. Mika will help you.', 'Need a room? Ask me. Need a view? Take the elevator.'];
-  let recepJoke = null, recepAt = 0;
-  const recepLine = () => {                                                         // normal hotel lines, and one in-joke from the culture file now and then
-    if (!recepJoke) { const c = typeof CULTURE !== 'undefined' && CULTURE.residents && CULTURE.residents.receptionist; recepJoke = c && c.length ? c[Math.floor(Math.random() * c.length)] : ''; }
-    recepAt++; return recepJoke && recepAt % 5 === 0 ? recepJoke : RECEP[recepAt % RECEP.length];
-  };
   function paperOnWall(g, o, wall, u, y, w, h, paint, frameCol) {
     const cv = document.createElement('canvas'); cv.width = 256; cv.height = Math.round(256 * h / w); const c = cv.getContext('2d');
     const draw = () => { c.clearRect(0, 0, cv.width, cv.height); paint(c, cv.width, cv.height); };
@@ -251,12 +245,12 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     piece(g, 'wallArt', -5.2, -6.0); piece(g, 'wallArt', -8.25, 4.2, 90); piece(g, 'wallArt', -8.25, -2.8, 90); lobbyExtras(g, o);
     piece(g, 'floorLamp', 5.0, -4.7); piece(g, 'floorLamp', -3.6, -4.7); piece(g, 'floorLamp', 0.3, 5.6);
     block(0.3, -4.95, 1.7, 0.45);
-    // the receptionist
+    // the receptionist: Lev
     piece(g, 'stool', 0.3, -5.62);                                                    // a tall stool behind the counter, so the receptionist shows above it
-    npc = chog({ hair: 0x5b35b0, outfit: 'vest', vest: 0x7a3ac8, head: 'headset', scale: CHOG_SCALE * 1.0 }); npc.position.set(0.3, 0.76, -5.62); npc.rotation.y = 0; g.add(npc); npc.userData.netName = 'Reception'; npc.userData.onClick = () => { toast(recepLine()); HOTEL.openPanel('dir'); };
-    npcPlate = PLATES.add(npc, 'Staff');
+    npc = LEV.make(); npc.position.set(0.3, 0.76, -5.62); npc.rotation.y = 0; g.add(npc); npc.userData.netName = 'Lev'; npc.userData.onClick = () => LEV.talk();      // Lev, the night shift (lev.js)
+    npcPlate = PLATES.add(npc, 'Night shift');
     spots = [
-      { x: 0.3, z: -3.9, r: 1.6, y: 2.2, label: 'Ask reception', run: () => HOTEL.openPanel('dir') },
+      { x: 0.3, z: -3.9, r: 1.6, y: 2.2, label: 'Talk to Lev', run: () => LEV.talk() },
       { x: -6.6, z: 0.9, r: 1.4, y: 2.6, label: 'Take the elevator', run: () => HOTEL.openPanel('lift'), at: [-7.8, 2.7, 0.9] },
       { x: 5.9, z: -5.1, r: 1.3, y: 2.6, label: 'Go out to the street', run: () => HOTEL.leave(), at: [5.9, 2.6, -5.9] },
     ];
@@ -347,6 +341,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     me.position.set(a.x, 0, a.z); me.rotation.y = a.ry || 0; camTarget.set(a.x, 1.1, a.z);
     GAME.camFixed = floor === 0 ? new THREE.Vector3(0, 1.0, 0) : null; GAME.sceneZoom(HALL_ZOOM); sceneInfo();      // both places are 1.5 times bigger than before: the whole place fits at HALL_ZOOM, GAME.room tells the camera what to follow with
     HOTEL.active = true; HOTEL.floor = floor; HOTEL.panel = null; document.body.classList.add('inhotel'); HOTEL.refreshUI(); if (typeof render === 'function') render();
+    if (floor === 0 && typeof LEV !== 'undefined') LEV.onLobby();                          // Lev greets a player whose room went to cold storage
     return true;
   }
   // rebuild the floor you stand on without moving anywhere (a facade changed)
@@ -385,6 +380,13 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     try { await fade(async () => { await loadInfo(); const d = door ? doorOf(door) : null; if (!await show(f, d ? d.stand : f === 0 ? { x: -3.4, z: 0.6, ry: Math.PI / 2 } : null)) toast('The elevator did not move. Try again.'); }); } finally { HOTEL.busy = false; }
   };
   HOTEL.goTo = v => HOTEL.goFloor(v.floor, v);
+  // a cut-scene arrival (lev.js): fade to black, put the player in front of the door of v (from the lobby or from the street), run `ready` while the screen is still black, fade back in
+  HOTEL.arrive = async function (v, ready) {
+    if (HOTEL.busy || ROOM.busy || ROOM.active) return false; HOTEL.busy = true; let ok = false;
+    try { await fade(async () => { HOTEL.infoAt = 0; if (!await loadInfo()) { toast('The Hotel did not answer. Try again.'); return; } HOTEL.panel = null; ok = await show(v.floor, doorOf(v).stand); if (ok && ready) await ready(); }); } finally { HOTEL.busy = false; }
+    return ok;
+  };
+  HOTEL.sceneGroup = () => G;                                                          // a local-only thing (the cut-scene Lev) goes into the scene group and goes away with the floor
   HOTEL.enterVenue = async function (v) {
     if (HOTEL.busy || ROOM.busy || !HOTEL.active) return; HOTEL.busy = true;
     HOTEL.lastDoor = v.id; try { await fade(async () => { if (v.ex) await EXH.enter(v); else await ROOM.enterVenue(v); }); } finally { HOTEL.busy = false; }
@@ -398,7 +400,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   // ------------------------------------------------------------------ near things: the E prompt
   const prompt = document.createElement('button'); prompt.id = 'hotelp'; prompt.style.display = 'none'; document.body.insertBefore(prompt, document.getElementById('ui'));
   let near = null; prompt.onclick = () => act();
-  const act = () => { if (!near || HOTEL.busy || HOTEL.panel) return; near.run(); };
+  const act = () => { if (!near || HOTEL.busy || HOTEL.panel || GAME.locked || (typeof LEV !== 'undefined' && LEV.busy)) return; near.run(); };
   addEventListener('keydown', e => {
     if (!HOTEL.active) return; const typing = e.target.matches && e.target.matches('input,textarea,select');
     if (e.code === 'Escape' && HOTEL.panel && !typing) { HOTEL.closePanel(); return; }
@@ -410,7 +412,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
     if (!HOTEL.active || !GAME.me) { if (prompt.style.display !== 'none') prompt.style.display = 'none'; return; }
     for (const f of anims) f(t);
     for (const gd of guards) { const u = gd.c.userData, b = Math.sin(t * 2 + u.t0) * 0.015; if (u.legs) { u.body.position.y = b; u.head.position.y = 1.0 + b * 1.4; u.legs.forEach(l => l.rotation.x = 0); u.arms[0].rotation.x = Math.sin(t * 2 + u.t0) * 0.05; u.arms[1].rotation.x = 0; u.eyes.forEach(e => e.scale.y = (e.userData.by || 0.095) * (Math.sin(t * 0.9 + u.t0 * 5) > 0.985 ? 0.12 : 1)); } }
-    if (npc && npc.userData.legs) { const u = npc.userData, b = Math.sin(t * 2) * 0.015; u.body.position.y = b; u.head.position.y = 1.0 + b * 1.4; u.legs.forEach(l => l.rotation.x = 0); u.arms[1].rotation.z = Math.sin(t * 0.5) > 0.93 ? 2.7 + Math.sin(t * 9) * 0.35 : 0.1; u.arms[0].rotation.x = Math.sin(t * 2) * 0.05; const blink = Math.sin(t * 0.9) > 0.985 ? 0.12 : 1; u.eyes.forEach(e => e.scale.y = (e.userData.by || 0.095) * blink); }
+    if (npc && npc.userData.legs) LEV.idle(npc, t);
     const me = GAME.me.position; near = null; let best = 1e9;
     for (const s of spots) { const d = Math.hypot(me.x - s.x, me.z - s.z); if (d < s.r && d < best) { best = d; near = s; } }
     if (near && !HOTEL.busy && !HOTEL.panel) {
@@ -420,7 +422,7 @@ const HOTEL = { active: false, away: false, floor: 0, info: null, counts: {}, fa
   });
   HOTEL.title = () => 'Chog Hotel';
   HOTEL.where = () => floorName(HOTEL.floor);
-  HOTEL.hint = () => (HOTEL.floor === 0 ? 'Click to walk · E at the reception for the directory, at the elevator for the floors (type a room number there)' : HOTEL.floor === 'E' ? 'Click to walk · E at a door to view a room, vote inside · E at the elevator to change floor' : 'Click to walk · E at a door to go in · E at the elevator to change floor');
+  HOTEL.hint = () => (HOTEL.floor === 0 ? 'Click to walk · E at the desk to talk to Lev, at the elevator for the floors (type a room number there)' : HOTEL.floor === 'E' ? 'Click to walk · E at a door to view a room, vote inside · E at the elevator to change floor' : 'Click to walk · E at a door to go in · E at the elevator to change floor');
 
   // ------------------------------------------------------------------ the HUD: top bar and the two panels (directory, elevator)
   const btn = (cls, txt, fn, title) => { const b = el('button', 'btn hit ' + cls, ''); b.textContent = txt; b.onclick = fn; if (title) b.title = title; return b; };

@@ -23,7 +23,7 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 - **Shop** (`shop.js`, `server/shop.js`, `contracts/`): ChogShop soulbound ERC-1155, 90 % burn / 10 % team, tips 100 % to the owner; MON payments swap directly against the Capricorn CHOG/WMON pool (`capricornCLSwapCallback`, checked on a mainnet fork). **Live:** ChogShop `0x0eD0D1c8782819Cb9AbFe183C6c0235F248B2F9a` (Monad, deployed by the owner 2026-10-15; admin and team = the #1700 wallet), set in `SHOP_CONFIG.shop` (client) and `SHOP_ADDRESS` (`server/fly.toml`).
 - **Path finding:** A* with binary heaps and closed sets, linear string pulling (the big town froze otherwise).
 - **Direction (2026-10-09, owner):** the answer to "Habbo on blockchain: nobody has a reason to play" is **culture**: Crypto Twitter references, audience crypto-native non-holders, holders are the supply side (`docs/game/culture.md`).
-- **World architecture (owner):** one town, Home (private, invitation only), Hotel for holder venues (floors of four wall slots, free facades, entry rule and guard, usernames), Exhibition floor, real-clock lighting only in the background, NPC schedules without server state (`docs/game/world.md`, `docs/game/spaces.md`).
+- **World architecture (owner):** one town, a free Hotel room for every wallet (public unless locked; the town has no Home door), the Hotel with Lev at the desk, holder venues (floors of four wall slots, free facades, entry rule and guard, usernames), Exhibition floor, real-clock lighting only in the background, NPC schedules without server state (`docs/game/world.md`, `docs/game/spaces.md`).
 - **Chog likeness:** every trait value has its own model (Eyes 58, Head 66, Body 96, Aura 22, Accessory 9, the ten 1:1 Legendaries in `chog_legends.js`); the audit tools are `tools/value_sheet.py` and `tools/compare_portraits.py`. Approximate: small details seen only up close. Colours read from the art are built at `EXPO` (0.6).
 - **Data:** 1,969 tokens in 1,012 wallets (`prototype/data/owners.json`); all traits in `tokens.json`, no IPFS calls at runtime. Collection `Tier` trait: Common 1,279, Uncommon 590, Rare 60, Epic 30, Legendary 10.
 - **Backups (private GitHub):** the game, docs and tools in `boranoyundaa-cmd/chog-town`, the server in `boranoyundaa-cmd/chog-town-server`. Commit and push both at the end of a session.
@@ -58,6 +58,7 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 ## Handover (end of the 2026-10-15 session)
 
 - **State:** the full build plan is built, deployed (site `https://chog-hotel.pages.dev`, the old chog-town address redirects there) and the shop contract is live; live checks are all that remain. Server checks: `cd server && npm test`.
+- **Lev and rooms for everyone, client side (2026-10-15):** Lev replaced the lobby receptionist (`js/lev.js`; menu, prologue, key cut-scene, upgrade and basement lines in `CULTURE.lev`); the town's Home house is an ordinary neighbour; R / My Room go to your hotel room; invite UI removed. Verified with a mock wallet against a staged server (check-in, grown and moved upgrades, basement return, walletless guest). Not yet checked with a real wallet.
 - **Owner preferences:** the owner speaks Turkish (answer in Turkish); consult before UI/UX, platform and design choices, then write the decision into the docs; ideas that solve several problems at once inside the fiction are valued; jokes stay rare, hidden and contextual.
 - **Deploying:** the server first (`flyctl deploy --ha=false --remote-only` from `server/`; the `Dockerfile` copies files by name, add new ones: `games.js`, `exhibition.js`, `shop.js`, `shop_items.json` are already listed), then the site (`python tools/build_site.py`, `wrangler pages deploy` from outside the repo, `docs/engineering/prototype.md`). Commit and push both repos (`server/` is its own repo).
 - **Shop admin:** prices, caps, pause and the pool are changed from the admin wallet (`contracts/README.md`; `contracts/deploy.html` is the browser deploy page).
@@ -66,7 +67,7 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 ## Next steps (in order)
 
 1. A small test purchase with $CHOG and with MON on the live site.
-2. Live checks with a real wallet (sign a Home save, an invitation, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
+2. Live checks with a real wallet (check in with Lev, the key scene, sign a room save, a tier upgrade, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
 3. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
 4. Owner corrections to the culture content after seeing it in the game.
 

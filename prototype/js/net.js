@@ -5,7 +5,7 @@
 // Loaded after ui.js and plates.js.
 const NET = {
   ws: null, status: 'connecting', id: null, name: '', maxChat: 140, remotes: new Map(), log: [], draft: '', retry: 0,
-  username: null, muted: new Set(), invites: [], authed: false, authBusy: null, lastSent: null, card: null, space: 'city', rooms: false, hotel: false,
+  username: null, muted: new Set(), authed: false, authBusy: null, lastSent: null, card: null, space: 'city', rooms: false, hotel: false,
 };
 (function () {
   const QSV = new URLSearchParams(location.search);
@@ -125,10 +125,6 @@ const NET = {
     const mine = (NET.enterQ || Promise.resolve()).then(run, run); NET.enterQ = mine.catch(() => null);
     return await mine;
   };
-  // ---- invitations to a Home: you can only enter somebody's Home when its owner invited you (a direct invitation) or gave you their link
-  NET.invite = id => { if (NET.status !== 'online') { toast('The town server is offline.'); return; } send({ t: 'invite', id }); };
-  NET.dismissInvite = owner => { NET.invites = NET.invites.filter(i => i.owner !== owner); if (typeof render === 'function') render(); };
-  NET.acceptInvite = owner => { NET.dismissInvite(owner); if (ROOM.visit) ROOM.visit(owner); };
   NET.send = send;
   NET.waitFor = waitFor;
   NET.logout = function () { NET.authed = false; NET.username = null; NET.want = null; send({ t: 'logout' }); };
@@ -177,11 +173,6 @@ const NET = {
       case 'venuemine': if (typeof VENUE !== 'undefined') VENUE.onMine(m.mine); break;
       case 'counts': if (typeof HOTEL !== 'undefined') HOTEL.setCounts(m.c); break;
       case 'roomfail': if (typeof HOTEL !== 'undefined' && HOTEL.guardSays && HOTEL.guardSays(m.reason)) break; toast(m.reason || 'That did not work.'); break;
-      case 'invited': {
-        const from = NET.remotes.get(m.fromId);                                                  // matched by the sender's stable id, not by display name
-        if (from && NET.isMuted(from)) break;
-        NET.invites = NET.invites.filter(i => i.owner !== m.owner && i.exp > Date.now()); NET.invites.push({ owner: m.owner, from: m.from, exp: m.exp }); addLog('sys', m.from + ' invited you to their Home.'); if (typeof render === 'function') render(); break;
-      }
       case 'join': upsert(m.p); if (NET.refreshChat) NET.refreshChat(); break;
       case 'leave': remove(m.id); break;
       case 'appear': if (m.p.id === NET.id) { NET.name = m.p.name; if (typeof render === 'function') render(); } else upsert(m.p); break;

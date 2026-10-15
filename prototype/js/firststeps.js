@@ -10,7 +10,8 @@ const FIRST = { st: { done: {}, collapsed: false, closed: false }, target: null,
   const saved = load(); if (saved) Object.assign(FIRST.st, saved);
   if (!FIRST.st.done) FIRST.st.done = {};
   if (QS.has('steps')) FIRST.st = { done: {}, collapsed: false, closed: false };                  // ?steps=1 shows the checklist again (testing)
-  if (QS.has('room')) FIRST.st.closed = true;                                                      // an invite link: the visitor came for a room, not for the checklist
+  if (QS.has('room')) FIRST.st.closed = true;                                                      // ?room=mine: a test link, no checklist
+  if (FIRST.st.done.home) { FIRST.st.done.room = true; delete FIRST.st.done.home; }               // the old "Decorate your Home" item is now "Decorate your room"
   const st = () => FIRST.st;
   const outside = () => !(typeof ROOM !== 'undefined' && ROOM.active) && !(typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.away));
   const saySafe = (r, text) => { if (r && r.plate && typeof PLATES !== 'undefined') PLATES.say(r.plate, text); };
@@ -19,7 +20,7 @@ const FIRST = { st: { done: {}, collapsed: false, closed: false }, target: null,
   const bld = n => CITY.buildings.find(b => b.name === n);
   const front = (n, dx) => { const b = bld(n); return b ? { x: b.x + dx, z: b.z + b.d / 2 + 0.8 } : null; };
   const side = (n) => { const b = bld(n); return b ? { x: b.x + b.w / 2 + 1.2, z: b.z } : null; };       // the west row faces east
-  const hd = CITY.doors.hotel, hm = CITY.doors.home;
+  const hd = CITY.doors.hotel;
   // id, label on the map, walk point, height of the waypoint above the ground, a longer note for the map tooltip, dy: label offset on the map in pixels
   const PLACES = [
     { id: 'hotel', label: 'Chog Hotel', at: { x: hd.x, z: hd.out }, y: 2.7, dy: -26 },
@@ -30,7 +31,6 @@ const FIRST = { st: { done: {}, collapsed: false, closed: false }, target: null,
     { id: 'arcade', label: 'Arcade', at: front('Arcade', -0.8), y: 2.8, dy: 26 },
     { id: 'plaza', label: 'Chog Plaza', at: { x: -6, z: -6 }, y: 1.2, dy: -22, noWp: true },
     { id: 'park', label: 'Lantern Park', at: { x: -12.75, z: 18 }, y: 1.2, dy: -22, noWp: true },
-    { id: 'home', label: 'Your Home', at: { x: hm.x, z: hm.out }, y: 2.6, dy: 26 },
   ].filter(p => p.at);
   const PL = {}; for (const p of PLACES) PL[p.id] = p;
 
@@ -45,11 +45,11 @@ const FIRST = { st: { done: {}, collapsed: false, closed: false }, target: null,
   const dailySolved = () => { try { const j = JSON.parse(localStorage.getItem('chog_games') || '{}'); return !!(j.daily && j.daily.solved); } catch (e) { return false; } };
   const played = () => { try { const j = JSON.parse(localStorage.getItem('chog_games') || '{}'); return Object.keys(j.played || {}).length > 0; } catch (e) { return false; } };
   const ITEMS = [
-    { id: 'hotel', text: 'Check in at the Chog Hotel', check: () => typeof HOTEL !== 'undefined' && HOTEL.active, go: () => ({ place: 'hotel', arrive: 'Press E at the door to go in.' }) },
+    { id: 'hotel', text: 'Check in at the Chog Hotel', check: () => (typeof VENUE !== 'undefined' && !!VENUE.mine) || (typeof LEV !== 'undefined' && !WALLET.account && LEV.st.guest), go: () => ({ place: 'hotel', arrive: 'Press E at the door to go in, then talk to Lev at the desk.' }) },
     { id: 'challenge', text: 'Challenge a resident', check: () => FSCHALLENGED.v, go: () => { const r = nearestResident(); return r ? { dyn: r, label: r.name, y: 2.6, arrive: 'Click ' + r.name + ', then Challenge.' } : { place: 'plaza' }; } },
     { id: 'daily', text: 'Solve today\'s Daily Chog', check: () => dailySolved(), go: () => ({ place: 'gallery', arrive: 'Step to the door to play the Daily Chog.' }) },
     { id: 'game', text: 'Play a mini-game', check: () => (typeof GAMES !== 'undefined' && !!(GAMES.match || (GAMES.open && ['stack', 'rhythm', 'daily'].includes(GAMES.open.id)))) || played(), go: () => ({ place: 'arcade', arrive: 'Step to the door to play Stack the luggage.' }) },
-    { id: 'home', text: 'Decorate your Home', check: () => typeof ROOM !== 'undefined' && ROOM.active && ROOM.mine && (ROOM.placedCount || 0) > placed0, go: () => ({ place: 'home', arrive: 'Press E at the glowing door, then B to decorate.' }) },
+    { id: 'room', text: 'Decorate your room', check: () => typeof ROOM !== 'undefined' && ROOM.active && ROOM.mine && (ROOM.placedCount || 0) > placed0, run: () => LEV.goMyRoom(), go: () => ({ place: 'hotel' }) },
   ];
   const doneCount = () => ITEMS.filter(i => st().done[i.id]).length;
   function mark(id) {
@@ -85,8 +85,9 @@ const FIRST = { st: { done: {}, collapsed: false, closed: false }, target: null,
   // ---------- walking somewhere on purpose: sets the waypoint and walks (runs when far)
   function walkPoint(p, run) { GAME.walkTo(p.x, p.z, false, run !== false); }
   FIRST.goTo = function (id) {
+    const it = ITEMS.find(x => x.id === id); if (it && it.run && GAME.me) { it.run(); return; }                                          // "Decorate your room" goes to your door (R)
     if (!outside()) { if (typeof toast === 'function') toast('Step outside first.'); return; }
-    const it = ITEMS.find(x => x.id === id); if (!it || !GAME.me) return; const g = it.go(), pl = g.place ? PL[g.place] : null;
+    if (!it || !GAME.me) return; const g = it.go(), pl = g.place ? PL[g.place] : null;
     const pos = g.dyn ? g.dyn.c.position : pl.at;
     FIRST.target = { id, x: pos.x, z: pos.z, y: g.y || pl.y, label: g.label || pl.label, dyn: g.dyn || null, arrive: g.arrive || '' };
     walkPoint(pos); FIRST.refresh();
@@ -173,12 +174,12 @@ const FIRST = { st: { done: {}, collapsed: false, closed: false }, target: null,
         if (tr.t > 150 || dp > 40) { tr.phase = 'back'; tr.path = null; }
       } else {
         tr.pos.ry = Math.atan2(me.x - tr.pos.x, me.z - tr.pos.z);
-        if (Math.hypot(me.x - hd.x, me.z - hd.out) < 4) { tr.phase = 'point'; tr.t = 0; saySafe(tr.r, 'Here we are. Press E at the door to go in.'); }
+        if (Math.hypot(me.x - hd.x, me.z - hd.out) < 4) { tr.phase = 'point'; tr.t = 0; saySafe(tr.r, 'Here we are. Press E at the door to go in, and say hi to Lev.'); }
         else if (tr.t > 150) { tr.phase = 'back'; tr.path = null; }
       }
     } else if (tr.phase === 'point') {
       tr.pos.ry = Math.atan2(me.x - tr.pos.x, me.z - tr.pos.z);
-      if (tr.t > 2.6 && tr.said < 2) { tr.said = 2; if (typeof toast === 'function') toast('Arcade: stack the luggage · Gallery: the Daily Chog · R: your free Home'); }
+      if (tr.t > 2.6 && tr.said < 2) { tr.said = 2; if (typeof toast === 'function') toast('Arcade: stack the luggage · Gallery: the Daily Chog · R: your free room'); }
       if (tr.t > 4.6 && tr.said < 3) { tr.said = 3; saySafe(tr.r, 'The Arcade is east, the Gallery west. gm. Come find me if you get lost.'); }
       if (tr.t > 9) { tr.phase = 'back'; tr.path = null; }
     }

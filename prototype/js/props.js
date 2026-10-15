@@ -66,7 +66,7 @@ const PROPS = { roots: [], placed: [], group: new THREE.Group(), card: null, cou
   };
   // a new blocker must not seal a door or a resident's spot off from the street: flood fill from the spawn on a 0.25 grid (the player's walking radius)
   const RG = 0.25, RN = Math.round((HALF * 2 + 2) / RG), rIdx = v => Math.max(0, Math.min(RN - 1, Math.floor((v + HALF + 1) / RG))), rW = c => (c + 0.5) * RG - HALF - 1;
-  const targets = () => { const t = []; for (const k in NPC.PL) { const p = NPC.PL[k]; if (p.act !== 'stroll') t.push([p.x, p.z]); } const h = CITY.doors.home; if (h) t.push([h.x, h.out !== undefined ? h.out : h.z]); return t; };
+  const targets = () => { const t = []; for (const k in NPC.PL) { const p = NPC.PL[k]; if (p.act !== 'stroll') t.push([p.x, p.z]); } const h = CITY.doors.hotel; if (h) t.push([h.x, h.out !== undefined ? h.out : h.z]); return t; };
   let BG = null;                                                              // the blocker grid, built once and stamped as blockers are added (rebuilding it per candidate froze the 64 m town)
   function stamp(g, q) { const i0 = rIdx(q.x - q.hw - 0.25), i1 = rIdx(q.x + q.hw + 0.25), j0 = rIdx(q.z - q.hd - 0.25), j1 = rIdx(q.z + q.hd + 0.25);
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (Math.abs(rW(i) - q.x) < q.hw + 0.25 && Math.abs(rW(j) - q.z) < q.hd + 0.25) g[j * RN + i] = 1; }
@@ -388,6 +388,7 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
   // Pages come from HLIVE.pages() (hotel_live.js, loaded later: read lazily); with no data one calm default page. A click walks you to the Hotel door (FIRST.goPlace, the first-steps auto-walk).
   const LIVE = { boards: [], pages: [{ k: 'default', size: '' }], page: 0, from: null, fade: 1, t: 0, rev: -1 };
   const HCOL = { events: '#e0408a', busiest: '#d99a10', winner: '#1f9a88', default: '#7a3ac8' }, HHEAD = { events: 'TONIGHT', busiest: 'BUSIEST ROOM', winner: 'EXHIBITION', default: 'CHOG HOTEL' };
+  function fitOne(g, txt, maxW, px, font) { g.font = `600 ${px}px ${font}`; const wd = g.measureText(String(txt)).width; return { lines: [String(txt)], px: Math.max(8, Math.floor(wd > maxW ? px * maxW / wd : px)) }; }          // too wide even at the smallest size: shrink it to fit instead of cutting the text off
   function paintLive(g, w, h, pg, foot, inset) {
     const hh = Math.round(h * 0.17), ft = Math.round(h * 0.085), y0 = hh + 8, y1 = h - ft - 8, ch = y1 - y0, tw = w - inset, sc = Math.min(h, w) / 300;
     g.save(); g.fillStyle = CREAM; rrect(g, 6, 6, w - 12, h - 12, 26); g.fill(); g.clip(); g.fillStyle = HCOL[pg.k]; g.fillRect(0, 0, w, hh); g.restore();
@@ -395,7 +396,7 @@ const textOn = p => p.disp || SHORT[p.id] || p.text || p.title;
     g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     { let hp = Math.round(hh * 0.52); g.font = `${hp}px ${FONT2}`; while (hp > 14 && g.measureText(HHEAD[pg.k]).width > tw) { hp -= 2; g.font = `${hp}px ${FONT2}`; } } g.lineWidth = 7; g.strokeStyle = INK; g.fillStyle = CREAM; g.strokeText(HHEAD[pg.k], w / 2, hh / 2 + 5); g.fillText(HHEAD[pg.k], w / 2, hh / 2 + 5);
     g.font = `600 ${Math.round(ft * 0.66)}px ${FONT}`; g.fillStyle = 'rgba(43,33,64,.55)'; g.fillText(foot, w / 2, h - ft / 2 - 10);
-    const line = (txt, y, px0, pxMin, font, color, maxW) => { const f = wrapText(g, txt, maxW || tw, 1, Math.round(px0), Math.round(pxMin), font) || { lines: [String(txt).slice(0, 14)], px: Math.round(pxMin) }; g.font = `600 ${f.px}px ${font}`; g.fillStyle = color; g.fillText(f.lines[0], w / 2, y); return f.px; };
+    const line = (txt, y, px0, pxMin, font, color, maxW) => { const f = wrapText(g, txt, maxW || tw, 1, Math.round(px0), Math.round(pxMin), font) || fitOne(g, txt, maxW || tw, Math.round(pxMin), font); g.font = `600 ${f.px}px ${font}`; g.fillStyle = color; g.fillText(f.lines[0], w / 2, y); return f.px; };
     if (pg.k === 'events') {
       const n = pg.rows.length, slot = ch / Math.max(n, 1);
       pg.rows.forEach((r, i) => { const cy = y0 + slot * (i + 0.5) - (pg.more && i === n - 1 ? 8 * sc : 0), tp = Math.min(slot * 0.4, 46 * sc);

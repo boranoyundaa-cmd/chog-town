@@ -4,12 +4,12 @@
 // A room is a space document (js/space.js, docs/game/spaces.md); this file owns the rules around it: entering and leaving the town scene, walking collision,
 // the placement editor and its panel, the server link (net.js: enter / roomprep / roomsave). Loaded after net.js and ui.js.
 const ROOM = {
-  active: false, kind: null /* 'mine' | 'solo' | 'visit' */, mode: 'walk' /* 'walk' | 'edit' */, doc: null, owner: null, ownerName: null, mine: true,
+  active: false, kind: null /* 'solo' | 'venue' | 'facade' */, mode: 'walk' /* 'walk' | 'edit' */, doc: null, owner: null, ownerName: null, mine: true,
   dirty: false, savedAt: null, held: null, busy: false, ui: null, tab: 'pieces', cat: 'all', rects: [],
 };
 (function () {
-  const SNAP = 0.5, LIMIT = 140, HOME = [20, 15], LIGHTS = 14, WALL_H = 5.0, FACADE_H = 6.0, HALL_H = 6.0;                             // grid step; pieces per free Home and its floor in metres (the server enforces the same numbers, server/rooms.js LIMITS); rooms are 5 m tall, the facade strip shows the 6 m hall wall
-  const CITY_DOOR = CITY.doors.home, HOTEL_DOOR = CITY.doors.hotel, CITY_OUT = { x: CITY_DOOR.x, z: CITY_DOOR.out, ry: 0 };   // the Home door in the town
+  const SNAP = 0.5, LIMIT = 80, HOME = [14, 10], LIGHTS = 14, WALL_H = 5.0, FACADE_H = 6.0, HALL_H = 6.0;                             // grid step; pieces per free Home and its floor in metres (the server enforces the same numbers, server/rooms.js LIMITS); rooms are 5 m tall, the facade strip shows the 6 m hall wall
+  const HOTEL_DOOR = CITY.doors.hotel, CITY_OUT = { x: HOTEL_DOOR.x, z: HOTEL_DOOR.out, ry: 0 };   // leaving a temporary room puts you on the pavement in front of the Hotel
   const spawnIn = (size, at) => ({ x: at === 'stairs' ? SPACE.stairsU(size[0]) : size[0] / 2 - 1.6, z: -size[1] / 2 + (at === 'stairs' ? 2.1 : 1.2), ry: 0 });      // where you appear inside: by the room's own door (or the foot of its stairs)
   // unsaved drafts from before the rooms grew (2026-10-15) have no `sz`: shift them like the server shifts saved rooms (every piece keeps its place against the back walls)
   const OLD_ROOM = { home: [13, 10], 1: [15, 11], 2: [18, 13], 3: [18, 13], 4: [22, 15] };
@@ -38,14 +38,11 @@ const ROOM = {
   ROOM.lockedFor = lockedFor;
   const limitNow = () => ((ROOM.kind === 'venue' || ROOM.kind === 'facade') && ROOM.venue && ROOM.venue.limit) || LIMIT;                        // pieces: the free room, or the venue's tier budget (the server enforces the same number)
 
-  // ------------------------------------------------------------------ the town door
-  const doorMark = new THREE.Mesh(new THREE.RingGeometry(0.42, 0.56, 4), new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
-  doorMark.rotation.set(-Math.PI / 2, 0, Math.PI / 4); doorMark.position.set(CITY_DOOR.x, 0.05, CITY_DOOR.z + 0.1); doorMark.userData.noNormal = true; world.add(doorMark); hiddenInNormal.push(doorMark);
+  // ------------------------------------------------------------------ the Hotel door in the town (rooms live in the Hotel; the old Home house is gone)
   const prompt = document.createElement('button'); prompt.id = 'doorp'; prompt.style.display = 'none'; prompt.onclick = () => doorAction();
   document.body.insertBefore(prompt, document.getElementById('ui'));
-  const doorAction = () => { if (ROOM.busy || ROOM.mode === 'edit' || (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.busy))) return; if (ROOM.active) { if (nearStairs()) ROOM.goLevel(); else if (nearExit()) ROOM.leave(); } else if (nearDoor()) enterRoom({ kind: 'mine' }); else if (nearHotel()) HOTEL.enterFromTown(); };
+  const doorAction = () => { if (ROOM.busy || ROOM.mode === 'edit' || (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.busy))) return; if (ROOM.active) { if (nearStairs()) ROOM.goLevel(); else if (nearExit()) ROOM.leave(); } else if (nearHotel()) HOTEL.enterFromTown(); };
   const inTownNow = () => !(typeof HOTEL !== 'undefined' && HOTEL.active);                  // the hotel scenes reuse the coordinates of the street
-  const nearDoor = () => inTownNow() && GAME.me && Math.hypot(GAME.me.position.x - CITY_DOOR.x, GAME.me.position.z - CITY_DOOR.z) < 1.6;
   const nearHotel = () => inTownNow() && GAME.me && Math.hypot(GAME.me.position.x - HOTEL_DOOR.x, GAME.me.position.z - HOTEL_DOOR.z) < 1.6;
   const exitSpot = () => { const [RW, RD] = dims(); return { x: SPACE.door ? SPACE.door.u : RW / 2 - 1.6, z: -RD / 2 }; };
   const nearStairs = () => SPACE.stairs && GAME.me && Math.hypot(GAME.me.position.x - SPACE.stairs.u, GAME.me.position.z - (-dims()[1] / 2 + 1.9)) < 1.7;
@@ -55,12 +52,12 @@ const ROOM = {
   let prev = null;
   function enterScene() {
     const sc = sun.shadow.camera; prev = { zoom: GAME.zoomT, shadow: { l: sc.left, r: sc.right, t: sc.top, b: sc.bottom, f: sc.far } };
-    DAY.pause(); for (const o of CITY_NODES) o.visible = false; doorMark.visible = false;
+    DAY.pause(); for (const o of CITY_NODES) o.visible = false;
     GAME.room = { blocked: (x, z, r) => roomBlocked(x, z, r) }; ROOM.active = true; GAME.path = []; GAME.keys = {};
     GAME.camFixed = new THREE.Vector3(0, 1.0, 0); GAME.sceneZoom(13.5);
   }
   const fitZoom = () => { const [w, d] = dims(), z = 13.5 * Math.max(1, (w + d) / 16); GAME.zoomMax = 24; GAME.camFollowAt = z; GAME.sceneZoom(z); if (GAME.room) Object.assign(GAME.room, { size: [w, d], h: SPACE.H, center: [0, 1.0, 0], bounds: { x0: -w / 2 + 0.3, x1: w / 2 - 0.3, z0: -d / 2 + 0.3, z1: d / 2 - 0.3 }, zoom: z, follow: 18 }); };      // GAME.room also tells the camera: floor size, wall height, walking bounds, the zoom that shows the whole room (zoom) and the closer one to follow the player with (follow)      // a bigger floor needs a wider view; zoomed in beyond it the camera follows you (game.js)
-  ROOM.showTown = on => { for (const o of CITY_NODES) o.visible = on; doorMark.visible = on; };            // the hotel hides and shows the street the same way a room does
+  ROOM.showTown = on => { for (const o of CITY_NODES) o.visible = on; };            // the hotel hides and shows the street the same way a room does
   function leaveScene(keepTown) {                                                          // keepTown: going from a venue back to the hotel, the street stays hidden
     SPACE.unload(); if (!keepTown) { ROOM.showTown(true); DAY.resume(); }
     const sc = sun.shadow.camera; if (prev) { Object.assign(sc, { left: prev.shadow.l, right: prev.shadow.r, top: prev.shadow.t, bottom: prev.shadow.b, far: prev.shadow.f }); sc.updateProjectionMatrix(); if (!keepTown) GAME.sceneZoom(GAME.townBase); }
@@ -70,28 +67,17 @@ const ROOM = {
   }
   function placeMe(s) { const me = GAME.me; me.position.set(s.x, 0, s.z); me.rotation.y = s.ry; GAME.path = []; }
 
-  // spec: {kind:'mine'} or {kind:'visit', who: wallet address, inv?: a link token}; the server lets you into a Home only when you were invited
-  async function enterRoom(spec) {
+  // a walletless guest's temporary room (unsaved, no door number); a wallet's room is a Hotel room (ROOM.enterVenue, HOTEL.arrive). Called by ROOM.enterSolo and ?room=mine.
+  async function enterSolo() {
     if (ROOM.busy || (typeof HOTEL !== 'undefined' && HOTEL.busy)) return; ROOM.busy = true;
     const SPAWN_AT = scatter(spawnIn(HOME));
     try {
-      let doc = null; const info = { kind: spec.kind, owner: null, ownerName: null, mine: spec.kind === 'mine', savedAt: null, draft: false, venue: null };
-      if (spec.kind === 'visit') {
-        if (NET.status !== 'online' || !NET.rooms) { toast('The town server is offline, so Homes cannot be visited right now.'); return; }
-        const r = await NET.enter(Object.assign({ space: 'room', who: spec.who, inv: spec.inv }, SPAWN_AT));
-        if (!r) { toast('The server did not answer. Try again.'); return; }
-        if (r.t !== 'entered') return;                                                         // net.js already showed why
-        Object.assign(info, { kind: r.mine ? 'mine' : 'visit', owner: r.owner, ownerName: r.ownerName, mine: r.mine, savedAt: r.savedAt }); doc = r.doc;
-      } else {
-        const addr = WALLET.account ? WALLET.account.toLowerCase() : null; let r = null;
-        if (addr && NET.status === 'online' && NET.rooms && await NET.authenticate()) r = await NET.enter(Object.assign({ space: 'room', who: 'me' }, SPAWN_AT));
-        if (r && r.t === 'entered') { Object.assign(info, { kind: 'mine', owner: r.owner, savedAt: r.savedAt }); doc = r.doc; }
-        else { if (NET.status === 'online') await NET.enter(Object.assign({ space: 'solo' }, SPAWN_AT)); Object.assign(info, { kind: 'solo', owner: addr }); }
-        const dr = load$('chog_room_' + (addr || 'guest'));                                     // unsaved changes from last time win over the saved copy
-        if (dr && dr.doc) { doc = draftDoc(dr, 'home', HOME); info.draft = true; toast('Your unsaved changes are back.'); }
-        if (!doc) doc = SPACE.starterRoom();
-      }
-      info.spawn = SPAWN_AT; if (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.away)) { HOTEL.hideScene(false); HOTEL.away = false; }       // going to a Home from inside the hotel: the street comes back when you leave it
+      const addr = WALLET.account ? WALLET.account.toLowerCase() : null, info = { kind: 'solo', owner: addr, ownerName: null, mine: true, savedAt: null, draft: false, venue: null };
+      if (NET.status === 'online') await NET.enter(Object.assign({ space: 'solo' }, SPAWN_AT));
+      let doc = null; const dr = load$('chog_room_' + (addr || 'guest'));                      // unsaved changes from last time
+      if (dr && dr.doc) { doc = draftDoc(dr, 'home', HOME); info.draft = true; toast('Your unsaved changes are back.'); }
+      if (!doc) doc = SPACE.starterRoom();
+      info.spawn = SPAWN_AT; if (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.away)) { HOTEL.hideScene(false); HOTEL.away = false; }       // from inside the hotel: the street comes back when you leave
       ROOM.setup(doc, info);
     } finally { ROOM.busy = false; ROOM.refreshUI(); }
   }
@@ -152,12 +138,13 @@ const ROOM = {
     if (!ROOM.active || ROOM.kind !== 'facade' || !ROOM.stash) return; const st = ROOM.stash; ROOM.stash = null;
     setEdit(false); SPACE.doorAt = null; ROOM.setup(st.doc, st.info);
   };
-  ROOM.toggle = function () { if (ROOM.busy) return; if (typeof HOTEL !== 'undefined' && (HOTEL.active || HOTEL.busy) && !ROOM.active) { toast('Step out to the street first, then go home.'); return; } if (ROOM.active) ROOM.leave(); else enterRoom({ kind: 'mine' }); };
-  ROOM.visit = (who, inv) => { if (!ROOM.busy) enterRoom({ kind: 'visit', who, inv }); };
+  // the R key and the My Room button: leave the room you are in, otherwise go to your own Hotel room (lev.js: walks to the Hotel, then the hall in front of your door; no room yet: to Lev)
+  ROOM.toggle = function () { if (ROOM.busy) return; if (ROOM.active) ROOM.leave(); else if (typeof LEV !== 'undefined') LEV.goMyRoom(); };
+  ROOM.enterSolo = enterSolo;
   ROOM.resync = function () {                                                              // the server connection came back (it starts every connection in the town): rejoin this room
     if (!ROOM.active) return; const me = GAME.me, pos = { x: me.position.x, z: me.position.z, ry: me.rotation.y };
     if (ROOM.venue) { NET.enter(Object.assign({ space: ROOM.venue.exhibit ? 'exhibit' : 'venue', id: ROOM.venue.id }, pos)); return; }
-    NET.enter(Object.assign({ space: ROOM.kind === 'solo' || !ROOM.owner ? 'solo' : 'room', who: ROOM.owner }, pos));
+    NET.enter(Object.assign({ space: 'solo' }, pos));
   };
   ROOM.onDoc = function (doc) { if (!ROOM.active || ROOM.mine) return; ROOM.doc = snapWalls(doc, SPACE.size[0], SPACE.size[1]); SPACE.build(doc); rebuildNav(); toast('The owner changed the room.'); };       // the owner saved while we are visiting
   ROOM.editing = () => ROOM.active && ROOM.mode === 'edit';
@@ -335,15 +322,13 @@ const ROOM = {
     if (!GAME.me) return;
     if (ROOM.editing()) updateEdit();
     let show = false, label = '', at = null;
-    if (!ROOM.active && nearDoor() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter your Home'; at = [CITY_DOOR.x, 2.45, CITY_DOOR.z]; }
-    else if (!ROOM.active && nearHotel() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter the Chog Hotel'; at = [HOTEL_DOOR.x, 2.35, HOTEL_DOOR.z]; }
+    if (!ROOM.active && nearHotel() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Enter the Chog Hotel'; at = [HOTEL_DOOR.x, 2.35, HOTEL_DOOR.z]; }
     else if (ROOM.active && ROOM.mode === 'walk' && nearStairs() && !ROOM.busy) { show = true; label = '<kbd>E</kbd> Go ' + (SPACE.stairs.up ? 'upstairs' : 'downstairs'); at = [SPACE.stairs.u, 3.6, -dims()[1] / 2]; }
     else if (ROOM.active && ROOM.mode === 'walk' && nearExit() && !ROOM.busy) { const ex = exitSpot(); show = true; label = '<kbd>E</kbd> Leave the room'; at = [ex.x, 2.5, ex.z]; }
     if (show) {
       v3.set(at[0], at[1], at[2]).project(cam); const sc = Math.max(0.8, Math.min(1.6, innerHeight / 810));
       prompt.style.display = 'flex'; prompt.innerHTML = label; prompt.style.transform = `translate(${((v3.x * 0.5 + 0.5) * innerWidth).toFixed(1)}px, ${((-v3.y * 0.5 + 0.5) * innerHeight).toFixed(1)}px) translate(-50%, -100%) scale(${sc})`;
     } else prompt.style.display = 'none';
-    doorMark.material.opacity = 0.55 + 0.3 * Math.sin(performance.now() / 380);
   });
 
   // ------------------------------------------------------------------ rebuild after look changes (theme, window view, wall, floor, windows)
@@ -363,13 +348,13 @@ const ROOM = {
       const ven = ROOM.kind === 'venue' || ROOM.kind === 'facade', kn = ROOM.kind === 'facade' ? 'facade' : 'venue', pt = ven ? kn + 'prep' : 'roomprep';
       NET.send({ t: pt, doc: ROOM.doc, level: ROOM.level }); const prep = await NET.waitFor([pt, 'roomfail'], 8000);
       if (!prep || prep.t !== pt) { if (!prep) toast('The server did not answer.'); return; }
-      toast('Sign the message in your wallet to save the ' + (ven ? kn : 'Home') + ' (free, no transaction).');
+      toast('Sign the message in your wallet to save the ' + (ven ? kn : 'room') + ' (free, no transaction).');
       let sig; try { sig = await WALLET.provider.request({ method: 'personal_sign', params: [hexOf(prep.message), WALLET.account] }); } catch (e) { toast(e && e.code === 4001 ? 'Not saved: you declined the signature.' : 'Could not sign.'); return; }
       const st = ven ? kn + 'save' : 'roomsave', sd = ven ? kn + 'saved' : 'roomsaved';
       NET.send({ t: st, doc: ROOM.doc, ts: prep.ts, sig, level: ROOM.level }); const r = await NET.waitFor([sd, 'roomfail'], 8000);
       if (r && r.t === sd && ven) { ROOM.dirty = false; sfxPlay('save'); ROOM.savedAt = r.at; save$(draftKey(), null); if (typeof VENUE !== 'undefined') VENUE.onMine(r.mine); toast(kn === 'facade' ? 'Facade saved. It shows in the hall right away.' : r.mine && r.mine.state === 'open' ? (r.mine.tier ? 'Venue saved. Visitors see the new look.' : 'Room saved. Visitors see the new look.') : 'Venue saved. Press Open venue when you are ready.'); }
       else if (r && r.t === sd) {
-        ROOM.dirty = false; sfxPlay('save'); ROOM.savedAt = r.at; ROOM.owner = WALLET.account.toLowerCase(); save$(draftKey(), null); toast('Home saved. Invite friends from the top bar.');
+        ROOM.dirty = false; sfxPlay('save'); ROOM.savedAt = r.at; ROOM.owner = WALLET.account.toLowerCase(); save$(draftKey(), null); toast('Room saved.');
         if (ROOM.kind === 'solo') { ROOM.kind = 'mine'; const me = GAME.me; NET.enter({ space: 'room', who: 'me', x: me.position.x, z: me.position.z, ry: me.rotation.y }); }      // now others can come in
       } else if (r && r.t === 'roomfail') { /* net.js already showed why */ } else if (!r) toast('The server did not answer. Try Save again.');
     } finally { ROOM.busy = false; ROOM.refreshUI(); if (typeof render === 'function') render(); }
@@ -507,5 +492,5 @@ const ROOM = {
 
   // ------------------------------------------------------------------ start-up options: ?room=mine opens your temporary room (old Home links ?room=<wallet address> now only say that Homes are Hotel rooms)
   const q = QS.get('room');
-  if (q) (async () => { for (let i = 0; i < 60 && (NET.status !== 'online' && q !== 'mine'); i++) await new Promise(r => setTimeout(r, 500)); await WALLET.dataReady; if (q === 'mine') enterRoom({ kind: 'mine' }); else if (/^0x[0-9a-fA-F]{40}$/.test(q)) toast('Homes are Hotel rooms now. Find that room in the Hotel directory.'); })();
+  if (q) (async () => { for (let i = 0; i < 60 && (NET.status !== 'online' && q !== 'mine'); i++) await new Promise(r => setTimeout(r, 500)); await WALLET.dataReady; if (q === 'mine') enterSolo(); else if (/^0x[0-9a-fA-F]{40}$/.test(q)) toast('Homes are Hotel rooms now. Find that room in the Hotel directory.'); })();
 })();

@@ -407,7 +407,7 @@ const CULTURE = (() => {
     ],
     buttons: {
       connect: "Connect wallet (we won't rug you)", save: "Sign and save (your keys, your room)", delete: "Rug it",
-      deleteConfirm: "Are you sure? This one is a real rug pull.", invite: "Send an alpha invite", report: "Report (receipts attached)",
+      deleteConfirm: "Are you sure? This one is a real rug pull.", report: "Report (receipts attached)",
       mute: "Touch grass for this one", settings: "Settings (financial advice not included)"
     },
     errors: {
@@ -420,7 +420,7 @@ const CULTURE = (() => {
     },
     tour: [
       { title: "Walk", text: "Use WASD or click to walk. Nobody here has ever been in a hurry. Except the Jeet." },
-      { title: "Find the Home door", text: "Your Home is the house with your name on it. No rent. Terms apply." },
+      { title: "Find the front desk", text: "Your room is in the Chog Hotel. Lev, at the desk, checks you in. No rent. Terms apply." },
       { title: "Press B to decorate", text: "B opens the build menu. DYOR: Decorate Your Own Room." },
       { title: "Place something", text: "Pick an item, put it down. Rugs are allowed, rug pulls are not." },
       { title: "Save", text: "Sign and save. Your keys, your room. Not financial advice." }
@@ -465,12 +465,92 @@ const CULTURE = (() => {
     ]
   };
 
+  // ---------------------------------------------------------------- 9. Lev, the receptionist of the Chog Hotel (lev.js plays these)
+  // A former trader who got liquidated, took the hotel's night shift and never left. "Lev" is short for leverage: the joke is never explained.
+  // His voice: ultra-formal hotel speech read from a form, often closed with *stamp*; rooms are "positions", an upgrade is "adding leverage", the basement is "cold storage".
+  // For an event he first states exactly what happened ({ form }), then adds his own aside ({ aside }, starting "So..." or "Much like..."). Underneath he quietly cares and never says so.
+  // Tokens: {no} the door number, {floor} the floor, {reason} the server's reason. A plain string is one line; { form, aside } is two beats.
+  const lev = {
+    name: "Lev", role: "Night shift",
+    hello: [
+      "Chog Hotel, front desk. State your business. Briefly. *stamp*",
+      "Good evening. It is always evening at this desk. How may I assist? *stamp*",
+      "Front desk. Night shift. Day shift. I stopped checking which. How may I assist?",
+      "Reception. Please remain calm. I will be calm for both of us. *stamp*"
+    ],
+    helloBack: [
+      "Welcome back. Your position is exactly where you left it. I checked. Do not tell anyone I checked. *stamp*",
+      "You again. Good. I mean: your presence has been logged. *stamp*",
+      "Room {no} is in good order. Nobody has touched it. I made sure. As a matter of procedure. *stamp*"
+    ],
+    first: {
+      greet: "Welcome to Chog Town. New arrivals receive one (1) room. Non-transferable. Non-refundable. Much like my twenties. *stamp*",
+      directory: "Before the paperwork: the directory of rooms. The hotel is very proud of it. I am told. Please look. Briefly. *stamp*",
+      afterDirectory: "Thank you for your attention. Now, your room. One (1) moment. *stamp*"
+    },
+    list: "The directory of open positions. Look, do not touch. Regulations. *stamp*",
+    barks: [
+      "No? Fine. I'll just stand here. I'm very good at it. Eleven years of practice.",
+      "The directory is non-binding. As is everything in this building. *stamp*",
+      "Window shopping is permitted. It is, in fact, my entire portfolio.",
+      "Noted. No room selected. No position taken. Capital preserved. A first. *stamp*",
+      "Take your time. The desk is not going anywhere. Neither am I. Obviously.",
+      "You looked at all of them and chose none. I respect the discipline. I never had it.",
+      "If you need me, I will be here. If you do not need me, I will also be here. *stamp*",
+      "A cautious one. Good. The hotel does not see many."
+    ],
+    checkin: {
+      sign: "Please sign. Your wallet will ask. It is free. No transaction. I checked. Twice. *stamp*",
+      declined: "No signature, no position. Those are the rules. I wrote none of them. *stamp*",
+      already: { form: "Our records show you already hold room {no} on floor {floor}. One (1) room per arrival. No further rooms are available.", aside: "So... one is the limit. Ask my accountants. I have none left. *stamp*" },
+      done: { form: "Check-in complete. You have been assigned room {no} on floor {floor}. One (1) key has been issued.", aside: "So... you now hold a position in this hotel. Please do not leverage it. *stamp*" },
+      failed: { form: "Your check-in could not be completed: {reason}", aside: "So... the system said no. I know the feeling. Try again shortly. *stamp*" },
+      offline: { form: "The central ledger is not answering at present.", aside: "Much like my old broker. Return in a moment. *stamp*" }
+    },
+    guest: [
+      "Without a wallet I can only offer a temporary room. It is not saved. It has no door number. It is, strictly speaking, a coat check. *stamp*",
+      "Connect a wallet, a free signature, no NFT required, and you receive a real one. Saved. With a door. I would do it. *stamp*",
+      "Your temporary room is prepared. Please try not to get attached. *stamp*"
+    ],
+    key: {
+      first: "Room {no}. Your key. Please do not lose it. I have lost many things. It does not get easier. *stamp*",
+      leaving: "Enjoy your stay. Or do not. The invoice is zero (0) either way. *stamp*",
+      moved: "Room {no}. A new key. The old one is now decorative. Much like my diploma. *stamp*"
+    },
+    upgrade: {
+      ask: "Adding leverage. A bold request. Let me consult the books. *stamp*",
+      grown: { form: "Your room has been expanded in place. Door {no} remains yours. Your furniture is undisturbed.", aside: "So... leverage added, nothing liquidated. A first for this building. *stamp*" },
+      moved: { form: "Your room could not be expanded: the adjacent rooms are occupied. You have been assigned room {no} on floor {floor}. Your furniture has been moved.", aside: "So... your old position couldn't take the leverage. We closed it and opened a bigger one. Story of my life. *stamp*" },
+      'tier-low': { form: "Your request cannot be processed: no Chog was found in the connected wallet. An upgrade requires at least one (1).", aside: "So... no collateral, no leverage. I would explain further, but it would hurt. *stamp*" },
+      max: { form: "Your room is already the largest size your holdings qualify for. No further expansion can be issued.", aside: "So... you are at maximum leverage. I advise against asking for more. I speak from experience. *stamp*" },
+      smaller: { form: "Your room is larger than your current holdings support. An upgrade cannot be issued until it has been moved to a smaller size.", aside: "So... the position is over-extended. We both know how that ends. *stamp*" },
+      'no-room': { form: "No room is registered to you. Leverage requires a position.", aside: "So... check in first. Then we may discuss ambition. *stamp*" },
+      chain: { form: "The ledger could not be read. Your holdings could not be verified at this time.", aside: "Much like my own positions, at the end. Try again shortly. *stamp*" },
+      busy: "One request at a time, please. I have one pair of hands and no hope. *stamp*",
+      failed: { form: "The upgrade could not be completed: {reason}", aside: "So... the system declined. Try again shortly. *stamp*" }
+    },
+    basement: {
+      lobby: "Ah. You're back. We put your room in cold storage. It's fine. It's warmer than it sounds.",
+      back: { form: "Your room has been returned from cold storage to room {no} on floor {floor}. Your furniture is intact.", aside: "So... welcome to the surface. It is brighter than it sounds. *stamp*" },
+      above: { form: "Your room is already above ground. Nothing needs to be brought up.", aside: "So... you are already warm. Enjoy it. *stamp*" },
+      'no-room': { form: "No room is registered to you, in cold storage or elsewhere.", aside: "So... a clean slate. Rare, in this business. *stamp*" },
+      busy: "One request at a time, please. Cold storage does not like to be rushed. *stamp*",
+      failed: { form: "Your room could not be moved: {reason}", aside: "So... it stays cold for now. Try again shortly. *stamp*" }
+    },
+    bye: [
+      "Dismissed. I mean: have a pleasant day. *stamp*",
+      "Mind the elevator. Eat something. That is not official advice. *stamp*",
+      "Thank you for your custom. It has been noted. By nobody. *stamp*",
+      "Get some rest. Not that I would know. *stamp*"
+    ],
+    menu: { list: "Room list", checkin: "Check in", upgrade: "Upgrade my room", up: "Bring my room back up", bye: "Bye." }
+  };
+
   // ---------------------------------------------------------------- extra small tables used by world content
   const doorSigns = ["Back in 12 blocks.", "Out for liquidity.", "Gone to touch grass.", "Opening soon (roadmap Q-infinity).", "Closed: dev is building.", "Sold out. Floor is 0."];
   const newsHeadlines = ["Experts say: it's over.", "Experts say: we're back.", "Local man holds, stays holding.", "Dev says \"we are building\".", "Whale moves coins, nobody knows why."];
   const homeWalls = ["gm", "my home, my keys", "home sweet home (nfa)", "up only (in here)", "no leverage past this point", "wagmi", "probably nothing", "touch grass", "ser, this is a home", "I AM HODLING", "dyor (I did, it's lovely)", "few understand this room"];
   const residents = {
-    receptionist: ["Welcome. Do you have a reservation? A wallet? A will?", "Rooms are on the floors. The keys are on you.", "We don't do refunds. We do \"learning experiences\".", "The elevator is fast. The Wi-Fi is on the card.", "Checkout is anytime. Exit is always open."],
     mika: ["What can I get you?", "Oat milk? That's 3 gwei more.", "Gas fee included.", "Filter coffee. Not a filter on your losses.", "Refills are free. Like airdrops. No."],
     juno: ["This way to number go up.", "Tip one: gm. Tip two: do not click that. Tip three: you will click that.", "Everything here is a reference. Have fun spotting them, ser."],
     rex: ["No leverage past this point.", "Dress code: hoodie, fear in the eyes.", "I've seen things. Mostly charts."]
@@ -479,7 +559,7 @@ const CULTURE = (() => {
   return {
     cast, cameos,
     cameoNote: 'Real public posts, shown as written (some shortened). Old posts, not advice.',
-    nad, plaques, props, events, ui, places, doorSigns, newsHeadlines, homeWalls, residents,
+    nad, plaques, props, events, ui, places, doorSigns, newsHeadlines, homeWalls, residents, lev,
     // returns a random item of arr never equal to the previous one; holder is any object ({}) that remembers the last index
     pick(arr, holder) {
       if (!arr || !arr.length) return undefined;

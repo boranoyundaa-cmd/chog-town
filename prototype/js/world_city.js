@@ -110,26 +110,6 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
     CITY.buildings.push({ name, x, z, w, d, color: '#' + new THREE.Color(body).getHexString() }); return g;
   }
 
-  // a plain house: one door, everyone finds their own Home behind it (docs/game/world.md)
-  function house(o) {
-    const { name, x, z, w, d, h = 2.5, body, roofC = 0xc4604a, doorU = 0.55 } = o;
-    const g = new THREE.Group(), specs = []; g.position.set(x, 0, z);
-    { const bd = cbox(w, h, d, body, 2.0); bd.position.y = h / 2; g.add(bd); }
-    g.add(BOX(w + 0.12, 0.14, d + 0.12, tmat(P.trim), 0, 0.07, 0)); g.add(BOX(w + 0.5, 0.08, d + 0.5, tmat(P.trim), 0, h + 0.04, 0));
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), tmat(roofC)); roof.rotation.y = Math.PI / 4; roof.scale.set(w + 0.5, 1.15, d + 0.5); roof.position.y = h + 0.08 + 0.575; roof.castShadow = roof.receiveShadow = true; g.add(roof);
-    g.add(BOX(0.36, 0.9, 0.36, tmat(0x9a5a4a), w * 0.24, h + 0.85, -d * 0.18));
-    onFace(g, 'z', w, d, BOX(1.1, 1.85, 0.07, tmat(P.trim)), doorU, 0.93, 0.03); onFace(g, 'z', w, d, BOX(0.9, 1.72, 0.1, tmat(o.doorColor ?? 0x2f6a5c)), doorU, 0.87, 0.07); onFace(g, 'z', w, d, SPH(0.05, tmat(0xf0d070)), doorU + 0.3, 0.9, 0.14);
-    onFace(g, 'z', w, d, BOX(1.3, 0.1, 0.5, tmat(P.curb)), doorU, 0.05, 0.3);
-    onFace(g, 'z', w, d, sign('HOME', 0.9, 0.3, { fg: '#fff3da', bg: '#7a4a3a', px: 58, font: '"Fredoka", sans-serif' }), doorU, 2.2, 0.06);
-    const wl = (face, u) => specs.push({ face, u, y: 1.3, ww: 0.8, wh: 0.8 });
-    wl('z', -0.62); wl('x', 0);
-    buildWindows(g, w, d, specs);
-    world.add(g); g.updateMatrixWorld(true); occluders.push({ g, min: 0.12 }); block(x, z, w / 2 + 0.02, d / 2 + 0.02);
-    CITY.buildings.push({ name, x, z, w, d, color: '#' + new THREE.Color(body).getHexString() });
-    CITY.doors.home = { x: x + doorU, z: z + d / 2 + 0.4, out: z + d / 2 + 0.7, label: 'Enter your Home' };
-    return g;
-  }
-
   // ---------- street furniture (each registers its walking blocker)
   function lamp(x, z, lit = false) {                      // only a few lamps carry a real light (cost); the rest only glow
     const g = new THREE.Group(); g.position.set(x, 0, z);
@@ -320,9 +300,8 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
   east({ name: 'Arcade', x: 15, w: 9, d: 7, floors: 1, fh: 1.8, body: F[2], roof: { antenna: true },
     shop: { h: 2.6, door: -0.8, doorColor: 0x2a2a50, in1: '#b6a0ff', in2: '#5a3ac0', sign: { text: 'ARCADE', w: 3.4, h: 0.85, fg: '#ffe24a', bg: '#2a2050', glow: '#ffb02a', px: 74, y: 3.45, glowColor: 0xffc23a } } });
   east({ name: 'Laundry', x: 25.5, w: 7, d: 6, floors: 2, fh: 1.6, body: F[4], shop: shopF('Laundry', '#4a7ac0', '#ffffff', 1.8) });
-  // Maple Row: one house is the Home door (everyone finds their own Home behind it), the others are neighbours
-  house({ name: 'Home', x: 20.5, z: 21, w: 4.2, d: 3.6, h: 3.0, body: F[5], doorColor: 0x2f6a5c, doorU: 0.8 });
-  for (const [hx, c, rc] of [[13, F[3], 0x5a7ac0], [28, F[4], 0x7a9a5a]]) {
+  // Maple Row: three ordinary neighbour houses (rooms live in the Hotel, docs/game/world.md)
+  for (const [hx, c, rc] of [[13, F[3], 0x5a7ac0], [20.5, F[5], 0xc4604a], [28, F[4], 0x7a9a5a]]) {
     const g = new THREE.Group(), w = 4.2, d = 3.6, h = 2.8; g.position.set(hx, 0, 21);
     { const bd = cbox(w, h, d, c, 2.0); bd.position.y = h / 2; g.add(bd); } g.add(BOX(w + 0.5, 0.08, d + 0.5, tmat(P.trim), 0, h + 0.04, 0));
     const rf = new THREE.Mesh(new THREE.ConeGeometry(Math.SQRT1_2, 1, 4), tmat(rc)); rf.rotation.y = Math.PI / 4; rf.scale.set(w + 0.5, 1.2, d + 0.5); rf.position.y = h + 0.65; rf.castShadow = true; g.add(rf);
