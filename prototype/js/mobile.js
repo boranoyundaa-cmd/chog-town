@@ -4,7 +4,8 @@
 // Without a key: a short landing page and no 3D at all. With one: the room viewer of space.html loads (LITE render size, no supersampling) and builds the room
 // from the server's document, lit by the real clock. Guests inside show live only with the security camera from the shop (camera frames, once a second);
 // otherwise the phone shows the head count. Lev's lines are data (CULTURE.lev.phone in culture_data.js). Names here start with M because scripts share one scope.
-const MOB = { ws: null, authed: false, room: null, docKey: '', camera: false, inside: 0, today: { visitors: 0, tips: 0 }, events: [], guests: new Map(), three: null, levOpen: false, greeted: false, tries: 0 };
+// Notifications: sw.js shows what server/push.js sends (a visit, a tip, a reminder); Lev's tab turns them on and off. On an iPhone they work only from the home screen icon.
+const MOB = { ws: null, authed: false, room: null, docKey: '', camera: false, inside: 0, today: { visitors: 0, tips: 0 }, events: [], guests: new Map(), three: null, levOpen: false, greeted: false, tries: 0, push: { on: false, remind: null, sub: null, bound: false } };
 (function () {
   const QS0 = new URLSearchParams(location.search), $ = id => document.getElementById(id);
   const LOCAL = !location.hostname || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.hostname.endsWith('.localhost');
@@ -59,9 +60,10 @@ const MOB = { ws: null, authed: false, room: null, docKey: '', camera: false, in
       case 'm_count': setCount(m.inside, m.today); break;
       case 'camera': if (!m.init) onCamera(m.players || []); break;
       case 'lock': if (m.ok && MOB.room) { MOB.room.locked = !!m.locked; status(); } break;
+      case 'push': MOB.push.on = !!m.on; MOB.push.remind = m.remind || null; if (!m.on && MOB.push.sub && !MOB.push.bound) { MOB.push.bound = true; send({ t: 'push_sub', sub: MOB.push.sub.toJSON() }); } if (MOB.greeted) chips(); break;
     }
   }
-  function authed() { MOB.authed = true; MOB.tries = 0; send({ t: 'm_room' }); loadThree(); }
+  function authed() { MOB.authed = true; MOB.tries = 0; send({ t: 'm_room' }); loadThree(); initPush(); }
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && MOB.authed) send({ t: 'm_room' }); });          // back on the phone: the owner may have redecorated
 
   // ------------------------------------------------------------------ the 3D room viewer (the scripts of space.html plus the trait parts, loaded only when paired)
@@ -207,6 +209,46 @@ const MOB = { ws: null, authed: false, room: null, docKey: '', camera: false, in
       else say(fill(P.lockFailed.form, { reason: r ? r.reason : 'the hotel did not answer.' }) + ' ' + P.lockFailed.aside);
       chips();
     });
+    if (MOB.room) {
+      if (!MOB.push.on) add(C.pushOn, enablePush);
+      else { add(MOB.push.remind ? C.remindOff : C.remind, toggleRemind); add(C.pushOff, disablePush); }
+    }
+  }
+  // ------------------------------------------------------------------ notifications (Web Push through sw.js)
+  const PUSH_OK = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const STANDALONE = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let swReg = null;
+  const b64 = s => { const p = '='.repeat((4 - s.length % 4) % 4), raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); };
+  async function initPush() {                               // a phone that already said yes: tell the server which wallet it rings for now
+    if (!PUSH_OK || swReg) return;
+    try { swReg = await navigator.serviceWorker.register('sw.js'); const sub = await swReg.pushManager.getSubscription(); MOB.push.sub = sub; if (sub) send({ t: 'push_state', endpoint: sub.endpoint }); }
+    catch (e) { swReg = null; }
+  }
+  async function enablePush() {
+    const P = L();
+    if (!PUSH_OK || !swReg) { say(IOS && !STANDALONE ? P.pushIos : P.pushNone); return; }
+    let perm = Notification.permission; if (perm === 'default') perm = await Notification.requestPermission();
+    if (perm !== 'granted') { say(P.pushDenied); return; }
+    try {
+      send({ t: 'push_key' }); const k = await waitFor(['push_key'], 6000); if (!k) throw new Error('the hotel did not answer.');
+      const old = await swReg.pushManager.getSubscription(); if (old) await old.unsubscribe().catch(() => { });          // a fresh subscription, in case the server's key changed
+      const sub = await swReg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(k.key) });
+      MOB.push.sub = sub; MOB.push.bound = true; send({ t: 'push_sub', sub: sub.toJSON() }); const r = await waitFor(['push', 'phonefail'], 6000);
+      if (!r || r.t !== 'push' || !r.on) throw new Error((r && r.reason) || 'the hotel did not answer.');
+      say(P.pushOn);
+    } catch (e) { say(fill(P.pushFailed.form, { reason: (e && e.message) || 'that did not work.' }) + ' ' + P.pushFailed.aside); }
+    chips();
+  }
+  async function disablePush() {
+    const sub = MOB.push.sub; if (sub) { send({ t: 'push_unsub', endpoint: sub.endpoint }); await waitFor(['push'], 4000); sub.unsubscribe().catch(() => { }); }
+    MOB.push = { on: false, remind: null, sub: null, bound: false }; say(L().pushOff); chips();
+  }
+  async function toggleRemind() {
+    const P = L(), sub = MOB.push.sub; if (!sub) return;
+    const at = new Date(); at.setHours(21, 0, 0, 0); if (at.getTime() <= Date.now() + 60e3) at.setDate(at.getDate() + 1);          // the next 21:00 on this phone's clock
+    const cancel = !!MOB.push.remind; send({ t: 'push_remind', endpoint: sub.endpoint, at: cancel ? 0 : at.getTime() }); const r = await waitFor(['push'], 6000);
+    if (r) say(fill(cancel ? P.remindOff : P.remindSet, { time: '21:00' })); chips();
   }
   function openLev(on) {
     MOB.levOpen = on; $('lev').hidden = !on; $('tabLev').classList.toggle('on', on); $('tabRoom').classList.toggle('on', !on);

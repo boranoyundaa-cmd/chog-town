@@ -71,17 +71,17 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 3. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
 4. Owner corrections to the culture content after seeing it in the game.
 
-Demo video, submission text and promotion are the owner's call. Later: phone notifications (web push) for the companion.
+Demo video, submission text and promotion are the owner's call.
 
 ## Open questions
 
 - **Do non-holders pay?** The economy assumes free players spend $CHOG or MON in the shop. Test after the deploy.
 - **Long-term goals without combat:** collection, venue upgrades, reputation. Undecided.
-- **Phone companion** needs a test on a real phone (frame rate, battery, QR scan from a PC screen).
+- **Phone companion** needs a test on a real phone (frame rate, battery, QR scan from a PC screen, a notification on Android and from the iPhone home screen icon).
 - **Moderation:** filter, report, who reviews.
 - **NFT frames:** which indexer lists a wallet's NFTs on Monad.
 - Submission/video logistics (face or voice on video) are the owner's call.
 - Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.
 
-- **2026-10-16:** the phone companion is built locally (`m.html`, `js/mobile.js`, `css/mobile.css`, `server/phone.js`, decided by the owner from the design canvas: the live pocket room with Lev's message tab, QR key from Lev on the PC, live guests only with the security camera, a plain page for phones without a key, notifications later). Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth; wizard cloaks open in front. None of it is deployed: deploy the server first (new frames, `phone.js` in the Dockerfile), then the site.
+- **2026-10-16:** the phone companion is built locally (`m.html`, `js/mobile.js`, `css/mobile.css`, `server/phone.js`, decided by the owner from the design canvas: the live pocket room with Lev's message tab, QR key from Lev on the PC, live guests only with the security camera, a plain page for phones without a key) and Lev's phone notifications (`server/push.js`, `prototype/sw.js`: a visit while you are away, a tip, a 21:00 reminder). Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth; wizard cloaks open in front. None of it is deployed: deploy the server first (new frames, `phone.js` in the Dockerfile), then the site.
 - Playtest fixes (2026-10-15): spawn at the plaza's north edge with the camera leaning to the Hotel, waypoint over the Hotel door, First steps checklist, working "Show me around" walk, walk speed 3.4 m/s (server `CFG.speed` too), big map on M (Shop is now K). `server/test/shop.js` fails on an old assertion (`shop: null`) since the shop went live; not touched.

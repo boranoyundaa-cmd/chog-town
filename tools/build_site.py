@@ -9,6 +9,9 @@ shutil.rmtree(OUT, ignore_errors=True)
 os.makedirs(os.path.join(OUT, 'data'))
 for f in ('index.html', 'm.html', 'gallery.html', 'space.html'):
     shutil.copy(os.path.join(SRC, f), OUT)
+for f in ('sw.js', 'manifest.webmanifest'):                                          # the phone companion: notification worker and home-screen manifest (at the site root, so the worker's scope covers m.html)
+    shutil.copy(os.path.join(SRC, f), OUT)
+shutil.copytree(os.path.join(SRC, 'icons'), os.path.join(OUT, 'icons'))
 for d in ('css', 'js'):
     shutil.copytree(os.path.join(SRC, d), os.path.join(OUT, d), ignore=shutil.ignore_patterns('lineup.js'))
 for f in ('owners.json', 'chogs.manual.json', 'tokens.json', 'nft_demo_1700.png', 'shop_items.json'):    # tokens.json: python tools/build_tokens.py; the raw chogs.json dump stays out of the site
@@ -27,6 +30,6 @@ for f in ('index.html', 'm.html', 'gallery.html', 'space.html'):
     p = os.path.join(OUT, f); s = open(p, encoding='utf-8').read()
     open(p, 'w', encoding='utf-8').write(re.sub(r'((?:src|href)="(?:js|css)/[^"?]+\.(?:js|css))"', r'\1?v=' + STAMP + '"', s))
 with open(os.path.join(OUT, '_headers'), 'w') as h:                                  # short cache so a redeploy shows up quickly
-    h.write('/*\n  Cache-Control: public, max-age=300\n  X-Content-Type-Options: nosniff\n/data/portraits/*\n  Cache-Control: public, max-age=86400\n/\n  Cache-Control: no-cache\n/*.html\n  Cache-Control: no-cache\n')   # pages always revalidate: they carry the build stamp
+    h.write('/*\n  Cache-Control: public, max-age=300\n  X-Content-Type-Options: nosniff\n/data/portraits/*\n  Cache-Control: public, max-age=86400\n/\n  Cache-Control: no-cache\n/*.html\n  Cache-Control: no-cache\n/sw.js\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Content-Type: application/manifest+json\n')   # pages always revalidate: they carry the build stamp
 total = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs)
 print(f'dist/ ready: {sum(len(fs) for _, _, fs in os.walk(OUT))} files, {total/1024:.0f} KB')

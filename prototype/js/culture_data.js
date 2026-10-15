@@ -568,7 +568,16 @@ const CULTURE = (() => {
       basement: "Your room is in cold storage, {no}. Visit me on your computer and I will bring it back up. *stamp*",
       offline: "The line is down. The hotel is not answering. I will keep trying. It is what I do. *stamp*",
       unpaired: "This telephone holds no key. Ask me for one at the front desk, on your computer. *stamp*",
-      chips: { who: "Who's inside?", today: "How was today?", tonight: "What's on tonight?", lock: "Lock my door", unlock: "Unlock my door" }
+      // notifications (server/push.js writes the pushed lines themselves)
+      pushOn: "Very well. I will ring this telephone when someone walks into your room, at most every half hour, and when a tip arrives. *stamp*",
+      pushOff: "No more calls. The line stays open if you need me. You will not. *stamp*",
+      pushDenied: "Your telephone refused my calls. It can be changed in its settings, for this site. I am not offended. I am a professional. *stamp*",
+      pushIos: "On an iPhone I can only ring the hotel's own icon. Tap Share, then Add to Home Screen, open Chog Hotel from there, and ask me again. *stamp*",
+      pushNone: "This telephone does not take calls from websites. Regulations. Its own. *stamp*",
+      pushFailed: { form: "The calls could not be set up: {reason}", aside: "So... the line is busy. Try again shortly. *stamp*" },
+      remindSet: "Noted. I will ring at {time}. Once. I do not do twice. *stamp*",
+      remindOff: "Your {time} call is cancelled. As if it never happened. Much like my bonus. *stamp*",
+      chips: { who: "Who's inside?", today: "How was today?", tonight: "What's on tonight?", lock: "Lock my door", unlock: "Unlock my door", pushOn: "Ring my phone", pushOff: "Stop ringing", remind: "Ring me at 21:00", remindOff: "Cancel my call" }
     }
   };
 
