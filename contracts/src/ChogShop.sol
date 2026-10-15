@@ -16,19 +16,20 @@ interface IWMON {
     function deposit() external payable;
 }
 
-/// Uniswap V3 SwapRouter02 style single-hop swap (no deadline field; the shop checks the deadline itself).
-interface ISwapRouterV3 {
-    struct ExactInputSingleParams {
-        address tokenIn;
-        address tokenOut;
-        uint24 fee;
-        address recipient;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-        uint160 sqrtPriceLimitX96;
-    }
+interface IUniswapV3Pool {
+    function token0() external view returns (address);
+    function token1() external view returns (address);
+    function swap(
+        address recipient,
+        bool zeroForOne,
+        int256 amountSpecified,
+        uint160 sqrtPriceLimitX96,
+        bytes calldata data
+    ) external returns (int256 amount0, int256 amount1);
+}
 
-    function exactInputSingle(ExactInputSingleParams calldata params) external payable returns (uint256 amountOut);
+interface IUniswapV3Factory {
+    function getPool(address a, address b, uint24 fee) external view returns (address);
 }
 
 /// @title ChogShop
@@ -51,10 +52,16 @@ contract ChogShop is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
     IERC20 public immutable chog;
     address public team;
 
-    // MON payment path (disabled while router == address(0))
-    address public router;
+    // MON payment path: swaps WMON -> $CHOG directly against one Uniswap V3 style pool. Disabled while pool == address(0).
+    address public pool;
     address public wmon;
     uint24 public poolFee;
+    bool public zeroForOne; // true when WMON is the pool's token0
+
+    uint160 internal constant MIN_SQRT_RATIO = 4295128739;
+    uint160 internal constant MAX_SQRT_RATIO = 1461446703485210103287273052203988822378723970342;
+    /// WMON the current buyWithMon is allowed to pay into the pool. Non-zero only during that swap.
+    uint256 private _swapBudget;
 
     // Daily caps in $CHOG base units of item price volume. 0 = unlimited.
     uint256 public dailyCapTotal;
@@ -68,10 +75,12 @@ contract ChogShop is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
     event Purchase(
         address indexed buyer, uint256 indexed id, uint256 qty, uint256 chogPaid, uint256 burned, uint256 toTeam
     );
-    event PaidWithMon(address indexed buyer, uint256 monIn, uint256 chogReceived, uint256 chogRefunded);
+    event PaidWithMon(
+        address indexed buyer, uint256 monIn, uint256 chogReceived, uint256 chogRefunded, uint256 wmonRefunded
+    );
     event Tip(address indexed from, address indexed to, uint256 indexed venueId, uint256 amount);
     event TeamSet(address team);
-    event RouterSet(address router, address wmon, uint24 poolFee);
+    event PoolSet(address pool, address wmon, uint24 poolFee, bool zeroForOne);
     event CapsSet(uint256 total, uint256 perWallet);
 
     error Soulbound();
@@ -80,7 +89,10 @@ contract ChogShop is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
     error WalletLimit();
     error DailyCapTotal();
     error DailyCapWallet();
-    error NoRouter();
+    error NoPool();
+    error BadPool();
+    error BadCallback();
+    error Overcharged();
     error Expired();
     error Slippage();
     error ZeroAddress();
@@ -132,12 +144,30 @@ contract ChogShop is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
         emit TeamSet(team_);
     }
 
-    /// Set router = address(0) to disable the MON path.
-    function setRouter(address router_, address wmon_, uint24 poolFee_) external onlyOwner {
-        router = router_;
+    /// Point the MON path at one V3 style pool. pool = address(0) disables it.
+    /// The pool must hold exactly {wmon, chog}. If `factory` is non-zero, factory.getPool(wmon, chog, fee) must equal the pool.
+    function setPool(address pool_, address wmon_, address factory_, uint24 fee_) external onlyOwner {
+        if (pool_ == address(0)) {
+            pool = address(0);
+            wmon = address(0);
+            poolFee = 0;
+            zeroForOne = false;
+            emit PoolSet(address(0), address(0), 0, false);
+            return;
+        }
+        if (wmon_ == address(0)) revert ZeroAddress();
+        address t0 = IUniswapV3Pool(pool_).token0();
+        address t1 = IUniswapV3Pool(pool_).token1();
+        bool z = t0 == wmon_;
+        if (!((z && t1 == address(chog)) || (t1 == wmon_ && t0 == address(chog)))) revert BadPool();
+        if (factory_ != address(0) && IUniswapV3Factory(factory_).getPool(wmon_, address(chog), fee_) != pool_) {
+            revert BadPool();
+        }
+        pool = pool_;
         wmon = wmon_;
-        poolFee = poolFee_;
-        emit RouterSet(router_, wmon_, poolFee_);
+        poolFee = fee_;
+        zeroForOne = z;
+        emit PoolSet(pool_, wmon_, fee_, z);
     }
 
     function setCaps(uint256 total, uint256 perWallet) external onlyOwner {
@@ -182,33 +212,53 @@ contract ChogShop is ERC1155, Ownable2Step, Pausable, ReentrancyGuard {
         nonReentrant
         whenNotPaused
     {
-        if (router == address(0)) revert NoRouter();
+        address pool_ = pool;
+        if (pool_ == address(0)) revert NoPool();
         if (block.timestamp > deadline) revert Expired();
+        if (msg.value == 0 || msg.value > uint256(type(int256).max)) revert BadAmount();
         uint256 cost = _checkPurchase(msg.sender, id, qty);
 
-        uint256 before = chog.balanceOf(address(this));
-        IWMON(wmon).deposit{value: msg.value}();
-        IERC20(wmon).forceApprove(router, msg.value);
-        ISwapRouterV3(router).exactInputSingle(
-            ISwapRouterV3.ExactInputSingleParams({
-                tokenIn: wmon,
-                tokenOut: address(chog),
-                fee: poolFee,
-                recipient: address(this),
-                amountIn: msg.value,
-                amountOutMinimum: minChogOut > cost ? minChogOut : cost,
-                sqrtPriceLimitX96: 0
-            })
-        );
-        IERC20(wmon).forceApprove(router, 0);
+        IERC20 w = IERC20(wmon);
+        uint256 chogBefore = chog.balanceOf(address(this));
+        uint256 wmonBefore = w.balanceOf(address(this));
+        IWMON(address(w)).deposit{value: msg.value}();
 
-        uint256 received = chog.balanceOf(address(this)) - before;
+        bool z = zeroForOne;
+        _swapBudget = msg.value;
+        IUniswapV3Pool(pool_).swap(address(this), z, int256(msg.value), z ? MIN_SQRT_RATIO + 1 : MAX_SQRT_RATIO - 1, "");
+        _swapBudget = 0;
+
+        uint256 received = chog.balanceOf(address(this)) - chogBefore;
         if (received < cost || received < minChogOut) revert Slippage();
 
         uint256 surplus = received - cost;
         if (surplus > 0) chog.safeTransfer(msg.sender, surplus);
-        emit PaidWithMon(msg.sender, msg.value, received, surplus);
+        // the pool stopped at its price limit and did not take all WMON: hand the rest back as WMON
+        uint256 wmonLeft = w.balanceOf(address(this)) - wmonBefore;
+        if (wmonLeft > 0) w.safeTransfer(msg.sender, wmonLeft);
+        emit PaidWithMon(msg.sender, msg.value, received, surplus, wmonLeft);
         _settle(msg.sender, id, qty, cost);
+    }
+
+    /// Uniswap V3 swap callback: pays the WMON the pool asks for. Only the configured pool, only during buyWithMon,
+    /// only up to the MON the buyer sent, and only once per swap.
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
+        _payPool(amount0Delta, amount1Delta);
+    }
+
+    /// Capricorn CL pools (the $CHOG/WMON pool on Monad) call this name instead of the Uniswap one (found on a mainnet fork, 2026-10-15).
+    function capricornCLSwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
+        _payPool(amount0Delta, amount1Delta);
+    }
+
+    function _payPool(int256 amount0Delta, int256 amount1Delta) internal {
+        uint256 budget = _swapBudget;
+        if (msg.sender != pool || budget == 0) revert BadCallback();
+        _swapBudget = 0;
+        int256 delta = zeroForOne ? amount0Delta : amount1Delta;
+        if (delta <= 0) revert BadCallback();
+        if (uint256(delta) > budget) revert Overcharged();
+        IERC20(wmon).safeTransfer(msg.sender, uint256(delta));
     }
 
     function tip(address to, uint256 venueId, uint256 amount) external nonReentrant whenNotPaused {

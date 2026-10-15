@@ -12,7 +12,7 @@ const SHOP_CONFIG = {
   chainId: 143,
   chog: '0x350035555E10d9AfAF1566AaebfCeD5BA6C27777',                 // $CHOG, 18 decimals
   shop: null,                                                          // ChogShop address, null until deployed ("Shop opens soon")
-  pool: '0x116e7d070f1888b81e1e0324f56d6746b2d7d8f1',                  // Capricorn CHOG/WMON 1 % pool (token0 CHOG, token1 WMON): only read, to quote the MON price
+  pool: '0x116e7d070f1888b81e1e0324f56d6746b2d7d8f1',                  // Capricorn CHOG/WMON 1 % pool (token0 CHOG, token1 WMON): only read, to quote the MON price; the shop swaps against the pool set on chain (shop.pool())
   chogUsd: 0.0016,                                                     // display only ("about $"), contracts/README.md 2026-10-15
 };
 
@@ -26,7 +26,9 @@ const SHOP_ABI = (function () {
     buyWithChog: (id, qty) => '0x18dd6628' + w(id) + w(qty),
     buyWithMon: (id, qty, minOut, deadline) => '0x5d399aa3' + w(id) + w(qty) + w(minOut) + w(deadline),
     tip: (to, venueId, amount) => '0xb7577fbe' + a(to) + w(venueId) + w(amount),
-    router: () => '0xf887ea40',
+    pool: () => '0x16f0115b',
+    zeroForOne: () => '0xb25b6bd7',
+    router: () => '0xf887ea40',                                         // legacy, unused
     slot0: () => '0x3850c7bd',
     balanceOfBatch: (accounts, ids) => '0x4e1273f4' + w(64) + w(64 + 32 + accounts.length * 32) + w(accounts.length) + accounts.map(a).join('') + w(ids.length) + ids.map(w).join(''),
     wei: whole => BigInt(whole) * 10n ** 18n,
@@ -199,15 +201,26 @@ const SHOP = { items: [], byId: new Map(), owned: {}, equip: {}, events: { event
     const h = await sendTx(SHOP_CONFIG.chog, SHOP_ABI.approve(SHOP_CONFIG.shop, total));
     setTx('approving', 'Waiting for the approval to confirm…'); await waitReceipt(h);
   }
-  async function readChainExtras() {                                    // does the shop have a MON router? and the CHOG/WMON price for the quote
+  async function readChainExtras() {                                    // does the shop have a MON pool? and the live pool price for the quote
     if (!SHOP_CONFIG.shop) return;
     try {
-      const rt = await call(SHOP_CONFIG.shop, SHOP_ABI.router()); SHOP.monOk = big(rt) !== 0n;
-      if (SHOP.monOk) { const s0 = await call(SHOP_CONFIG.pool, SHOP_ABI.slot0()), sq = big('0x' + s0.slice(2, 66)); SHOP.monPrice = sq > 0n ? sq : null; if (!SHOP.monPrice) SHOP.monOk = false; }
+      const pl = await call(SHOP_CONFIG.shop, SHOP_ABI.pool()); SHOP.monOk = big(pl) !== 0n;
+      if (SHOP.monOk) {
+        const poolAddr = '0x' + pl.slice(-40), z = await call(SHOP_CONFIG.shop, SHOP_ABI.zeroForOne());
+        const s0 = await call(poolAddr, SHOP_ABI.slot0()), sq = big('0x' + s0.slice(2, 66));
+        SHOP.monPrice = sq > 0n ? sq : null; SHOP.monZeroForOne = big(z) !== 0n;      // zeroForOne = WMON is the pool's token0
+        if (!SHOP.monPrice) SHOP.monOk = false;
+      }
     } catch (e) { SHOP.monOk = false; }
     if (SHOP.win) drawWin();
   }
-  const monFor = chogWei => { const sq = SHOP.monPrice; return chogWei * sq * sq * 107n / (100n * 2n ** 192n); };     // WMON per CHOG = (sqrtP / 2^96)^2, +1 % pool fee, +6 % room (the surplus comes back as $CHOG)
+  // MON (WMON wei) needed for chogWei of $CHOG. sqrtP = sqrt(token1 / token0) * 2^96. The pool keeps 1 % of the input, then +2 % slippage buffer;
+  // the shop sends any surplus $CHOG (and unused WMON) back, so the buffer is not lost.
+  const monFor = chogWei => {
+    const sq = SHOP.monPrice, q = 2n ** 192n;
+    const wmon = SHOP.monZeroForOne ? chogWei * q / (sq * sq) : chogWei * sq * sq / q;   // WMON is token0: P = CHOG per WMON; else P = WMON per CHOG
+    return wmon * 102n / 99n;
+  };
   const errText = e => (e && e.code === 4001 ? 'Cancelled in the wallet.' : e && e.message ? String(e.message).slice(0, 140) : 'That did not work.');
   function setTx(state, msg, id) { SHOP.tx = { state, msg, id }; if (SHOP.win) drawWin(); }
 

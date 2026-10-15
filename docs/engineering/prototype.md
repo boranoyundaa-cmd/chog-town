@@ -22,11 +22,11 @@ python prototype/server.py        # http://localhost:8766
 
 ## Hosting (live site)
 
-`https://chog-town.pages.dev` (Cloudflare Pages, project `chog-town`, free). Publish:
+`https://chog-hotel.pages.dev` (Cloudflare Pages, project `chog-hotel` (the old `chog-town` project only redirects here), free). Publish:
 
 ```bash
 python tools/build_site.py     # collects only what the page loads into dist/ (about 300 KB)
-cd <any folder outside the repo> && npx wrangler@latest pages deploy D:/Projects/Chog/dist --project-name chog-town --branch main
+cd <any folder outside the repo> && npx wrangler@latest pages deploy D:/Projects/Chog/dist --project-name chog-hotel --branch main
 ```
 
 - Run `wrangler` from **outside** the repo: it writes a `wrangler.jsonc` and `.wrangler/` into the current folder and switches to Workers mode. Login is `wrangler login` (browser, short timeout: approve at once). The project was created with the hidden `pages project create --force` (new wrangler delegates Pages to Workers otherwise); later deploys need no `--force`.

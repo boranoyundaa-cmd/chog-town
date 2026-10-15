@@ -2,7 +2,6 @@
 pragma solidity ^0.8.24;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ISwapRouterV3} from "../src/ChogShop.sol";
 
 contract MockChog is ERC20 {
     constructor() ERC20("Chog", "CHOG") {}
@@ -24,27 +23,58 @@ contract MockWMON is ERC20 {
     }
 }
 
-/// Fixed rate router: out = in * rateNum / rateDen. Mints the output.
-contract MockRouter {
+interface ICallback {
+    function uniswapV3SwapCallback(int256 a0, int256 a1, bytes calldata d) external;
+}
+
+/// Scripted V3 pool: mints `chogOut` to the recipient, then calls back asking for `wmonOwed` (token order configurable).
+contract MockPool {
+    address public token0;
+    address public token1;
     MockChog public chog;
-    uint256 public rateNum;
-    uint256 public rateDen;
+    uint256 public chogOut;
+    uint256 public wmonOwed;
+    uint24 public fee = 10000;
+    bool public lastZeroForOne;
+    uint160 public lastLimit;
+    int256 public lastAmount;
 
-    constructor(MockChog c, uint256 n, uint256 d) {
+    constructor(address t0, address t1, MockChog c) {
+        token0 = t0;
+        token1 = t1;
         chog = c;
-        rateNum = n;
-        rateDen = d;
     }
 
-    function setRate(uint256 n, uint256 d) external {
-        rateNum = n;
-        rateDen = d;
+    function script(uint256 out, uint256 owed) external {
+        chogOut = out;
+        wmonOwed = owed;
     }
 
-    function exactInputSingle(ISwapRouterV3.ExactInputSingleParams calldata p) external payable returns (uint256 out) {
-        out = p.amountIn * rateNum / rateDen;
-        require(out >= p.amountOutMinimum, "Too little received");
-        ERC20(p.tokenIn).transferFrom(msg.sender, address(this), p.amountIn);
-        chog.mint(p.recipient, out);
+    function swap(address recipient, bool zeroForOne, int256 amount, uint160 limit, bytes calldata)
+        external
+        returns (int256 a0, int256 a1)
+    {
+        lastZeroForOne = zeroForOne;
+        lastLimit = limit;
+        lastAmount = amount;
+        address wm = zeroForOne ? token0 : token1;
+        uint256 before = ERC20(wm).balanceOf(address(this));
+        chog.mint(recipient, chogOut);
+        a0 = zeroForOne ? int256(wmonOwed) : -int256(chogOut);
+        a1 = zeroForOne ? -int256(chogOut) : int256(wmonOwed);
+        ICallback(msg.sender).uniswapV3SwapCallback(a0, a1, "");
+        require(ERC20(wm).balanceOf(address(this)) >= before + wmonOwed, "IIA");
+    }
+}
+
+contract MockFactory {
+    address public p;
+
+    constructor(address p_) {
+        p = p_;
+    }
+
+    function getPool(address, address, uint24) external view returns (address) {
+        return p;
     }
 }

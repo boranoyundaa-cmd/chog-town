@@ -158,6 +158,29 @@
   },
   {
     "type": "function",
+    "name": "capricornCLSwapCallback",
+    "inputs": [
+      {
+        "name": "amount0Delta",
+        "type": "int256",
+        "internalType": "int256"
+      },
+      {
+        "name": "amount1Delta",
+        "type": "int256",
+        "internalType": "int256"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "chog",
     "inputs": [],
     "outputs": [
@@ -344,6 +367,19 @@
   },
   {
     "type": "function",
+    "name": "pool",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "poolFee",
     "inputs": [],
     "outputs": [
@@ -402,19 +438,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "router",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -586,10 +609,10 @@
   },
   {
     "type": "function",
-    "name": "setRouter",
+    "name": "setPool",
     "inputs": [
       {
-        "name": "router_",
+        "name": "pool_",
         "type": "address",
         "internalType": "address"
       },
@@ -599,7 +622,12 @@
         "internalType": "address"
       },
       {
-        "name": "poolFee_",
+        "name": "factory_",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "fee_",
         "type": "uint24",
         "internalType": "uint24"
       }
@@ -703,6 +731,29 @@
   },
   {
     "type": "function",
+    "name": "uniswapV3SwapCallback",
+    "inputs": [
+      {
+        "name": "amount0Delta",
+        "type": "int256",
+        "internalType": "int256"
+      },
+      {
+        "name": "amount1Delta",
+        "type": "int256",
+        "internalType": "int256"
+      },
+      {
+        "name": "",
+        "type": "bytes",
+        "internalType": "bytes"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "unpause",
     "inputs": [],
     "outputs": [],
@@ -736,6 +787,19 @@
         "name": "",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "zeroForOne",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -886,6 +950,12 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      },
+      {
+        "name": "wmonRefunded",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -899,6 +969,37 @@
         "type": "address",
         "indexed": false,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "PoolSet",
+    "inputs": [
+      {
+        "name": "pool",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "wmon",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "poolFee",
+        "type": "uint24",
+        "indexed": false,
+        "internalType": "uint24"
+      },
+      {
+        "name": "zeroForOne",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false
@@ -942,31 +1043,6 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "RouterSet",
-    "inputs": [
-      {
-        "name": "router",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "wmon",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      },
-      {
-        "name": "poolFee",
-        "type": "uint24",
-        "indexed": false,
-        "internalType": "uint24"
       }
     ],
     "anonymous": false
@@ -1128,6 +1204,16 @@
   },
   {
     "type": "error",
+    "name": "BadCallback",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BadPool",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "BadQty",
     "inputs": []
   },
@@ -1270,7 +1356,12 @@
   },
   {
     "type": "error",
-    "name": "NoRouter",
+    "name": "NoPool",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Overcharged",
     "inputs": []
   },
   {
