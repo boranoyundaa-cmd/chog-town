@@ -30,7 +30,7 @@ contract Deploy is Script {
         uint256 poolFee = vm.envOr("POOL_FEE", uint256(10000));
         uint256 capTotal = vm.envOr("CAP_TOTAL", uint256(2_000_000)); // whole CHOG per UTC day
         uint256 capWallet = vm.envOr("CAP_WALLET", uint256(20_000)); // whole CHOG per wallet per day
-        string memory uri = vm.envOr("ITEM_URI", string("https://chog.town/items/{id}.json"));
+        string memory uri = vm.envOr("ITEM_URI", string("https://chog-hotel.pages.dev/items/{id}.json"));
 
         string memory json = vm.readFile("items.json");
         bytes memory raw = vm.parseJson(json, ".items");

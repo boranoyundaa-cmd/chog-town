@@ -19,6 +19,7 @@ for f in ('owners.json', 'chogs.manual.json', 'tokens.json', 'nft_demo_1700.png'
         raise SystemExit(f'missing prototype/data/{f}')
 pt = os.path.join(SRC, 'data', 'portraits')                                           # official art, one small file per token (tools/fetch_portraits.py); the profile frame uses them
 if os.path.isdir(pt): shutil.copytree(pt, os.path.join(OUT, 'data', 'portraits'), ignore=shutil.ignore_patterns('*.tmp'))
+if os.path.isdir(os.path.join(SRC, 'items')): shutil.copytree(os.path.join(SRC, 'items'), os.path.join(OUT, 'items'))    # ERC-1155 metadata of the shop items ({id} as 64 hex digits, and plain)
 else: print('warning: no prototype/data/portraits, holders will see the 3D head in the frame')
 with open(os.path.join(OUT, '_headers'), 'w') as h:                                  # short cache so a redeploy shows up quickly
     h.write('/*\n  Cache-Control: public, max-age=300\n  X-Content-Type-Options: nosniff\n/data/portraits/*\n  Cache-Control: public, max-age=86400\n')

@@ -33,7 +33,7 @@ const config = {
   poolFee: 10000,
   capTotal: (2000000n * 10n ** 18n).toString(), // same defaults as Deploy.s.sol
   capWallet: (20000n * 10n ** 18n).toString(),
-  uri: 'https://chog.town/items/{id}.json',
+  uri: 'https://chog-hotel.pages.dev/items/{id}.json',
   chunk: 12, // items per setItems tx
   abi: art.abi,
   bytecode,
