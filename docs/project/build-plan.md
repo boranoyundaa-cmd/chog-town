@@ -7,11 +7,11 @@ All open questions were put to the owner on 2026-10-15. These answers are final 
 **Built and tested locally (mock chain and wallet):** rename and tiers, culture pass (42 residents, plaques, props, events, UI text), synthesized audio, 7 mini-games with NPC challenges, boards and trophies, Exhibition floor, tier perks (capacity, stage and DJ booth, VIP level, game tables, tier-locked pieces, freeze, upgrade, move), shop UI and server, ChogShop contract with tests and deploy script, guest portrait, small fixes (invite matching by id, queued `enter` calls), bigger town and interiors.
 
 **Left:**
-1. Deploy the server, then the site; commit and push both repos.
-2. The owner deploys ChogShop from their wallet and sets `SHOP_CONFIG.shop` (client) and `SHOP_ADDRESS` (server); the MON path stays off until a router is set.
-3. Live checks with a real wallet and a second player.
-4. Performance on real hardware.
-5. Demo video and submission: the owner's call.
+(Done 2026-10-15: server and site deployed, the site moved to `https://chog-hotel.pages.dev`; ChogShop `0x0eD0D1c8782819Cb9AbFe183C6c0235F248B2F9a` (Monad, deployed by the owner 2026-10-15; admin and team = the #1700 wallet), MON path through the Capricorn pool.)
+1. A small test purchase on the live site.
+2. Live checks with a real wallet and a second player.
+3. Performance on real hardware.
+4. Demo video and submission: the owner's call.
 
 ## Name and language
 

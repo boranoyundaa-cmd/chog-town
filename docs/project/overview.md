@@ -20,7 +20,7 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 - **Audio** (`audio.js`, `audio_wire.js`): all synthesized, music per place, effects, Settings sliders.
 - **Mini-games** (`games.js`, `server/games.js`, `trophies.js`): 7 games (Stack, Rhythm, Daily Chog, rock-paper-scissors, Dance copy, Connect four, Long/Short), NPC challenges, daily and weekly boards, trophies on a shelf piece in the Home. **Exhibition floor** (`exhibition.js`, `server/exhibition.js`): weekly contest, signed entries and votes.
 - **Tier perks** (`server/hotel.js` `TEMPLATES`, `license.js`, `venue.js`): capacity 12 / 20 / 32 / 50, DJ booth and stage from Fren, VIP upper level from Whale, game tables, tier-locked pieces, freeze (7 days) and thaw, tier upgrade, move to a smaller room.
-- **Shop** (`shop.js`, `server/shop.js`, `contracts/`): ChogShop soulbound ERC-1155, 90 % burn / 10 % team, tips 100 % to the owner; the MON path stays disabled until a router is set (`contracts/README.md`). **Not deployed:** the owner deploys it and sets `SHOP_CONFIG.shop` (client) and `SHOP_ADDRESS` (server); until then the shop shows "opening soon".
+- **Shop** (`shop.js`, `server/shop.js`, `contracts/`): ChogShop soulbound ERC-1155, 90 % burn / 10 % team, tips 100 % to the owner; MON payments swap directly against the Capricorn CHOG/WMON pool (`capricornCLSwapCallback`, checked on a mainnet fork). **Live:** ChogShop `0x0eD0D1c8782819Cb9AbFe183C6c0235F248B2F9a` (Monad, deployed by the owner 2026-10-15; admin and team = the #1700 wallet), set in `SHOP_CONFIG.shop` (client) and `SHOP_ADDRESS` (`server/fly.toml`).
 - **Path finding:** A* with binary heaps and closed sets, linear string pulling (the big town froze otherwise).
 - **Direction (2026-10-09, owner):** the answer to "Habbo on blockchain: nobody has a reason to play" is **culture**: Crypto Twitter references, audience crypto-native non-holders, holders are the supply side (`docs/game/culture.md`).
 - **World architecture (owner):** one town, Home (private, invitation only), Hotel for holder venues (floors of four wall slots, free facades, entry rule and guard, usernames), Exhibition floor, real-clock lighting only in the background, NPC schedules without server state (`docs/game/world.md`, `docs/game/spaces.md`).
@@ -57,19 +57,18 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 
 ## Handover (end of the 2026-10-15 session)
 
-- **State:** the full build plan is done and tested locally; deploy and live checks are all that remain. Server checks: `cd server && npm test`.
+- **State:** the full build plan is built, deployed (site `https://chog-hotel.pages.dev`, the old chog-town address redirects there) and the shop contract is live; live checks are all that remain. Server checks: `cd server && npm test`.
 - **Owner preferences:** the owner speaks Turkish (answer in Turkish); consult before UI/UX, platform and design choices, then write the decision into the docs; ideas that solve several problems at once inside the fiction are valued; jokes stay rare, hidden and contextual.
 - **Deploying:** the server first (`flyctl deploy --ha=false --remote-only` from `server/`; the `Dockerfile` copies files by name, add new ones: `games.js`, `exhibition.js`, `shop.js`, `shop_items.json` are already listed), then the site (`python tools/build_site.py`, `wrangler pages deploy` from outside the repo, `docs/engineering/prototype.md`). Commit and push both repos (`server/` is its own repo).
-- **Owner deploys ChogShop** from their wallet (`contracts/README.md`) and sets `SHOP_CONFIG.shop` in `js/shop.js` and `SHOP_ADDRESS` on the server, then rebuilds and redeploys.
+- **Shop admin:** prices, caps, pause and the pool are changed from the admin wallet (`contracts/README.md`; `contracts/deploy.html` is the browser deploy page).
 - **Testing tips** are in `docs/engineering/prototype.md` under Pitfalls (Browser pane size, tabs, snapping, mock wallet, venue recipe).
 
 ## Next steps (in order)
 
-1. Deploy the server, then the site; commit and push both repos.
-2. The owner deploys ChogShop and gives back the addresses; set them and redeploy.
-3. Live checks with a real wallet (sign a Home save, an invitation, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
-4. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
-5. Owner corrections to the culture content after seeing it in the game.
+1. A small test purchase with $CHOG and with MON on the live site.
+2. Live checks with a real wallet (sign a Home save, an invitation, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
+3. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
+4. Owner corrections to the culture content after seeing it in the game.
 
 Demo video, submission text and promotion are the owner's call. Later: mobile companion.
 

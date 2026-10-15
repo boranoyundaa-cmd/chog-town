@@ -11,7 +11,7 @@
 const SHOP_CONFIG = {
   chainId: 143,
   chog: '0x350035555E10d9AfAF1566AaebfCeD5BA6C27777',                 // $CHOG, 18 decimals
-  shop: null,                                                          // ChogShop address, null until deployed ("Shop opens soon")
+  shop: "0x0eD0D1c8782819Cb9AbFe183C6c0235F248B2F9a",                  // ChogShop on Monad, deployed by the owner 2026-10-15 (null = "Shop opens soon")
   pool: '0x116e7d070f1888b81e1e0324f56d6746b2d7d8f1',                  // Capricorn CHOG/WMON 1 % pool (token0 CHOG, token1 WMON): only read, to quote the MON price; the shop swaps against the pool set on chain (shop.pool())
   chogUsd: 0.0016,                                                     // display only ("about $"), contracts/README.md 2026-10-15
 };
