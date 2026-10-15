@@ -22,15 +22,15 @@ const LEV = { st: { met: false, guest: false }, busy: false, pending: null, skip
   const sfx = n => { if (typeof sfxPlay === 'function') sfxPlay(n); };
   const TRAITS = { Background: 'Light Purple', Base: 'Origin', Form: 'Chog', Skin: 'Grey', Eyes: 'Tired', Mouth: 'Flat', Side: 'Right', Naked: 'No', Body: 'Lev Uniform', Tier: 'Common' };
 
-  // ------------------------------------------------------------------ his look: grey hair, tired eyes with bags, a flat mouth, a dark vest that is a little too neat (white shirt in the V, wine tie), white shirt sleeves, dark trousers, a gold name badge, a cold coffee in his hand
-  // The uniform is painted onto the torso skin like every outfit in chog_bodies.js (so it wraps all the way round: shirt front, tie and badge in front; collar yoke, centre seam and the vest's strap and buckle at the back)
-  // and the shirt collar, sleeves and trousers are 3D parts all round. Nothing stands off the body.
+  // ------------------------------------------------------------------ his look: grey hair, tired eyes with bags, a flat mouth, a dark jacket that is a little too neat (long sleeves of the same cloth, white shirt in the V, wine tie), dark trousers, a gold name badge, a cold coffee in his hand
+  // The uniform is painted onto the torso skin like every outfit in chog_bodies.js (so it wraps all the way round: shirt front, tie and badge in front; collar yoke and centre seam at the back)
+  // and the shirt collar, the jacket's sleeves and the trousers are 3D parts all round. Nothing stands off the body.
   const LEVC = 0x2a2c34;
   BODY_LOOK['Lev Uniform'] = {
-    c: LEVC, long: true, arm: 0xf0ecdf, pants: 0x23242c,
+    c: LEVC, long: true, pants: 0x23242c,                                                     // the sleeves are the jacket's cloth (they were white shirt sleeves and read as bare arms)
     draw: g => {
       const edge = shade(LEVC, 1.55), dark = shade(LEVC, 0.6), brass = '#e8c35a';
-      BD.poly(g, '#f4f0e4', [[-0.1, -0.23], [0.1, -0.23], [0.0, 0.08]]);                                  // the shirt in the vest's V
+      BD.poly(g, '#f4f0e4', [[-0.1, -0.23], [0.1, -0.23], [0.0, 0.08]]);                                  // the shirt in the jacket's V
       BD.path(g, edge, 4, [[-0.1, -0.23], [0.0, 0.08], [0.1, -0.23]]); BD.path(g, dark, 3, [[0.0, 0.08], [0.0, 0.23]]);
       BD.poly(g, '#7a1c2e', [[-0.03, -0.215], [0.03, -0.215], [0.022, -0.165], [-0.022, -0.165]]);          // the tie: knot, then the blade
       BD.poly(g, '#7a1c2e', [[-0.022, -0.165], [0.022, -0.165], [0.042, -0.01], [0.0, 0.045], [-0.042, -0.01]]);
@@ -38,9 +38,8 @@ const LEV = { st: { met: false, guest: false }, busy: false, pending: null, skip
       BD.rect(g, brass, 0.05, -0.105, 0.19, -0.04); BD.path(g, '#8a6a1c', 3, [[0.05, -0.105], [0.19, -0.105], [0.19, -0.04], [0.05, -0.04]], true);          // the name badge
       BD.text(g, 'LEV', 0.12, -0.087, 0.03, '#3a2a10'); BD.text(g, 'NIGHT SHIFT', 0.12, -0.056, 0.0105, '#3a2a10', { font: '700 100px "Nunito", sans-serif' });
       BD.rect(g, shade(LEVC, 0.8), -0.72, 0.205, 0.72, 0.23);                                              // the hem, all round
-      for (const e of [-1, 1]) {                                                                           // the back (u = +-0.72 is the seam behind): collar yoke, seam, strap and buckle
+      for (const e of [-1, 1]) {                                                                           // the back (u = +-0.72 is the seam behind): collar yoke and seam
         BD.rect(g, '#f4f0e4', e > 0 ? 0.5 : -0.74, -0.23, e > 0 ? 0.74 : -0.5, -0.185); BD.path(g, dark, 4, [[e * 0.72, -0.19], [e * 0.72, 0.2]]);
-        BD.rect(g, shade(LEVC, 0.72), e > 0 ? 0.52 : -0.74, 0.085, e > 0 ? 0.74 : -0.52, 0.125); BD.rect(g, brass, e > 0 ? 0.68 : -0.74, 0.08, e > 0 ? 0.74 : -0.68, 0.13);
       }
     },
     build: ctx => collar(ctx, 0xf4f0e4, 0.2, 0.05, 0.76),                                                  // the shirt collar, all round the neck

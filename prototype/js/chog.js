@@ -41,8 +41,8 @@ const FACE_SHAPE_HAT = () => {
 const FACE_GEO_HAT = (() => { const g = new THREE.ExtrudeGeometry(FACE_SHAPE_HAT(), FACE_EX); g.translate(0, 0, -0.032); return g; })();
 // the plate's ink line goes ALL the way round, hairline included (the official art outlines the whole face): the side and bottom line comes from the plate's ink hull, the line along the
 // top from this flat ink shape just behind the plate's front (a BackSide hull cannot show there, the hair sits behind it). One mesh per Chog; hoods remove it
-// a flat ink RING (outer edge = the plate grown 15%, hole = the plate's front outline) in the plane of the plate's front: it also covers the plate's lit top wall, so the hairline is one clean line
-const inkRing = shape => { const pts = shape.getPoints(24), outer = new THREE.Shape(pts.map(p => new THREE.Vector2(p.x * 1.15, p.y * 1.15))); outer.holes.push(new THREE.Path(pts.slice().reverse())); return new THREE.ShapeGeometry(outer); };
+// a flat ink RING (outer edge = the plate grown 7%, hole = the plate's front outline) in the plane of the plate's front: it also covers the plate's lit top wall, so the hairline is one clean line
+const inkRing = shape => { const pts = shape.getPoints(24), outer = new THREE.Shape(pts.map(p => new THREE.Vector2(p.x * 1.07, p.y * 1.07))); outer.holes.push(new THREE.Path(pts.slice().reverse())); return new THREE.ShapeGeometry(outer); };
 const FACE_INK = { full: inkRing(FACE_SHAPE()), hat: inkRing(FACE_SHAPE_HAT()) };
 const inkFlatMat = new THREE.MeshBasicMaterial({ color: INK });
 function facePlateInk(face, hat) {
@@ -204,7 +204,7 @@ function chog(o = {}) {
     orientBlade(b, new THREE.Vector3(dxh, 0.4, dzh * 0.8 - 0.25)); b.castShadow = false; b.translateY(-0.05); hairG.add(b); addBladeHull(hairG, b, 0.42 * hk, 0.34, 0.16, -0.3);
   }
   const face = new THREE.Group(); face.position.set(0, -0.02, 0.33); head.add(face);
-  { const fm = cm(hasHat ? FACE_GEO_HAT : FACE_GEO, o.bald ? new THREE.Color(FACEL).multiplyScalar(0.84).getHex() : FACEL); fm.receiveShadow = false; fm.castShadow = false; fm.material = [fm.material, inkFlatMat]; face.add(fm);          // the plate's side wall is ink (extrude group 1): no lit cream sliver along the hairline
+  { const fm = cm(hasHat ? FACE_GEO_HAT : FACE_GEO, o.bald ? new THREE.Color(FACEL).multiplyScalar(0.84).getHex() : FACEL); fm.receiveShadow = false; fm.castShadow = false; fm.material = [fm.material, inkFlatMat]; fm.userData.hullT = HULL_T * 0.45; face.add(fm);          // the plate's side wall is ink (extrude group 1): no lit cream sliver along the hairline
     facePlateInk(face, hasHat); }          // a bald skull's face plate has no ink line of its own: it sits in the round skull          // the face never sits in the hair's shadow
   if (o.faceGrad) face.add(faceGradient(o.faceGrad));
   const hl = shadeC(0.95);

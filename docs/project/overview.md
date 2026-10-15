@@ -83,4 +83,5 @@ Demo video, submission text and promotion are the owner's call. Later: mobile co
 - Submission/video logistics (face or voice on video) are the owner's call.
 - Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.
 
+- **2026-10-16:** mobile companion concepts on a design canvas (owner liked F, a live pocket room, merged with Lev's message tab; not built yet); Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth (the white shirt sleeves read as bare arms). Guko is the only other body whose sleeves differ from the torso (blue undershirt under the orange gi, on purpose). Neither change is deployed.
 - Playtest fixes (2026-10-15): spawn at the plaza's north edge with the camera leaning to the Hotel, waypoint over the Hotel door, First steps checklist, working "Show me around" walk, walk speed 3.4 m/s (server `CFG.speed` too), big map on M (Shop is now K). `server/test/shop.js` fails on an old assertion (`shop: null`) since the shop went live; not touched.
