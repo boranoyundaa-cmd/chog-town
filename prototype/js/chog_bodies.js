@@ -223,7 +223,8 @@ function wizard(c, gold, stars) {
   return { c, long: true, pants: c, draw: g => { BD.path(g, hx(gold), 4, [[-0.1, -0.22], [0, -0.14], [0.1, -0.22]]); const r = rng(stars ? 8 : 6); for (let i = 0; i < 24; i++) BD.disc(g, hx(gold), (r() - 0.5) * 0.5, (r() - 0.3) * 0.4, 0.007, 0.01); },
     build: ctx => {
       const mat = bodyPattern('cloak' + c, 128, 128, (g, w, h) => { g.fillStyle = hx(c); g.fillRect(0, 0, w, h); const r = rng(5); for (let i = 0; i < 26; i++) { g.fillStyle = hx(gold); const x = r() * w, y = r() * h, s = 2 + r() * 3; if (stars) { g.beginPath(); for (let k = 0; k < 10; k++) { const a = k * Math.PI / 5, rr = k % 2 ? s * 0.45 : s; g.lineTo(x + Math.sin(a) * rr, y - Math.cos(a) * rr); } g.fill(); } else { g.fillRect(x, y, s * 0.8, s * 0.8); } } }, 2, 1);
-      const cloak = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.43, 0.56, 10, 1, true), mat); cloak.position.y = 0.45; cloak.castShadow = true; cloak.userData.noOutline = true; ctx.body.add(cloak);
+      // the cloak hangs round the back and the sides, open in front (a closed cylinder covered the robe's front)
+      const cloak = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.43, 0.56, 12, 1, true, Math.PI - 1.75, 3.5), mat); cloak.position.y = 0.45; cloak.castShadow = true; cloak.userData.noOutline = true; ctx.body.add(cloak);
       const lin = new THREE.Mesh(new THREE.TorusGeometry(0.21, 0.07, 6, 12), bodyPattern('lin' + c, 64, 64, (g, w, h) => { g.fillStyle = hx(stars ? 0x2a4aa8 : 0x2a2a58); g.fillRect(0, 0, w, h); g.fillStyle = hx(gold); const r = rng(2); for (let i = 0; i < 12; i++) g.fillRect(r() * w, r() * h, 4, 4); }, 3, 1)); lin.rotation.x = Math.PI / 2; lin.position.y = 0.76; ctx.body.add(lin);
       for (const sx of [-1, 1]) { add(ctx.body, GEO.sph(0.02, 6, 5), 0xf4f0e4, sx * 0.07, 0.68, 0.22); add(ctx.body, GEO.cyl(0.008, 0.008, 0.12, 4), 0xf4f0e4, sx * 0.06, 0.62, 0.23); }
     } };
