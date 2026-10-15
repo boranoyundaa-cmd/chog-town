@@ -21,7 +21,12 @@ pt = os.path.join(SRC, 'data', 'portraits')                                     
 if os.path.isdir(pt): shutil.copytree(pt, os.path.join(OUT, 'data', 'portraits'), ignore=shutil.ignore_patterns('*.tmp'))
 if os.path.isdir(os.path.join(SRC, 'items')): shutil.copytree(os.path.join(SRC, 'items'), os.path.join(OUT, 'items'))    # ERC-1155 metadata of the shop items ({id} as 64 hex digits, and plain)
 else: print('warning: no prototype/data/portraits, holders will see the 3D head in the frame')
+import re, time                                                                      # stamp local css/js links with the build time, so a returning player never mixes cached old files with new ones
+STAMP = str(int(time.time()))
+for f in ('index.html', 'gallery.html', 'space.html'):
+    p = os.path.join(OUT, f); s = open(p, encoding='utf-8').read()
+    open(p, 'w', encoding='utf-8').write(re.sub(r'((?:src|href)="(?:js|css)/[^"?]+\.(?:js|css))"', r'\1?v=' + STAMP + '"', s))
 with open(os.path.join(OUT, '_headers'), 'w') as h:                                  # short cache so a redeploy shows up quickly
-    h.write('/*\n  Cache-Control: public, max-age=300\n  X-Content-Type-Options: nosniff\n/data/portraits/*\n  Cache-Control: public, max-age=86400\n')
+    h.write('/*\n  Cache-Control: public, max-age=300\n  X-Content-Type-Options: nosniff\n/data/portraits/*\n  Cache-Control: public, max-age=86400\n/\n  Cache-Control: no-cache\n/*.html\n  Cache-Control: no-cache\n')   # pages always revalidate: they carry the build stamp
 total = sum(os.path.getsize(os.path.join(r, f)) for r, _, fs in os.walk(OUT) for f in fs)
 print(f'dist/ ready: {sum(len(fs) for _, _, fs in os.walk(OUT))} files, {total/1024:.0f} KB')
