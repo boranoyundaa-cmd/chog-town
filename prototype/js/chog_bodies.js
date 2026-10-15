@@ -55,13 +55,13 @@ function collar(ctx, c, r = 0.2, tube = 0.05, y = 0.75) { ringAt(ctx.body, c, r,
 function hairUnder(ctx) { ctx.hairG.children.forEach((m, i) => { if (i) m.visible = false; }); }          // under a hood only the hair mass shows; the blades hide
 const HOOD_FACE_GEO = (() => {
   const s = new THREE.Shape(); s.absellipse(0, -0.012, 0.33, 0.305, 0, Math.PI * 2, false, 0);
-  const g = new THREE.ExtrudeGeometry(s, { depth: 0.1, bevelEnabled: true, bevelThickness: 0.02, bevelSize: 0.008, bevelSegments: 2, curveSegments: 32 }); g.translate(0, 0, -0.1); return g;
+  const g = new THREE.ExtrudeGeometry(s, { depth: 0.036, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.006, bevelSegments: 1, curveSegments: 32 }); g.translate(0, 0, -0.024); return g;          // as slim as the plate in chog.js (front at z = 0.02)
 })();
 // a hood that is up: a dome over the head and a back/side shell, a funnel from the shell to the rim (so no gap shows between hood and rim), the rim in front of the face plate,
 // and optionally the hair showing at the forehead: a flat piece with a spiky lower edge, built wider than the opening and tucked behind the rim, so it can leave no gap
 function hoodUp(ctx, c, s = {}) {
   const head = ctx.head, R = ctx.hasHat ? 0.56 : 0.5, y = 0.06, z = -0.1; hairUnder(ctx); ctx.hairG.scale.setScalar(0.84);         // under a hood the hair mass shrinks so neither it nor its ink hull reaches through the shell
-  { const pl = ctx.face.children[0]; if (pl && pl.geometry) { pl.geometry = HOOD_FACE_GEO; pl.userData.noOutline = true; } }          // inside a hood the face plate is an ellipse that fits the rim: no corners poke out, no ink hull outside the rim
+  { const pl = ctx.face.children[0]; if (pl && pl.geometry) { pl.geometry = HOOD_FACE_GEO; pl.userData.noOutline = true; } const ink = ctx.face.userData.ink; if (ink) { ctx.face.remove(ink); ctx.face.userData.ink = null; } }          // inside a hood the face plate is an ellipse that fits the rim: no corners poke out, no ink hull outside the rim
   const top = cm(new THREE.SphereGeometry(R, 16, 8, 0, Math.PI * 2, 0, 1.1), c, 0, y, z, true); top.scale.set(1.04, 1, 1); top.userData.noOutline = true; head.add(top);
   const side = cm(new THREE.SphereGeometry(R, 16, 10, 2.18, 5.06, 1.1, Math.PI - 1.1), c, 0, y, z, true); side.scale.set(1.04, 1, 1); side.userData.noOutline = true; head.add(side);
   const fn = cm(new THREE.CylinderGeometry(0.35, 0.49, 0.42, 28, 1, true), c, 0, -0.03, 0.19, true); fn.rotation.x = Math.PI / 2; fn.scale.set(1, 1, 0.92); fn.userData.noOutline = true; head.add(fn);
@@ -201,7 +201,7 @@ Object.assign(BODY_LOOK, {
   Jesus: { c: 0xf4f0e4, long: true, pants: 0xf4f0e4, draw: g => { BD.poly(g, '#e4dccc', [[-0.09, -0.23], [0.09, -0.23], [0.0, -0.06]], '#c8bca4', 3); BD.poly(g, '#c82a20', [[-0.3, -0.23], [-0.2, -0.23], [0.3, 0.12], [0.3, 0.2], [0.22, 0.2]], '#6a1410', 4); BD.rect(g, '#c8bca4', -0.3, 0.2, 0.3, 0.23); }, build: ctx => skirt(ctx, 0xf4f0e4) },
   'Jesus Robe': { c: 0xf4f0e4, long: true, pants: 0xf4f0e4, draw: g => { BD.poly(g, '#e4dccc', [[-0.09, -0.23], [0.09, -0.23], [0.0, -0.06]], '#c8bca4', 3); BD.poly(g, '#b82a24', [[-0.3, -0.23], [-0.04, -0.23], [0.12, 0.0], [0.3, 0.1], [0.3, 0.23], [-0.3, 0.23]], '#5a1010', 4); BD.rect(g, '#d8c890', -0.3, 0.2, 0.3, 0.23); }, build: ctx => skirt(ctx, 0xf4f0e4) },
   'Kings Robe': { c: 0xf08ab0, long: true, pants: 0xf08ab0, draw: g => { for (const sx of [-1, 1]) { BD.rect(g, '#f8f6f0', sx * 0.03 - (sx > 0 ? 0 : 0.07), -0.23, sx * 0.03 + (sx > 0 ? 0.07 : 0), 0.23); const r = rng(sx + 4); for (let i = 0; i < 9; i++) BD.disc(g, '#2a2230', sx * (0.03 + r() * 0.05), -0.2 + i * 0.05, 0.007, 0.012); } BD.rect(g, '#f8f6f0', -0.3, 0.17, 0.3, 0.23); const r = rng(2); for (let i = 0; i < 14; i++) BD.disc(g, '#2a2230', -0.28 + i * 0.04, 0.2 + (i % 2) * 0.015, 0.008, 0.012); },
-    build: ctx => { skirt(ctx, 0xf08ab0); add(ctx.body, GEO.box(0.62, 0.62, 0.04), 0xc02030, 0, 0.42, -0.3); const f = ringAt(ctx.body, 0xf8f6f0, 0.24, 0.075, 0.73); } },
+    build: ctx => { skirt(ctx, 0xf08ab0); /* the cape wraps round the back and shoulders (it was a flat panel) */ add(ctx.body, new THREE.CylinderGeometry(0.33, 0.45, 0.62, 12, 1, true, Math.PI - 1.35, 2.7), 0xc02030, 0, 0.43, 0, true); const f = ringAt(ctx.body, 0xf8f6f0, 0.24, 0.075, 0.73); } },
   'White Yukata': yukata(0xf6f0e8, 0xa078d0, 0xf0a0c0), 'Yellow Yukata': yukata(0xf0b030, 0xb03020, 0xd88a20, true),
   Wizard: wizard(0x1c1c34, 0xf0c040, false), 'Wizard Cape': wizard(0x24367a, 0xf0d060, true),
 });

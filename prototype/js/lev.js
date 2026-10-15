@@ -20,24 +20,32 @@ const LEV = { st: { met: false, guest: false }, busy: false, pending: null, skip
   const has = () => typeof VENUE !== 'undefined' && !!VENUE.mine;
   const dOf = m => ({ no: m ? (m.tag || m.no) : '', floor: m ? (m.floor < 0 ? 'B' + (-m.floor) : m.floor) : '' });
   const sfx = n => { if (typeof sfxPlay === 'function') sfxPlay(n); };
-  const TRAITS = { Background: 'Light Purple', Base: 'Origin', Form: 'Chog', Skin: 'Grey', Eyes: 'Tired', Mouth: 'Flat', Side: 'Right', Naked: 'No', Body: 'dark vest', Tier: 'Common' };
+  const TRAITS = { Background: 'Light Purple', Base: 'Origin', Form: 'Chog', Skin: 'Grey', Eyes: 'Tired', Mouth: 'Flat', Side: 'Right', Naked: 'No', Body: 'Lev Uniform', Tier: 'Common' };
 
-  // ------------------------------------------------------------------ his look: grey hair, tired eyes with bags, a flat mouth, a dark vest that is a little too neat (white shirt front, wine tie), a gold name badge, a cold coffee in his hand
-  function badgeTex() {
-    const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const g = cv.getContext('2d');
-    g.fillStyle = '#e8c35a'; g.fillRect(0, 0, 128, 64); g.strokeStyle = '#8a6a1c'; g.lineWidth = 6; g.strokeRect(3, 3, 122, 58);
-    g.fillStyle = '#3a2a10'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 36px "Fredoka", "Nunito", sans-serif'; g.fillText('LEV', 64, 24); g.font = '700 15px "Nunito", sans-serif'; g.fillText('NIGHT SHIFT', 64, 50);
-    const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return t;
-  }
-  LEV.make = function (k = 1) {
-    const root = chogFromTraits(TRAITS, { scale: CHOG_SCALE * k, item: 'mug' }), u = root.userData, ex = new THREE.Group(); u.body.add(ex);
-    ex.add(cm(new THREE.BoxGeometry(0.15, 0.3, 0.03), 0xf4f0e4, 0, 0.52, 0.272));                                      // the shirt front under the vest: everything pressed
-    const tie = cm(new THREE.ConeGeometry(0.045, 0.22, 3), 0x7a1c2e, 0, 0.5, 0.296); tie.rotation.x = Math.PI; ex.add(tie);
-    ex.add(cm(new THREE.BoxGeometry(0.07, 0.05, 0.03), 0x7a1c2e, 0, 0.63, 0.298));
-    const badge = new THREE.Mesh(new THREE.PlaneGeometry(0.17, 0.085), new THREE.MeshBasicMaterial({ map: badgeTex() })); badge.position.set(0.115, 0.56, 0.3); badge.rotation.y = 0.12; badge.userData.noOutline = true; ex.add(badge);
-    addOutlines(ex); registerChog(ex); tagChogLayers(ex, new THREE.Group());
-    return root;
+  // ------------------------------------------------------------------ his look: grey hair, tired eyes with bags, a flat mouth, a dark vest that is a little too neat (white shirt in the V, wine tie), white shirt sleeves, dark trousers, a gold name badge, a cold coffee in his hand
+  // The uniform is painted onto the torso skin like every outfit in chog_bodies.js (so it wraps all the way round: shirt front, tie and badge in front; collar yoke, centre seam and the vest's strap and buckle at the back)
+  // and the shirt collar, sleeves and trousers are 3D parts all round. Nothing stands off the body.
+  const LEVC = 0x2a2c34;
+  BODY_LOOK['Lev Uniform'] = {
+    c: LEVC, long: true, arm: 0xf0ecdf, pants: 0x23242c,
+    draw: g => {
+      const edge = shade(LEVC, 1.55), dark = shade(LEVC, 0.6), brass = '#e8c35a';
+      BD.poly(g, '#f4f0e4', [[-0.1, -0.23], [0.1, -0.23], [0.0, 0.08]]);                                  // the shirt in the vest's V
+      BD.path(g, edge, 4, [[-0.1, -0.23], [0.0, 0.08], [0.1, -0.23]]); BD.path(g, dark, 3, [[0.0, 0.08], [0.0, 0.23]]);
+      BD.poly(g, '#7a1c2e', [[-0.03, -0.215], [0.03, -0.215], [0.022, -0.165], [-0.022, -0.165]]);          // the tie: knot, then the blade
+      BD.poly(g, '#7a1c2e', [[-0.022, -0.165], [0.022, -0.165], [0.042, -0.01], [0.0, 0.045], [-0.042, -0.01]]);
+      for (const v of [0.125, 0.185]) BD.disc(g, shade(LEVC, 1.9), 0.0, v, 0.012, 0.018);
+      BD.rect(g, brass, 0.05, -0.105, 0.19, -0.04); BD.path(g, '#8a6a1c', 3, [[0.05, -0.105], [0.19, -0.105], [0.19, -0.04], [0.05, -0.04]], true);          // the name badge
+      BD.text(g, 'LEV', 0.12, -0.087, 0.03, '#3a2a10'); BD.text(g, 'NIGHT SHIFT', 0.12, -0.056, 0.0105, '#3a2a10', { font: '700 100px "Nunito", sans-serif' });
+      BD.rect(g, shade(LEVC, 0.8), -0.72, 0.205, 0.72, 0.23);                                              // the hem, all round
+      for (const e of [-1, 1]) {                                                                           // the back (u = +-0.72 is the seam behind): collar yoke, seam, strap and buckle
+        BD.rect(g, '#f4f0e4', e > 0 ? 0.5 : -0.74, -0.23, e > 0 ? 0.74 : -0.5, -0.185); BD.path(g, dark, 4, [[e * 0.72, -0.19], [e * 0.72, 0.2]]);
+        BD.rect(g, shade(LEVC, 0.72), e > 0 ? 0.52 : -0.74, 0.085, e > 0 ? 0.74 : -0.52, 0.125); BD.rect(g, brass, e > 0 ? 0.68 : -0.74, 0.08, e > 0 ? 0.74 : -0.68, 0.13);
+      }
+    },
+    build: ctx => collar(ctx, 0xf4f0e4, 0.2, 0.05, 0.76),                                                  // the shirt collar, all round the neck
   };
+  LEV.make = function (k = 1) { return chogFromTraits(TRAITS, { scale: CHOG_SCALE * k, item: 'mug' }); };
   // idle: slow breathing, a heavy blink, the head a little low, and now and then a sip of the cold coffee
   LEV.idle = function (npc, t) {
     const u = npc.userData, b = Math.sin(t * 1.4) * 0.012, c = (t % 16) / 16, sip = c > 0.84 ? Math.sin((c - 0.84) / 0.16 * Math.PI) : 0;

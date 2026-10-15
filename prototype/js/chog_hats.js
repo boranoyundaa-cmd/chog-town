@@ -94,8 +94,15 @@ const ONEOFFS = {
   'Silver wreath': head => { for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2, l = cm(new THREE.SphereGeometry(0.075, 6, 5), 0x9ac0a8, Math.sin(a) * 0.5, 0.26, Math.cos(a) * 0.5 - 0.1); l.scale.set(0.5, 0.25, 1.4); l.rotation.y = a; l.userData.noOutline = false; head.add(l); } },
   'Spartan Helmet': head => { HAT.dome(head, 0.5, 0.15, 0xd8a040, 0.95); head.add(cm(new THREE.BoxGeometry(0.1, 0.22, 0.7), 0xd8302a, 0, 0.7, -0.1)); for (const sx of [-1, 1]) head.add(cm(new THREE.BoxGeometry(0.07, 0.4, 0.3), 0xd8a040, sx * 0.5, -0.1, 0.05)); head.add(cm(new THREE.BoxGeometry(0.5, 0.06, 0.06), 0xd8a040, 0, 0.18, 0.4)); },
   'Taped Banana': head => { const b = cm(new THREE.TorusGeometry(0.17, 0.045, 6, 10, 2.4), 0xf4d838, 0, 0.3, 0.39); b.rotation.set(0, 0, 1.2); head.add(b); head.add(decal(new THREE.PlaneGeometry(0.2, 0.05), 0x9a9aa4, 0, 0.3, 0.45)); },
-  'Wizard Hat': head => { HAT.dome(head, 0.5, 0.2, 0x1a2a7a, 1.0); for (const [x, y, z] of [[-0.25, 0.5, 0.2], [0.05, 0.62, 0.1], [0.3, 0.46, 0.22], [-0.38, 0.35, 0.08], [0.42, 0.34, 0.06], [-0.1, 0.45, 0.36]]) star(head, x, y, z, 0xf4c43c); },
+  // a wizard cap: a low dome, then a cone that bends back at the tip (a ball read as a ball), stars laid on the cone
+  'Wizard Hat': head => {
+    const c = 0x1a2a7a; HAT.dome(head, 0.5, 0.2, c, 0.7);
+    const cone = cm(new THREE.ConeGeometry(0.36, 0.7, 10), c, 0, 0.74, -0.14); cone.rotation.x = -0.28; head.add(cone);
+    for (const [a, h] of [[-0.6, 0.08], [0.5, 0.14], [2.2, 0.1], [-2.3, 0.18], [0.0, 0.3], [-1.1, 0.34]]) { const r = 0.36 * (1 - (h + 0.05) / 0.7) + 0.03, st = cm(new THREE.OctahedronGeometry(0.045), 0xf4c43c, Math.sin(a) * r, 0.42 + h * 0.95, -0.1 + Math.cos(a) * r - 0.04 - h * 0.28); st.scale.set(1, 1, 0.4); st.rotation.y = a; st.userData.noOutline = true; head.add(st); }
+  },
 };
 Object.assign(HAT_LOOK, ONEOFFS);
 HAT.thorn = (head, c) => { HAT.ring(head, 0.5, 0.03, 0.3, c, -0.1, 1.05); for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2, t = cm(new THREE.ConeGeometry(0.03, 0.12, 4), c, Math.sin(a) * 0.54, 0.3, Math.cos(a) * 0.54 - 0.1); t.rotation.set(Math.cos(a) * 1.57, 0, -Math.sin(a) * 1.57); head.add(t); } };
+// the hats that cover the whole crown: under them the hair blades on top and round the rim are not built (blade shards poked through); the side and back spikes stay, as in the art
+const HAT_HIDES = new Set([...Object.keys(HAT_LOOK).filter(k => !ONEOFFS[k] && !/horn/i.test(k)), 'Durag', 'Head Wrap', 'Mafia Hat', 'Robber', 'Russian Hat', 'Spartan Helmet', 'Wizard Hat', 'Bob Hair', 'Rainbow Wig', 'Crown']);
 const HAT_COVERS = new Set(['Durag', 'Head Wrap', 'Mafia Hat', 'Robber', 'Russian Hat', 'Spartan Helmet', 'Wizard Hat', 'Bob Hair', 'Rainbow Wig', ...Object.keys(HAT_LOOK).filter(k => !ONEOFFS[k])]);
