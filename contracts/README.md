@@ -62,6 +62,11 @@ Turn it off: `setPool(0x0, 0x0, 0x0, 0)` (the shop UI hides the MON option when 
    `cast send <SHOP> "acceptOwnership()" --interactive --rpc-url https://rpc.monad.xyz`
 10. Give the shop address back to Claude for the game server and client.
 
+## Deploy from the browser (no Foundry)
+
+`deploy.html` deploys ChogShop with your own wallet (MetaMask/Rabby); it never asks for a key. Regenerate after contract or `items.json` changes: `forge build && node tools/make_deploy_page.js`.
+Open it through a local server: `cd contracts && python -m http.server 8790`, then http://localhost:8790/deploy.html. Steps: connect (Monad 143), deploy, setPool, items + caps, verify. Connect as the TEAM/admin wallet; the deployer becomes owner. Copy the final shop address to Claude.
+
 ## Updating prices and settings (admin wallet)
 
 ```
