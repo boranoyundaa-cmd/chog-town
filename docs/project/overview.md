@@ -11,7 +11,7 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 
 ## Status (update every session)
 
-The whole plan of `docs/project/build-plan.md` is **built and tested locally** (2026-10-15 session, mock chain and wallet). **Nothing of it is deployed yet**; the live site and server (`chog-town.pages.dev`, `chog-town-ws.fly.dev`) are still the 2026-10-08 build.
+The whole plan of `docs/project/build-plan.md` plus the phone companion is **built and deployed** (2026-10-16: server `chog-town-ws.fly.dev`, site `https://chog-hotel.pages.dev`; the old chog-town address redirects there). Tested locally with a mock chain and wallet; the live checks with a real wallet, a second player and a real phone are what remains.
 
 - **Name and tiers:** Chog Hotel; tiers Ser / Fren / Whale / Legend with venues Room / Suite / Floor / Penthouse (`ui.js`). Guest portrait = the collection's purple Chog (`data/portraits/guest.webp`).
 - **Town:** 64 x 64 m (`HALF` 32, server `CFG.half` 32): plaza with a fountain at (-6,-6), Hotel Street north (Gallery, Books, Chog Hotel, NOVA, Pizza), Moka Lane west (Moka & Co, Bakery, Florist), Arcade Road east (Arcade, Laundry, parking), Lantern Park south-west (pond, gazebo), Maple Row south-east (Home and neighbours). The camera follows the player everywhere; zoom is capped at 24 m of visible width outdoors and indoors (owner), rooms open at 18 m and follow the player; there is no whole-room view. Layout and sizes: `docs/game/world.md`.
@@ -57,7 +57,7 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 
 ## Handover (end of the 2026-10-15 session)
 
-- **State:** the full build plan is built, deployed (site `https://chog-hotel.pages.dev`, the old chog-town address redirects there) and the shop contract is live; live checks are all that remain. Server checks: `cd server && npm test`.
+- **State:** everything is built and deployed (2026-10-16) and the shop contract is live; live checks are all that remain. Server checks: `cd server && npm test`.
 - **Lev and rooms for everyone, client side (2026-10-15):** Lev replaced the lobby receptionist (`js/lev.js`; menu, prologue, key cut-scene, upgrade and basement lines in `CULTURE.lev`); the town's Home house is an ordinary neighbour; R / My Room go to your hotel room; invite UI removed. Verified with a mock wallet against a staged server (check-in, grown and moved upgrades, basement return, walletless guest). Not yet checked with a real wallet.
 - **Owner preferences:** the owner speaks Turkish (answer in Turkish); consult before UI/UX, platform and design choices, then write the decision into the docs; ideas that solve several problems at once inside the fiction are valued; jokes stay rare, hidden and contextual.
 - **Deploying:** the server first (`flyctl deploy --ha=false --remote-only` from `server/`; the `Dockerfile` copies files by name, add new ones: `games.js`, `exhibition.js`, `shop.js`, `shop_items.json` are already listed), then the site (`python tools/build_site.py`, `wrangler pages deploy` from outside the repo, `docs/engineering/prototype.md`). Commit and push both repos (`server/` is its own repo).
@@ -68,8 +68,9 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 
 1. A small test purchase with $CHOG and with MON on the live site.
 2. Live checks with a real wallet (check in with Lev, the key scene, sign a room save, a tier upgrade, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
-3. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
-4. Owner corrections to the culture content after seeing it in the game.
+3. The phone on a real device: ask Lev for "A key for my phone", scan the QR code, turn on "Ring my phone" (on an iPhone from the home screen icon) and have a second player walk into the room while the PC is closed.
+4. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
+5. Owner corrections to the culture content after seeing it in the game.
 
 Demo video, submission text and promotion are the owner's call.
 
@@ -83,5 +84,5 @@ Demo video, submission text and promotion are the owner's call.
 - Submission/video logistics (face or voice on video) are the owner's call.
 - Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.
 
-- **2026-10-16:** the phone companion is built locally (`m.html`, `js/mobile.js`, `css/mobile.css`, `server/phone.js`, decided by the owner from the design canvas: the live pocket room with Lev's message tab, QR key from Lev on the PC, live guests only with the security camera, a plain page for phones without a key) and Lev's phone notifications (`server/push.js`, `prototype/sw.js`: a visit while you are away, a tip, a 21:00 reminder). Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth; wizard cloaks open in front. None of it is deployed: deploy the server first (new frames, `phone.js` in the Dockerfile), then the site.
+- **2026-10-16:** the phone companion is built locally (`m.html`, `js/mobile.js`, `css/mobile.css`, `server/phone.js`, decided by the owner from the design canvas: the live pocket room with Lev's message tab, QR key from Lev on the PC, live guests only with the security camera, a plain page for phones without a key) and Lev's phone notifications (`server/push.js`, `prototype/sw.js`: a visit while you are away, a tip, a 21:00 reminder). Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth; wizard cloaks open in front. Deployed the same night (server, then site); checked live: the phone page reaches the live server, desktop still connects.
 - Playtest fixes (2026-10-15): spawn at the plaza's north edge with the camera leaning to the Hotel, waypoint over the Hotel door, First steps checklist, working "Show me around" walk, walk speed 3.4 m/s (server `CFG.speed` too), big map on M (Shop is now K). `server/test/shop.js` fails on an old assertion (`shop: null`) since the shop went live; not touched.

@@ -9,5 +9,5 @@ self.addEventListener('push', e => {
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const url = new URL((e.notification.data && e.notification.data.url) || 'm.html', self.registration.scope).href;
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => { for (const c of list) if (c.url.includes('/m.html') && 'focus' in c) return c.focus(); return self.clients.openWindow(url); }));
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => { for (const c of list) if (/\/m(\.html)?$/.test(new URL(c.url).pathname) && 'focus' in c) return c.focus();          // Cloudflare serves m.html as /m return self.clients.openWindow(url); }));
 });
