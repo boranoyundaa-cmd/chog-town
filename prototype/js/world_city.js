@@ -278,7 +278,7 @@ const CITY = { buildings: [], spawn: [0.5, 2.0], road: 1.5, doors: {} };       /
   planter(18.4, 23.6, 1.0);
 
   CITY.doors.hotel = { x: -6, z: NF + 0.35, out: NF + 0.75, label: 'Enter the Chog Hotel' };
-  CITY.spawn = [-6, 3];
+  CITY.spawn = [-6, -16];                                                  // the plaza's north edge: the Hotel facade is in the first frame
 
   // the plaza
   fountain(PLZ.x, PLZ.z);

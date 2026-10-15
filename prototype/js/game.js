@@ -1,6 +1,6 @@
 // ===== game: the player's Chog, tap/WASD movement with path finding, follow camera, see-through occluders =====
 // Loaded after world_c.js and traits.js, before main.js. Everything per frame runs from `animated`.
-const GAME = { me: null, traits: DEFAULT_TRAITS, path: [], speed: 2.7, keys: {}, moving: false, onChange: null, room: null, editMode: false, camFixed: null };
+const GAME = { me: null, traits: DEFAULT_TRAITS, path: [], speed: 3.4, run: false, keys: {}, moving: false, onChange: null, room: null, editMode: false, camFixed: null };
 const WALK_R = 0.25, CELL = 0.25, GRID_HALF = HALF + 1;     // collision radius, path grid cell, grid extent
 const CAM_FWD = new THREE.Vector3(-1, 0, -1).normalize(), CAM_RIGHT = new THREE.Vector3(1, 0, -1).normalize();
 
@@ -68,8 +68,10 @@ GAME.setTraits = function (traits) {
   }
   if (GAME.onChange) GAME.onChange(traits);
 };
-GAME.walkTo = function (x, z, wasBlocked) {
-  if (!GAME.me) return; let p = findPath(GAME.me.position.x, GAME.me.position.z, x, z); if (!p.length) { const g = nearestFree(x, z); if (g) p = [g]; } GAME.path = p;
+GAME.runMul = 1.4;                                                                  // a long auto-walk (the map, the checklist) runs; the server allows 1.6x the walk speed, so 1.4x stays inside it
+GAME.walkTo = function (x, z, wasBlocked, run) {
+  if (!GAME.me) return; GAME.run = false; let p = findPath(GAME.me.position.x, GAME.me.position.z, x, z); if (!p.length) { const g = nearestFree(x, z); if (g) p = [g]; } GAME.path = p;
+  if (run && p.length) { let L = 0, ax = GAME.me.position.x, az = GAME.me.position.z; for (const q of p) { L += Math.hypot(q[0] - ax, q[1] - az); ax = q[0]; az = q[1]; } GAME.run = L > 20; }   // longer than about 20 m: run (never teleport)
   if (wasBlocked) { GAME.mark.position.set(x, 0.04, z); GAME.mark.material.color.set(0xff6a5a); GAME.markT = 1; }          // red ring where you clicked, you walk to the nearest free spot
   else if (p.length) { const e = p[p.length - 1]; GAME.mark.position.set(e[0], 0.04, e[1]); GAME.mark.material.color.set(0xffffff); GAME.markT = 1; }
 };
@@ -119,7 +121,7 @@ GAME.sceneZoom = def => { const k = GAME.zoomT / GAME.zoomBase; GAME.zoomBase = 
     if (ray.ray.intersectPlane(plane, pt)) GAME.walkTo(pt.x, pt.z, blocked(pt.x, pt.z, 0.05));
   });
   const KEY = { KeyW: 'u', ArrowUp: 'u', KeyS: 'd', ArrowDown: 'd', KeyA: 'l', ArrowLeft: 'l', KeyD: 'r', ArrowRight: 'r' };
-  addEventListener('keydown', e => { if (KEY[e.code] && !e.target.matches('input,textarea')) { GAME.keys[KEY[e.code]] = true; GAME.path = []; e.preventDefault(); } });
+  addEventListener('keydown', e => { if (KEY[e.code] && !e.target.matches('input,textarea')) { GAME.keys[KEY[e.code]] = true; GAME.path = []; GAME.run = false; e.preventDefault(); } });
   addEventListener('keyup', e => { if (KEY[e.code]) GAME.keys[KEY[e.code]] = false; });
 })();
 
@@ -178,7 +180,7 @@ animated.push((t, dt) => {
   }
   const moving = mx !== 0 || mz !== 0; GAME.moving = moving;
   if (moving) {
-    const sp = GAME.speed * dt, nx = me.position.x + mx * sp, nz = me.position.z + mz * sp;
+    const sp = GAME.speed * (GAME.run && GAME.path.length ? GAME.runMul : 1) * dt, nx = me.position.x + mx * sp, nz = me.position.z + mz * sp;
     if (!blocked(nx, me.position.z)) me.position.x = nx; if (!blocked(me.position.x, nz)) me.position.z = nz;
     let dr = Math.atan2(mx, mz) - me.rotation.y; dr = Math.atan2(Math.sin(dr), Math.cos(dr)); me.rotation.y += dr * Math.min(1, dt * 12);
   }
@@ -201,7 +203,10 @@ animated.push((t, dt) => {
     GAME._camRoom = null; _want.copy(GAME.camFixed);
     if (GAME.camFollowAt) { const t = Math.max(0, Math.min(1, (GAME.camFollowAt * 0.97 - GAME.zoomT) / (GAME.camFollowAt * 0.3))); if (t > 0) _want.lerp(_p.set(me.position.x + GAME.camFixed.x, 1.1, me.position.z + GAME.camFixed.z), t); }
   }
-  else { GAME._camRoom = null; _want.set(me.position.x, 1.1, me.position.z); _want.x = Math.max(-HALF - 1, Math.min(HALF + 1, _want.x)); _want.z = Math.max(-HALF - 1, Math.min(HALF + 1, _want.z)); }
+  else {
+    GAME._camRoom = null; _want.set(me.position.x + GAME.camBias.x, 1.1, me.position.z + GAME.camBias.z);
+    const kb = Math.exp(-dt * (moving ? 1.2 : 0.05)); GAME.camBias.x *= kb; GAME.camBias.z *= kb;       // the opening shot: the camera leans towards the Hotel, then settles on you as you walk
+    _want.x = Math.max(-HALF - 1, Math.min(HALF + 1, _want.x)); _want.z = Math.max(-HALF - 1, Math.min(HALF + 1, _want.z)); }
   camTarget.lerp(_want, 1 - Math.exp(-dt * 5));
   FW += (GAME.zoomT - FW) * (1 - Math.exp(-dt * 10)); updateCam();
   GAME.updateHover();
@@ -209,5 +214,7 @@ animated.push((t, dt) => {
 });
 
 // start: a default Chog, camera on it, a gameplay zoom that fits the screen shape
+GAME.camBias = { x: 0, z: 0 };
 GAME.setTraits(GAME.traits);
-GAME.zoomT = FW = GAME.zoomBase = GAME.townBase = ASPECT >= 1 ? 15 : 9.5; camTarget.set(GAME.me.position.x, 1.1, GAME.me.position.z); updateCam();
+if (CITY.doors.hotel) { GAME.camBias.x = (CITY.doors.hotel.x - GAME.me.position.x) * 0.62; GAME.camBias.z = (CITY.doors.hotel.z - GAME.me.position.z) * 0.62; }
+GAME.zoomT = FW = GAME.zoomBase = GAME.townBase = ASPECT >= 1 ? 15 : 9.5; camTarget.set(GAME.me.position.x + GAME.camBias.x, 1.1, GAME.me.position.z + GAME.camBias.z); updateCam();

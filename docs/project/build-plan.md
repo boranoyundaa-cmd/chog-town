@@ -13,6 +13,23 @@ All open questions were put to the owner on 2026-10-15. These answers are final 
 3. Performance on real hardware.
 4. Demo video and submission: the owner's call.
 
+## Rooms for everyone (owner, 2026-10-15, after the judge playtests)
+
+Replaces the Home. Supersedes the Home rows in `docs/game/world.md` once built.
+
+- **Lore:** "You just moved to Chog Town, so the hotel set you up with a room." The prologue is to walk into the Hotel and talk to the receptionist. They show the room list, then a short cut-scene: fade, you stand at your door, the receptionist hands you the key, walks to the elevator and leaves. The cut-scene receptionist is seen by you only; for everyone else they stay at the desk.
+- **Every player gets a free room in the Hotel:** 14 x 10 m, 80 pieces, one full slot (10 m of wall). A player without a wallet gets a temporary room that is not saved and has no door number. To keep it and receive visitors, they connect a wallet (signature, no NFT).
+- **Door numbers never move.** A new room takes the first freed slot, otherwise a new floor on top.
+- **Basement:** a free room not entered for **30 days** moves to the basement (floors B1, B2... going down) and its slot is freed. Returning, the receptionist says so and offers to move it back up (first free slot or the top). Holder venues never move to the basement; they stay forever. The old "left the list after 30 days" rule is dropped.
+- **List:** the directory lists above-ground rooms only. Holder venues come first, free rooms below them.
+- **Upgrades go through the receptionist.** A tier rise does not grow the room by itself. The player asks the receptionist, who explains what is missing if they cannot upgrade. If the neighbouring slots are free, the room grows in place. If not, the same cut-scene runs: fade, you stand at the new door, the receptionist hands the key and explains the old room had no space, walks off. The decor comes along. A falling tier keeps the existing freeze and move rules, and the free room is the floor.
+- **No capacity limits** anywhere (the tier "people inside" perk is dropped).
+- **Lock:** a Lock / Unlock button on both sides of the door. Locked: nobody but the owner gets in; people inside can still leave.
+- **Receptionist:** the NPC players talk to most. Gets a distinct speaking style (in the manner of Undertale characters), funny and clever. Lines for the prologue, upgrades, the basement return, and a bark when the list is closed without picking a room.
+- **The Hotel grows:** the outside of the building has one storey per above-ground floor and grows **from the middle**: the base and the crowning tower top stay; new storeys go in between. An **Inspect** button at the Hotel runs a zoom-out animation that frames the whole building for a few seconds, a live counter of how big the Hotel has become.
+- **The town** is for play and discovery: the mini-games stay in town, and the town's billboards and signs show live Hotel info (tonight's events, the busiest room, the Exhibition winner); clicking one walks you there.
+- Dropped: a guest preview of holder venues.
+
 ## Name and language
 
 - The game is called **Chog Hotel** (was Chog Town; renamed everywhere).

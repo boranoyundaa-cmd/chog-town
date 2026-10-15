@@ -81,3 +81,5 @@ Demo video, submission text and promotion are the owner's call. Later: mobile co
 - **NFT frames:** which indexer lists a wallet's NFTs on Monad.
 - Submission/video logistics (face or voice on video) are the owner's call.
 - Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.
+
+- Playtest fixes (2026-10-15): spawn at the plaza's north edge with the camera leaning to the Hotel, waypoint over the Hotel door, First steps checklist, working "Show me around" walk, walk speed 3.4 m/s (server `CFG.speed` too), big map on M (Shop is now K). `server/test/shop.js` fails on an old assertion (`shop: null`) since the shop went live; not touched.

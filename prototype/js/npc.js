@@ -17,7 +17,7 @@ const NPC = { list: [], group: new THREE.Group(), target: 16, card: null, overri
   const beat = (ax, az, bx, bz) => ({ act: 'stroll', x: ax, z: az, bx, bz, len: Math.hypot(bx - ax, bz - az), ry: 0 });
   const PL = {                                                                       // positions follow the 64 x 64 m town in world_city.js (plaza centre -6, -6)
     moka: door(-23.6, -8), arcade: door(14.2, 4.4), nova: door(15.1, -23.6), gallery: door(-24.8, -23.6), hotel: door(-6, -23.6),
-    baristaPost: stand(-22.8, -6.2, 1.57, 'wave'), guidePost: stand(-3.6, 0.6, 3.6), guardPost: stand(15.1, -23.0, 0),
+    baristaPost: stand(-22.8, -6.2, 1.57, 'wave'), guidePost: stand(-4.0, -17.4, 3.6), guardPost: stand(15.1, -23.0, 0),
     // cafe terrace on Moka Lane, the arcade and gallery fronts (they face the shop)
     cafeQ1: stand(-22.4, -9.4, -1.57), cafeQ2: stand(-22.4, -10.4, -1.57), cafeT3: stand(-22.4, -5.4, -1.57), cafeT4: stand(-22.4, -4.4, -1.57),
     arcadeFront1: stand(13.0, 5.0, 3.14), arcadeFront2: stand(16.0, 5.0, 3.14), arcadeFront3: stand(17.4, 5.0, 3.14), liqSpot: stand(19.6, 5.3, 0.9),
@@ -178,6 +178,7 @@ const NPC = { list: [], group: new THREE.Group(), target: 16, card: null, overri
     return { x: p.x, z: p.z, ry: p.ry, moving: false, inside: false, place: p };
   };
   function where(r, t) {
+    if (NPC.escort && NPC.escort.r === r) return NPC.escort.w;                          // the guide walking you somewhere (firststeps.js)
     const pin = NPC.pins[r.id]; if (pin && PL[pin]) return atPlace(PL[pin], t, 0, r.speed);      // an event keeps this resident somewhere (culture.js)
     const s = r.segs.find(g => t >= g.t0 && t < g.t1) || r.segs[r.segs.length - 1];
     if (s.kind === 'go') {
@@ -258,7 +259,7 @@ const NPC = { list: [], group: new THREE.Group(), target: 16, card: null, overri
     if (typeof render === 'function') render();
   };
   NPC.closeCard = () => { NPC.card = null; if (typeof render === 'function') render(); };
-  NPC.actionFor = r => (r.svc === 'guide' ? { label: 'Show me around', run: () => { NPC.closeCard(); if (typeof TOUR !== 'undefined') TOUR.restart(); } } : null);
+  NPC.actionFor = r => (r.svc === 'guide' ? { label: 'Show me around', run: () => { NPC.closeCard(); if (typeof FIRST !== 'undefined') FIRST.startTour(r); } } : null);
   NPC.setTime = s => { NPC.override = s === null ? null : s; NPC.dirty = true; };             // testing: NPC.setTime(14 * 3600) pins the schedule clock
   NPC.where = (id, s) => { const r = NPC.list.find(x => x.id === id); if (!planned) planAll(); return r ? where(r, s % DAY_S) : null; };
   NPC.invalidate = () => { planned = false; NPC.dirty = true; };                             // props.js added blockers: plan again on the next frame

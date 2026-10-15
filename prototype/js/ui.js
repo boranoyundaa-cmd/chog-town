@@ -30,13 +30,14 @@ const ICONS = {
   gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/>',
   chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  map: '<path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/>',
   game: '<rect x="3" y="7" width="18" height="11" rx="5"/><path d="M8 10v5M5.5 12.5h5"/><circle cx="15.5" cy="11.5" r=".9"/><circle cx="18" cy="14" r=".9"/>',
 };
 const icon = (n, size = 24) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[n]}</svg>`;
 const MENU = [
   { id: 'chog', label: 'My Chog', key: 'C', icon: 'person' }, { id: 'room', label: 'My Room', key: 'R', icon: 'home' },
-  { id: 'shop', label: 'Shop', key: 'M', icon: 'bag' }, { id: 'venues', label: 'Venues', key: 'V', icon: 'pin' },
-  { id: 'settings', label: 'Settings', key: 'O', icon: 'gear' }, { id: 'games', label: 'Games', key: 'G', icon: 'game' },
+  { id: 'shop', label: 'Shop', key: 'K', icon: 'bag' }, { id: 'venues', label: 'Venues', key: 'V', icon: 'pin' },
+  { id: 'settings', label: 'Settings', key: 'O', icon: 'gear' }, { id: 'games', label: 'Games', key: 'G', icon: 'game' }, { id: 'map', label: 'Map', key: 'M', icon: 'map' },
 ];
 // interface skins: warm modern cards (default), neon night, storybook (the first look). cls goes on #ui and on <body> (nameplates live outside #ui)
 const SKINS = { warm: { label: 'Warm cards', cls: 'warm', sub: 'Soft cream cards, Chog purple' }, neon: { label: 'Neon night', cls: 'neon', sub: 'Dark glass, cyan and pink lines' }, storybook: { label: 'Storybook', cls: '', sub: 'Wood and parchment' } };
@@ -44,7 +45,14 @@ function applySkin() {
   const k = SKINS[UI.skin] || SKINS.warm, root = document.getElementById('ui'); if (root) root.className = k.cls;
   document.body.classList.remove('warm', 'neon'); if (k.cls) document.body.classList.add(k.cls);
 }
-function menuClick(m) { if (m.soon) { toast(m.label + ' is coming soon'); return; } if (m.id === 'room') { ROOM.toggle(); return; } if (m.id === 'games') { if (typeof GAMES !== 'undefined') GAMES.toggle(); return; } if (m.id === 'shop') { if (typeof SHOP !== 'undefined') SHOP.toggle(); return; } UI.open = UI.open === m.id ? null : m.id; render(); }
+// the main panels (My Chog, Venues, Settings, Games, Shop, the map) are one at a time: opening one calls this with its own name first
+function closeOtherPanels(keep) {
+  if (keep !== 'games' && typeof GAMES !== 'undefined' && GAMES.open && GAMES.open.id === 'hub') GAMES.close();
+  if (keep !== 'shop' && typeof SHOP !== 'undefined' && SHOP.win) SHOP.close();
+  if (keep !== 'map' && typeof FIRST !== 'undefined') FIRST.toggleMap(false);
+  if (UI.open && UI.open !== keep) { UI.open = null; render(); }
+}
+function menuClick(m) { if (m.soon) { toast(m.label + ' is coming soon'); return; } if (m.id === 'room') { ROOM.toggle(); return; } if (m.id === 'games') { if (typeof GAMES !== 'undefined') GAMES.toggle(); return; } if (m.id === 'map') { if (typeof FIRST !== 'undefined') FIRST.toggleMap(); return; } if (m.id === 'shop') { if (typeof SHOP !== 'undefined') SHOP.toggle(); return; } if (UI.open === m.id) UI.open = null; else { closeOtherPanels(m.id); UI.open = m.id; } render(); }
 
 // ---- portraits: render a Chog once into a PNG with a second, hidden renderer
 const portraits = {};
@@ -181,7 +189,7 @@ function settingsCard(onClose) {
     const mu = el('button', 'btn' + (AUDIO.settings().muted ? '' : ' ghost'), AUDIO.settings().muted ? 'Sound is off (click to turn on)' : 'Mute all sound'); mu.style.margin = '10px 16px 0';
     mu.onclick = () => { AUDIO.mute(!AUDIO.settings().muted); render(); }; c.appendChild(mu);
   }
-  c.appendChild(el('h3', 'sect', 'Welcome tips')); const tb = el('button', 'btn ghost', 'Show the tips again'); tb.style.margin = '0 12px'; tb.onclick = () => { TOUR.restart(); closeWin(); }; c.appendChild(tb);
+  c.appendChild(el('h3', 'sect', 'Welcome tips')); const tb = el('button', 'btn ghost', 'Show the tips again'); tb.style.margin = '0 12px'; tb.onclick = () => { TOUR.restart(); if (typeof FIRST !== 'undefined') FIRST.reopen(); closeWin(); }; c.appendChild(tb);
   c.appendChild(el('h3', 'sect', 'Time of day'));
   const seg = el('div', 'seg'), real = DAY.mode === 'real', save = () => { try { localStorage.setItem('chog_time', JSON.stringify({ mode: DAY.mode, hour: DAY.fixedHour })); } catch (e) { /* ignore */ } };
   const b1 = el('button', 'btn' + (real ? '' : ' ghost'), 'Real time'), b2 = el('button', 'btn' + (!real ? '' : ' ghost'), 'Choose a time');
@@ -240,11 +248,11 @@ function locationName() {
   for (const a of CITY.areas || []) if (p.x >= a.x0 && p.x <= a.x1 && p.z >= a.z0 && p.z <= a.z1) return a.name;
   return 'Downtown Chog';
 }
-function drawMinimap(cv) {
+function drawMinimap(cv, big) {                                                      // big: the whole town, centred (the map window, firststeps.js)
   if (inHotel()) return HOTEL.drawMap(cv);
   if (inRoom()) return ROOM.drawMap(cv);
-  const S = cv.width, g = cv.getContext('2d'), VIEW = 46, k = S / VIEW, R = Math.SQRT1_2, N = UI.skin === 'neon', RW = CITY.road;      // a window of about 46 m round the player
-  const C = GAME.me ? GAME.me.position : { x: 0, z: 0 }, P = (x, z) => [S / 2 + ((x - C.x) - (z - C.z)) * R * k, S / 2 + ((x - C.x) + (z - C.z)) * R * k];
+  const S = cv.width, g = cv.getContext('2d'), VIEW = big ? 92 : 46, k = S / VIEW, R = Math.SQRT1_2, N = UI.skin === 'neon', RW = CITY.road;      // a window of about 46 m round the player
+  const C = big ? { x: 0, z: 0 } : GAME.me ? GAME.me.position : { x: 0, z: 0 }, P = (x, z) => [S / 2 + ((x - C.x) - (z - C.z)) * R * k, S / 2 + ((x - C.x) + (z - C.z)) * R * k];
   g.clearRect(0, 0, S, S);
   const poly = (pts, col) => { g.beginPath(); pts.forEach(([x, z], i) => { const [a, b] = P(x, z); i ? g.lineTo(a, b) : g.moveTo(a, b); }); g.closePath(); g.fillStyle = col; g.fill(); };
   const rect = (x, z, hw, hd, col) => poly([[x - hw, z - hd], [x + hw, z - hd], [x + hw, z + hd], [x - hw, z + hd]], col);
@@ -259,11 +267,11 @@ function drawMinimap(cv) {
     g.fillStyle = '#ffd84a'; g.strokeStyle = '#1a0a2e'; g.lineWidth = 2; g.stroke(); g.fill(); g.restore();
   }
 }
-function minimap(size) { const cv = el('canvas', 'minimap'); cv.width = cv.height = size * 2; cv.style.width = cv.style.height = size + 'px'; return cv; }
+function minimap(size) { const cv = el('canvas', 'minimap hit'); cv.width = cv.height = size * 2; cv.style.width = cv.style.height = size + 'px'; cv.style.cursor = 'pointer'; cv.title = 'Open the map (M)'; cv.onclick = () => { if (typeof FIRST !== 'undefined') FIRST.toggleMap(); }; return cv; }
 setInterval(() => { for (const cv of document.querySelectorAll('canvas.minimap')) drawMinimap(cv); for (const n of document.querySelectorAll('.locname')) n.textContent = locationName(); }, 120);
 
 // ---- small shared HUD pieces
-const hint = () => el('div', 'hint', inHotel() ? HOTEL.hint() : inRoom() ? ROOM.hint() : 'Click to walk · WASD move · Wheel zoom · Enter chat · C My Chog · R My Room');
+const hint = () => el('div', 'hint', inHotel() ? HOTEL.hint() : inRoom() ? ROOM.hint() : 'Click to walk · WASD move · Wheel zoom · Enter chat · M Map · R My Room');
 // the chat box is built once and re-attached on every render(), so the log, the draft and the focus survive HUD rebuilds
 let _chat = null;
 function refreshChat() {
@@ -349,10 +357,11 @@ function meBadge() {
 function render() {
   const root = document.getElementById('ui'); root.innerHTML = ''; applySkin();
   root.appendChild(meBadge());
-  const tr = el('div', 'topright'), mm = el('div', 'mmwrap'); mm.appendChild(minimap(150)); mm.appendChild(el('div', 'loc', '<span class="locname">Chog Plaza</span>')); tr.appendChild(mm); tr.appendChild(walletButton('btn')); root.appendChild(tr);
+  const tr = el('div', 'topright'), mm = el('div', 'mmwrap'); mm.appendChild(minimap(176)); mm.appendChild(el('div', 'loc', '<span class="locname">Chog Plaza</span>')); tr.appendChild(mm); tr.appendChild(walletButton('btn')); root.appendChild(tr);
   root.appendChild(chatBox()); root.appendChild(dock('dock', true)); root.appendChild(hint());
   if (inRoom()) root.appendChild(ROOM.hud());
   if (inHotel()) root.appendChild(HOTEL.hud());
+  if (typeof FIRST !== 'undefined') root.appendChild(FIRST.hud());
   if (typeof TOUR !== 'undefined') root.appendChild(TOUR.hud());
   const w = el('div', 'win' + (['chog', 'settings', 'venues'].includes(UI.open) ? ' open' : '') + (UI.open === 'venues' ? ' venues' : ''));
   w.appendChild(UI.open === 'settings' ? settingsCard(closeWin) : UI.open === 'venues' ? venuesCard(closeWin) : card(closeWin)); root.appendChild(w);
@@ -363,7 +372,7 @@ function render() {
 // the HUD is laid out for a 1440x810 window and scaled with the window height
 function fitUI() { document.getElementById('ui').style.zoom = Math.max(0.8, Math.min(1.6, innerHeight / 810)); }
 addEventListener('resize', fitUI);
-addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[2]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (typeof NPC !== 'undefined' && NPC.card) NPC.closeCard(); else if (UI.open) { UI.open = null; render(); } }
+addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'KeyK' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[2]); if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[6]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (typeof NPC !== 'undefined' && NPC.card) NPC.closeCard(); else if (UI.open) { UI.open = null; render(); } }
   if ((e.code === 'Enter' || e.code === 'NumpadEnter') && _chat) { const i = _chat.querySelector('input'); if (!i.disabled) { e.preventDefault(); i.focus(); } } });
 
 (async function initUI() {

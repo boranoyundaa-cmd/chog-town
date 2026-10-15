@@ -299,6 +299,7 @@ const SHOP = { items: [], byId: new Map(), owned: {}, equip: {}, events: { event
     const w = el('div'); w.id = 'shop'; document.body.appendChild(w); SHOP.win = w; return w;
   }
   SHOP.open = async function (tab) {
+    closeOtherPanels('shop');
     await SHOP.ready; if (tab) SHOP.tab = tab; ensureWin(); SHOP.tx = null; drawWin(); SHOP.refresh();
     if (SHOP.mode() === 'chain' && WALLET.account) { chogBalance().then(() => SHOP.win && drawWin()).catch(() => { }); }
     readChainExtras();

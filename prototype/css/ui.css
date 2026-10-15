@@ -233,6 +233,29 @@ body.neon #doorp { background: rgba(20, 10, 44, .9); color: #f2eaff; border-colo
 #tourpin { position: fixed; left: 0; top: 0; z-index: 3; display: flex; align-items: center; gap: 6px; padding: 5px 13px 6px 9px; border-radius: 999px; background: #7a3ac8; color: #fff; font: 600 14px/1 "Fredoka", "Nunito", sans-serif; box-shadow: 0 0 0 3px rgba(255, 255, 255, .85), 0 6px 16px rgba(40, 20, 70, .4); pointer-events: none; white-space: nowrap; }
 #tourpin .arr { display: inline-block; font-size: 12px; } body.neon #tourpin { background: #ff5ab8; box-shadow: 0 0 16px #ff5ab8; }
 
+/* first steps: checklist, waypoint, big map (js/firststeps.js) */
+#ui .stepswrap { position: absolute; left: 16px; top: 100px; }
+#ui .steps { position: relative; width: 250px; padding: 9px 12px 8px; max-height: none; overflow: visible; animation: tourin .35s ease-out; --sel: #e8b83a; }
+#ui.warm .steps { --sel: #7a3ac8; } #ui.neon .steps { --sel: #7ae8ff; }
+#ui .steps .sh { display: flex; align-items: center; gap: 6px; } #ui .steps .sh b { font: var(--hw) 16px var(--hf); flex: 1; } #ui .steps .sh .n { font-size: 12px; font-weight: 800; opacity: .6; }
+#ui .steps .sx { width: 22px; height: 22px; border-radius: 50%; font-size: 15px; line-height: 1; font-weight: 800; opacity: .55; display: flex; align-items: center; justify-content: center; } #ui .steps .sx:hover { opacity: 1; background: color-mix(in srgb, currentColor 12%, transparent); }
+#ui .steps .sl { display: flex; flex-direction: column; gap: 1px; margin-top: 6px; }
+#ui .steps .si { display: flex; align-items: center; gap: 9px; text-align: left; padding: 5px 6px; border-radius: 10px; font-size: 13.5px; font-weight: 700; } #ui .steps .si:hover { background: color-mix(in srgb, var(--sel) 14%, transparent); }
+#ui .steps .si i { flex: none; width: 17px; height: 17px; border-radius: 50%; border: 2px solid color-mix(in srgb, currentColor 40%, transparent); font-style: normal; font-size: 11px; line-height: 13px; text-align: center; color: #fff; }
+#ui .steps .si.done i { background: var(--sel); border-color: var(--sel); } #ui .steps .si.done span { opacity: .5; text-decoration: line-through; } #ui .steps .si.on i { border-color: var(--sel); box-shadow: 0 0 0 2px color-mix(in srgb, var(--sel) 35%, transparent); }
+body.inroom .stepswrap, body.inhotel .stepswrap { display: none !important; }
+#fswp { position: fixed; left: 0; top: 0; z-index: 3; flex-direction: column; align-items: center; gap: 1px; pointer-events: none; white-space: nowrap; filter: drop-shadow(0 4px 8px rgba(40, 20, 70, .35)); }
+#fswp b { padding: 4px 12px 5px; border-radius: 999px; background: #fffaf3; color: #2b2140; border: 1.5px solid rgba(58, 36, 96, .25); font: 600 13px/1 "Fredoka", "Nunito", sans-serif; }
+#fswp i { width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-top: 9px solid #7a3ac8; margin-top: 1px; }
+body.neon #fswp b { background: rgba(20, 10, 44, .88); color: #f2eaff; border-color: #7ae8ff; } body.neon #fswp i { border-top-color: #ff5ab8; }
+#fsmap { position: fixed; inset: 0; z-index: 14; display: flex; align-items: center; justify-content: center; background: rgba(30, 14, 56, .45); opacity: 0; pointer-events: none; transition: opacity .18s; }
+#fsmap.open { opacity: 1; pointer-events: auto; }
+#fsmap .box { position: relative; padding: 12px 14px 14px; border-radius: 22px; background: #fffaf3; color: #2b2140; border: 1.5px solid rgba(58, 36, 96, .16); box-shadow: 0 18px 44px rgba(30, 10, 60, .5); font-family: "Nunito", system-ui, sans-serif; }
+#fsmap .mh { display: flex; align-items: baseline; gap: 10px; margin: 0 4px 8px; } #fsmap .mh b { font: 600 20px "Fredoka", "Nunito", sans-serif; } #fsmap .mh small { flex: 1; font-weight: 700; opacity: .6; font-size: 12.5px; }
+#fsmap .mx { width: 28px; height: 28px; border-radius: 50%; font-size: 18px; font-weight: 800; color: inherit; opacity: .6; background: transparent; border: 0; cursor: pointer; align-self: center; } #fsmap .mx:hover { opacity: 1; background: rgba(122, 58, 200, .12); }
+#fsmap canvas { display: block; border-radius: 16px; background: #cbbbe8; }
+body.neon #fsmap .box { background: rgba(20, 10, 44, .94); color: #f2eaff; border-color: #7ae8ff; } body.neon #fsmap canvas { background: #1a1038; }
+
 /* invitations to a Home */
 #ui .invwrap { position: absolute; left: 16px; bottom: 270px; display: flex; flex-direction: column; gap: 8px; z-index: 5; }
 #ui .invcard { width: 250px; padding: 10px 12px 12px; } #ui .invcard b { display: block; font: 400 17px "Bree Serif", Georgia, serif; } #ui .invcard small { display: block; margin: 1px 0 8px; opacity: .7; }

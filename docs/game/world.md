@@ -6,7 +6,7 @@ Decided with the owner on 2026-10-08. The open items are at the end. Rooms, them
 
 One outdoor **town** on a single shard. Every door leads to a **space** (a document, `docs/game/spaces.md`) with its own presence and chat. The town stays small and content grows inward, because a big world with a small population feels empty (`docs/game/core-loop-research.md`).
 
-- **Size:** 64 x 64 m (built 2026-10-15; the earlier target was 40 x 40). At 2.7 m/s that is about 25 s across. The camera follows the player everywhere, so the town never reads as small. A second district only if this one is full.
+- **Size:** 64 x 64 m (built 2026-10-15; the earlier target was 40 x 40). At 3.4 m/s that is about 19 s across (auto-walks from the map run at 1.4x). The camera follows the player everywhere, so the town never reads as small. A second district only if this one is full.
 - **Four kinds of space:**
 
 | Space | Who | Access |

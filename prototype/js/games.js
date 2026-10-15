@@ -212,6 +212,7 @@ const GAMES = { open: null, profile: { trophies: [], badges: [], best: {}, playe
   // ---------- the Games window: list, leaderboards, trophies
   GAMES.toggle = () => { if (GAMES.open && GAMES.open.id === 'hub') closeWin(); else GAMES.hub(); };
   GAMES.hub = function (tab = 'games') {
+    closeOtherPanels('games');
     openWin('hub', 'Games', (body, o) => {
       let cur = tab, bgame = 'stack', bper = 'day';
       const draw = () => {
@@ -221,7 +222,7 @@ const GAMES = { open: null, profile: { trophies: [], badges: [], best: {}, playe
           const grid = el('div', 'gm-list');
           for (const m of META) {
             const best = GAMES.bestOf(m.id), c = el('div', 'gm-item'), sc = m.id === 'rhythm' ? best : best;
-            c.innerHTML = `<div class="gi"><b>${esc(m.name)}</b><small>${m.kind === 'solo' ? 'Solo · ' : 'Two players · '}${esc(m.where)}</small><p>${esc(m.blurb)}</p>${best && m.kind === 'solo' ? `<small class="bst">Best ${m.id === 'daily' ? (best + ' pts') : sc}</small>` : ''}</div><div class="ga"></div>`;
+            c.innerHTML = `<div class="gi"><b>${esc(m.name)}</b><small>${m.kind === 'solo' ? 'Solo · ' : 'Two players · '}${esc(m.where)}</small><p>${esc(m.blurb)}</p>${m.kind === 'solo' ? `<small class="bst">${best ? 'Best ' + (m.id === 'daily' ? best + ' pts' : sc) : 'Best —'}</small>` : ''}</div><div class="ga"></div>`;
             const a = c.querySelector('.ga');
             if (m.kind === 'solo') { const b = el('button', 'gm-btn', 'Play'); b.onclick = () => GAMES.play(m.id); a.appendChild(b); }
             else { const b = el('button', 'gm-btn', 'Play vs NPC'); b.onclick = () => GAMES.vsNpc(m.id); a.appendChild(b); a.appendChild(el('small', '', 'or click a player')); }
