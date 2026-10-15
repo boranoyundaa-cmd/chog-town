@@ -251,6 +251,9 @@ function chog(o = {}) {
   root.traverse(m => { if (m.isMesh && m.castShadow && !m.userData.isHull) { const g = m.geometry; if (!g.boundingBox) g.computeBoundingBox(); const d = g.boundingBox.max.clone().sub(g.boundingBox.min).multiply(m.scale); if (Math.min(d.x, d.y, d.z) < 0.05) m.castShadow = false; } });          // thin boxes and plates cast comb-like shadow acne
   addOutlines(root);
   tagChogLayers(root, face);
+  for (const p of [body, head, hairG, face, ...legs, ...arms]) p.userData.rig = true;          // the walk, idle and wave animations move these; the eyes blink (common.js mergeRigid)
+  for (const e of eyes) e.userData.noMerge = true;
+  mergeRigid(root);
   root.scale.setScalar(o.scale || CHOG_SCALE);
   return root;
 }

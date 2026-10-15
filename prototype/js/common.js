@@ -126,6 +126,66 @@ function glowSprite(color, size, opacity = 1) {
   const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false }));
   s.scale.set(size, size, 1); s.userData.noNormal = true; return s;
 }
+// Static merge: meshes that never move relative to each other become one mesh per look (material, shadow flags, layers, attributes), so every pass draws them in
+// one call. Equal-looking toon/basic materials count as one. Left alone: instanced, multi-material, transparent, glow (noNormal), mirrored meshes, meshes with
+// children, and anything tagged userData.noMerge (with its subtree) or under a node in o.skip. Ink hulls merge only with hulls and stay hulls.
+// Geometries are never disposed here (Chog parts share theirs). Run it before the meshes are registered anywhere (hiddenInNormal, occluders, pick lists).
+function matSig(m) {
+  if (m.type !== 'MeshToonMaterial' && m.type !== 'MeshBasicMaterial') return m.uuid;
+  const u = t => t ? t.uuid : '';
+  return [m.type, m.color.getHex(), m.emissive ? m.emissive.getHex() : '', m.emissiveIntensity, u(m.map), u(m.gradientMap), m.side, m.opacity, m.vertexColors, m.fog, m.depthTest, m.depthWrite, m.blending, m.alphaTest, m.polygonOffset, m.polygonOffsetFactor, m.polygonOffsetUnits].join('|');
+}
+const MERGE = { _v: new THREE.Vector3(), _inv: new THREE.Matrix4(), _rel: new THREE.Matrix4() };
+MERGE.ok = n => n.isMesh && !n.userData.rig && !n.isInstancedMesh && !n.isSkinnedMesh && !Array.isArray(n.material) && !n.material.transparent && !n.userData.noNormal && !n.userData.noMerge
+  && n.visible && n.renderOrder === 0 && !n.children.length && n.geometry.isBufferGeometry && !Object.keys(n.geometry.morphAttributes).length
+  && Object.values(n.geometry.attributes).every(a => !a.isInterleavedBufferAttribute) && n.matrixWorld.determinant() > 0;
+MERGE.into = function (target, meshes, cell = 0) {                   // meshes (anywhere under target) -> merged meshes added to target
+  const buckets = new Map(), canon = new Map();
+  for (const n of meshes) {
+    const ms = matSig(n.material); let at = '';
+    if (cell) { n.getWorldPosition(MERGE._v); at = Math.floor(MERGE._v.x / cell) + ',' + Math.floor(MERGE._v.z / cell); }
+    const key = [ms, n.castShadow, n.receiveShadow, n.frustumCulled, n.layers.mask, !!n.userData.isHull, Object.keys(n.geometry.attributes).sort().join(','), at].join('#');
+    if (!canon.has(ms)) canon.set(ms, n.material);
+    if (!buckets.has(key)) buckets.set(key, []); buckets.get(key).push(n);
+  }
+  const inv = MERGE._inv.copy(target.matrixWorld).invert(); let merged = 0;
+  for (const [key, list] of buckets) {
+    if (list.length < 2) continue;
+    const parts = list.map(n => n.geometry.clone().applyMatrix4(MERGE._rel.multiplyMatrices(inv, n.matrixWorld)));
+    let nv = 0, ni = 0; for (const p of parts) { nv += p.attributes.position.count; ni += p.index ? p.index.count : p.attributes.position.count; }
+    const out = new THREE.BufferGeometry(), idx = nv > 65535 ? new Uint32Array(ni) : new Uint16Array(ni);
+    for (const a of Object.keys(parts[0].attributes)) {
+      const s = parts[0].attributes[a], arr = new s.array.constructor(nv * s.itemSize); let off = 0;
+      for (const p of parts) { arr.set(p.attributes[a].array, off); off += p.attributes[a].array.length; }
+      out.setAttribute(a, new THREE.BufferAttribute(arr, s.itemSize, s.normalized));
+    }
+    let base = 0, k = 0;
+    for (const p of parts) { const c = p.attributes.position.count; if (p.index) for (let i = 0; i < p.index.count; i++) idx[k++] = p.index.array[i] + base; else for (let i = 0; i < c; i++) idx[k++] = base + i; base += c; }
+    out.setIndex(new THREE.BufferAttribute(idx, 1)); out.computeBoundingSphere(); out.computeBoundingBox();
+    const f = list[0], m = new THREE.Mesh(out, canon.get(key.split('#')[0]));
+    m.castShadow = f.castShadow; m.receiveShadow = f.receiveShadow; m.frustumCulled = f.frustumCulled; m.layers.mask = f.layers.mask;
+    m.userData.merged = list.length; if (f.userData.isHull) m.userData.isHull = m.userData.noOutline = true;
+    for (const n of list) n.parent.remove(n);
+    target.add(m); m.updateMatrixWorld(); merged += list.length;
+  }
+  return merged;
+};
+// a whole static subtree into root (o.cell: split into ground cells of that size, so frustum culling still works across the town); empty groups are dropped
+function mergeStatic(root, o = {}) {
+  const skip = o.skip || new Set(), list = [];
+  root.updateMatrixWorld(true);
+  (function walk(n) { for (const c of n.children) { if (skip.has(c) || c.userData.noMerge || !c.visible) continue; if (MERGE.ok(c)) list.push(c); else walk(c); } })(root);
+  const merged = MERGE.into(root, list, o.cell || 0);
+  (function prune(n) { for (const c of n.children.slice()) { if (skip.has(c) || c.userData.noMerge) continue; prune(c); if (c.type === 'Group' && !c.children.length) n.remove(c); } })(root);
+  return merged;
+}
+// a rigged model (a Chog): every node keeps its place and moves as before; only the plain meshes directly under one node merge, into that node.
+// Tag the parts that animate on their own: userData.rig (kept, its children still merge) or userData.noMerge (kept with its whole subtree)
+function mergeRigid(root) {
+  root.updateMatrixWorld(true); let merged = 0;
+  (function walk(n) { const kids = n.children.filter(MERGE.ok); merged += MERGE.into(n, kids); for (const c of n.children.slice()) if (!c.userData.noMerge && c.visible && !c.userData.merged) walk(c); })(root);
+  return merged;
+}
 function addRot(parent, mesh, rx = 0, ry = 0, rz = 0) { mesh.rotation.set(rx, ry, rz); parent.add(mesh); return mesh; }
 const animated = [];       // fn(t, dt)
 const noNormalPass = [];   // objects hidden during the normal pass

@@ -17,10 +17,10 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
   TXT.asphalt = paint(128, 128, (g, w, h) => { g.fillStyle = '#e4e4e4'; g.fillRect(0, 0, w, h); for (let i = 0; i < 900; i++) { const v = 190 + rnd() * 60 | 0; g.fillStyle = `rgba(${v},${v},${v},.55)`; g.fillRect(rnd() * w, rnd() * h, 1.5, 1.5); } for (let i = 0; i < 6; i++) { g.strokeStyle = 'rgba(80,80,90,.25)'; g.beginPath(); g.moveTo(rnd() * w, rnd() * h); g.lineTo(rnd() * w, rnd() * h); g.stroke(); } }, 6, 6);
   TXT.tiles = paint(128, 128, (g, w, h) => { g.fillStyle = '#f2f2f2'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(90,80,90,.35)'; g.lineWidth = 2; for (let i = 0; i <= 128; i += 32) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, h); g.moveTo(0, i); g.lineTo(w, i); g.stroke(); } for (let i = 0; i < 120; i++) { g.fillStyle = `rgba(255,255,255,${.1 + rnd() * .2})`; g.fillRect(rnd() * w, rnd() * h, 14, 14); } }, 8, 8);
   TXT.concrete = paint(64, 64, (g, w, h) => { g.fillStyle = '#ececec'; g.fillRect(0, 0, w, h); for (let i = 0; i < 200; i++) { const v = 205 + rnd() * 50 | 0; g.fillStyle = `rgba(${v},${v},${v},.6)`; g.fillRect(rnd() * w, rnd() * h, 2, 2); } g.strokeStyle = 'rgba(90,90,100,.22)'; g.lineWidth = 1; for (let y = 0; y < h; y += 16) { g.beginPath(); g.moveTo(0, y + .5); g.lineTo(w, y + .5); g.stroke(); } });
-  function texBox(w, h, d, color, tex, sc = 1.6, em) {
-    const o = { noCache: true, em };
-    const mx = tmat(color, { ...o, tex: reTex(tex, d / sc, h / sc) }), mz = tmat(color, { ...o, tex: reTex(tex, w / sc, h / sc) }), my = tmat(color, { ...o, tex: reTex(tex, w / sc, d / sc) });
-    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [mx, mx, my, my, mz, mz]); m.castShadow = m.receiveShadow = true; return m;
+  function texBox(w, h, d, color, tex, sc = 1.6, em) {        // the tiling lives in the UVs (per face pair: x, y, z), so every box of one colour shares one material and one texture
+    const geo = new THREE.BoxGeometry(w, h, d), uv = geo.attributes.uv;
+    [[d, h], [w, d], [w, h]].forEach(([su, sv], f) => { for (let i = f * 8; i < f * 8 + 8; i++) uv.setXY(i, uv.getX(i) * su / sc, uv.getY(i) * sv / sc); });
+    const m = new THREE.Mesh(geo, tmat(color, { tex, em })); m.castShadow = m.receiveShadow = true; return m;
   }
   const cbox = (w, h, d, color, sc = 1.8) => texBox(w, h, d, color, TXT.concrete, sc);
   const SIGNS = [];
@@ -202,8 +202,8 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
     const g = new THREE.Group(); g.position.set(x, 0, z);
     g.add(CYL(2.4, 2.5, 0.5, tmat(0xe2d6c4), 0, 0.25, 0, 32)); g.add(CYL(2.15, 2.15, 0.08, tmat(0x7ccbea, { em: 0.4 }), 0, 0.46, 0, 32));
     g.add(CYL(0.35, 0.5, 1.4, tmat(0xe2d6c4), 0, 1.0, 0, 16)); g.add(CYL(1.0, 0.8, 0.22, tmat(0xe2d6c4), 0, 1.75, 0, 20)); g.add(CYL(0.9, 0.9, 0.05, tmat(0x7ccbea, { em: 0.4 }), 0, 1.86, 0, 20));
-    const spout = SPH(0.22, tmat(0xbfe8f8, { em: 0.5 }), 0, 2.15, 0); g.add(spout);
-    const drops = []; for (let i = 0; i < 12; i++) { const d = SPH(0.07, tmat(0xbfe8f8, { em: 0.6 }), 0, 2, 0); d.userData.noOutline = true; g.add(d); drops.push(d); }
+    const spout = SPH(0.22, tmat(0xbfe8f8, { em: 0.5 }), 0, 2.15, 0); spout.userData.noMerge = true; g.add(spout);
+    const drops = []; for (let i = 0; i < 12; i++) { const d = SPH(0.07, tmat(0xbfe8f8, { em: 0.6 }), 0, 2, 0); d.userData.noOutline = d.userData.noMerge = true; g.add(d); drops.push(d); }
     animated.push(t => { drops.forEach((d, i) => { const u = (t * 0.55 + i / drops.length) % 1, a = i * 2.4; d.position.set(Math.cos(a) * (0.3 + u * 0.8), 2.2 + u * 0.5 - u * u * 1.6, Math.sin(a) * (0.3 + u * 0.8)); }); spout.scale.setScalar(1 + Math.sin(t * 6) * 0.08); });
     world.add(g); block(x, z, 2.3, 2.3);
   }
@@ -241,7 +241,7 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
     const inst = (geo, mat, list, put) => { const m = new THREE.InstancedMesh(geo, mat, list.length); list.forEach((q, i) => { put(o4, q, i); o4.updateMatrix(); m.setMatrixAt(i, o4.matrix); }); m.frustumCulled = false; return m; };
     const disposeTree = g => g.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.userData.own) for (const m of [].concat(o.material)) { if (m.map) m.map.dispose(); m.dispose(); } });
     function slab(w, h, d, color, y0, cast) {                              // a concrete block; y0 = its bottom
-      const b = texBox(w, h, d, color, TXT.concrete, 2.2); b.position.y = y0 + h / 2; b.castShadow = cast; b.userData.own = true; return b;
+      const b = texBox(w, h, d, color, TXT.concrete, 2.2); b.position.y = y0 + h / 2; b.castShadow = cast; return b;
     }
     function buildMid(n) {
       const g = new THREE.Group(); g.position.y = T.base; const low = Math.min(n, 10);   // only the lowest storeys cast a shadow: the shadow box covers 48 m around the player
@@ -344,6 +344,10 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
   for (const [x, z] of [[-4.7, 16.6], [-16.7, 18.6], [3.3, 18.6]]) lamp(x, z);
   world.add(plight(0xff3aa8, 0.9, 9, 14, 2.6, -23)); world.add(plight(0xffc23a, 0.8, 9, 14, 2.6, 4.6));   // colour pools from the neon
   // residents (NPC) are built by npc.js: schedules by the real clock, not fixed spots
+  // static merge (common.js): each see-through building or tree keeps its own group (it fades alone), the rest of the street is merged in 16 m cells.
+  // Anything that moves or is recoloured on its own needs userData.noMerge (the Hotel tower is rebuilt by HTOWER.set, so it stays as built).
+  for (const o of occluders) mergeStatic(o.g);
+  mergeStatic(world, { cell: 16, skip: new Set([HTOWER.root, ...occluders.map(o => o.g)]) });
   sun.shadow.camera.left = sun.shadow.camera.bottom = -24; sun.shadow.camera.right = sun.shadow.camera.top = 24; sun.shadow.camera.far = 80; sun.shadow.camera.updateProjectionMatrix();
 })();
 scene.traverse(o => { if (o.userData && (o.userData.isHull || o.userData.noNormal)) hiddenInNormal.push(o); });

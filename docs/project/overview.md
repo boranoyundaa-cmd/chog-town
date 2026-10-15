@@ -28,7 +28,8 @@ The whole plan of `docs/project/build-plan.md` plus the phone companion is **bui
 - **Data:** 1,969 tokens in 1,012 wallets (`prototype/data/owners.json`); all traits in `tokens.json`, no IPFS calls at runtime. Collection `Tier` trait: Common 1,279, Uncommon 590, Rare 60, Epic 30, Legendary 10.
 - **Backups (private GitHub):** the game, docs and tools in `boranoyundaa-cmd/chog-town`, the server in `boranoyundaa-cmd/chog-town-server`. Commit and push both at the end of a session.
 - **Live accounts:** Fly and Cloudflare under neoboranaybek@gmail.com.
-- **Never tried:** a real wallet signing on the live site, a second real player in the hotel, performance on real hardware (big rooms with many pieces and lights, 4096 shadow map, 2x supersampling).
+- **Performance (2026-10-16):** static meshes of the town and of every Chog are merged at build time; draw calls per frame halved (plaza 4,119 → 2,103), CPU per frame ~25 → ~15 ms. Not yet deployed. Details and the `noMerge` rule: `docs/engineering/prototype.md` (Performance notes).
+- **Never tried:** a real wallet signing on the live site, a second real player in the hotel, performance on weaker hardware (integrated GPU, big rooms with many pieces and lights, 4096 shadow map, 2x supersampling).
 - **Known limits:** rooms have no stacking and turn in 90 degree steps; NFT frames and the Part Lab are not offered (no Monad NFT indexer chosen); the Chog is polygonal next to the smooth official art.
 
 ## Decisions (and why)
@@ -69,7 +70,7 @@ The whole plan of `docs/project/build-plan.md` plus the phone companion is **bui
 1. A small test purchase with $CHOG and with MON on the live site.
 2. Live checks with a real wallet (check in with Lev, the key scene, sign a room save, a tier upgrade, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
 3. The phone on a real device: ask Lev for "A key for my phone", scan the QR code, turn on "Ring my phone" (on an iPhone from the home screen icon) and have a second player walk into the room while the PC is closed.
-4. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
+4. Performance: deploy the merge (site), then a quality setting (render scale, shadow map size, `preserveDrawingBuffer` off) and a check on a laptop with an integrated GPU; hotel rooms with many pieces are not merged yet (pieces are editable).
 5. Owner corrections to the culture content after seeing it in the game.
 
 Demo video, submission text and promotion are the owner's call.

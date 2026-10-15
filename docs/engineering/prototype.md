@@ -98,8 +98,14 @@ Anything transparent / glowing / far away (clouds, smoke, sprites, water overlay
 - Hover: a gold diamond marks the ground tile under the cursor (red on blocked tiles, with the `not-allowed` cursor); hovering a Chog shows a ring, the `pointer` cursor and a highlighted nameplate; clicking a resident answers with a toast. Click: a white ring at the target, a red ring where you clicked if it was blocked (you walk to the nearest free spot).
 - Camera: follows the player with smoothing, the wheel zooms smoothly between `GAME.zoomMin` (7) and `GAME.zoomMax` (24 m of visible width, the same outdoors and indoors, owner 2026-10-15); rooms open at 18 m (`follow`) and the camera follows the player inside the walls; there is no whole-room view. The camera target is clamped to the slab plus one unit.
 
-## Performance notes (not measured on real hardware yet)
+## Performance notes
 
+- **Draw calls are the main cost** (CPU bound: the scene is drawn 5 times a frame: shadow, colour, normals, two mask passes). Static merging (2026-10-16, `mergeStatic` / `mergeRigid` in `common.js`) halved them: plaza at noon 4,119 → 2,103 calls, other spots 2,400 → 1,150, `renderFrame` CPU ~25 → ~15 ms (RTX 3060 laptop, 1536×1152 canvas), meshes 2,851 → 1,337, GPU textures 225 → 100. Pixel diff of before/after captures < 0.01 %.
+  - Town (`world_city.js`, end): each occluder group (building, tree) merges into itself; the loose street merges in 16 m cells. `texBox` keeps the tiling in the UVs, so concrete boxes share one material and texture.
+  - Chog (`chog()`, end): `mergeRigid` merges the plain meshes under each rig node into that node (87 → 43 meshes for the default Chog). The rig nodes (`body`, `head`, `hairG`, `face`, `legs`, `arms`) carry `userData.rig`, the blinking eyes `userData.noMerge`.
+  - **Anything that moves, is recoloured or is removed on its own after the build needs `userData.noMerge`** (or `rig` for a Chog part whose children may merge), otherwise it is baked into a merged mesh. Things added after the merge (shop extras, `dressMe`) are not affected.
+  - The next step for Chogs would be vertex colours (one material per rig node); the rest per Chog are parts of different colours.
+- Measuring with the Browser pane hidden: `requestAnimationFrame` stops, so NPCs never appear; advance with `step(150, 1/30)` first. Fix the clock with `?hour=14`.
 - The 4096² shadow map is re-rendered every frame (the colour pass); 2048² would likely look the same and cost much less. Measure first.
 - The 2x supersampled scene (3840×2160 on a 1080p window) is the other big cost; a render-scale setting is the obvious fix.
 - The Chog outline loop samples the mask 16 times for every pixel outside a Chog.
