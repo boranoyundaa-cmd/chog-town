@@ -543,7 +543,33 @@ const CULTURE = (() => {
       "Thank you for your custom. It has been noted. By nobody. *stamp*",
       "Get some rest. Not that I would know. *stamp*"
     ],
-    menu: { list: "Room list", checkin: "Check in", upgrade: "Upgrade my room", up: "Bring my room back up", bye: "Bye." }
+    menu: { list: "Room list", checkin: "Check in", upgrade: "Upgrade my room", up: "Bring my room back up", phone: "A key for my phone", bye: "Bye." },
+    // the phone companion: on the PC Lev hands out a key card (a QR code, lev.js); on the phone (mobile.js) he answers a few fixed questions about your room.
+    // Tokens: {no} door, {n} a number, {names} who is inside, {list} tonight's events. Arrays of three are [none, one, many].
+    phone: {
+      give: "A key card for your telephone. Scan it with the phone's camera. It works once and expires in ten (10) minutes. Much like my bonuses. *stamp*",
+      noWallet: "A telephone key requires a signed-in wallet. Regulations. *stamp*",
+      failed: { form: "A key could not be issued: {reason}", aside: "So... no key tonight. Try again shortly. *stamp*" },
+      hello: [
+        "Good evening, guest of {no}. The night shift reporting. *stamp*",
+        "Room {no}. Your report, as requested. Nobody requested it. Here it is. *stamp*",
+        "Front desk, telephone line. I prefer this. Nobody can see my face. *stamp*"
+      ],
+      inside: ["Nobody is inside. The room is resting. So am I, technically.", "One (1) guest inside at present. Behaving. Mostly.", "{n} guests inside at present. All logged. *stamp*"],
+      today: ["No visitors today. Quiet days are underrated. I would know.", "One (1) visitor today. Quality over quantity. *stamp*", "{n} visitors today. The hotel is pleased. I am neutral. *stamp*"],
+      tips: ["", "One (1) CHOG in tips today. It is the thought. *stamp*", "{n} CHOG in tips today. Logged, as always. *stamp*"],
+      who: "Inside now: {names}. *stamp*",
+      whoBlind: "I count {n}. Names and faces need the security camera. Regulations. I did not write them. *stamp*",
+      locked: "Door {no} is locked. Only you may enter. Those inside may stay. *stamp*",
+      unlocked: "Door {no} is open to the public again. Brace yourself. *stamp*",
+      lockFailed: { form: "The door could not be changed: {reason}", aside: "So... the lock is being difficult. Like most things here. *stamp*" },
+      tonight: ["Nothing is announced tonight. A quiet night. My favourite kind. *stamp*", "Tonight: {list}. Attendance is optional. Like everything. *stamp*", "Tonight: {list}. Attendance is optional. Like everything. *stamp*"],
+      noRoom: "No room is registered to this key. Check in at the front desk, on your computer. *stamp*",
+      basement: "Your room is in cold storage, {no}. Visit me on your computer and I will bring it back up. *stamp*",
+      offline: "The line is down. The hotel is not answering. I will keep trying. It is what I do. *stamp*",
+      unpaired: "This telephone holds no key. Ask me for one at the front desk, on your computer. *stamp*",
+      chips: { who: "Who's inside?", today: "How was today?", tonight: "What's on tonight?", lock: "Lock my door", unlock: "Unlock my door" }
+    }
   };
 
   // ---------------------------------------------------------------- extra small tables used by world content

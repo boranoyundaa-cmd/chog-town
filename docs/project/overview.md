@@ -4,7 +4,7 @@
 
 **Chog Hotel** (named Chog Town until 2026-10-15): a living, shared 3D town where all 1,969 Chog Genesis NFTs exist at once and players run their own places: clubs, shops, galleries, arcades. Anyone can play (default purple Chog); Chog holders play as their own Chog and hold venue licenses (higher tier with more or rarer Chogs). Runs on Monad (single shard).
 
-**The game is played on PC.** Mobile is a companion, added later. Everything is built and polished for the desktop browser first.
+**The game is played on PC.** A phone gets a companion page (your room as a live diorama and Lev's message tab), not the game. Everything is built and polished for the desktop browser first.
 
 Pitch (draft): *a town where the Chog you own is who you are, and the place you run is yours.* Details and rules: `docs/game/design.md`.
 
@@ -51,7 +51,7 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 | No testnet, Monad mainnet | Owner decision (fees are low). Mitigate with pausable contracts and daily caps |
 | Server-light architecture, plus a small realtime server (Node + WebSocket) | Contracts hold ownership and money; the server only relays presence and chat, holds no funds, and the game degrades to solo play if it is down. Same language as the browser client |
 | HUD: Storybook (wood and parchment) | Chosen by the owner from three concepts; rules in `docs/art/art-direction.md` |
-| PC-first; mobile is a companion added later | The game is played on desktop |
+| PC-first; the phone gets a companion (room diorama + Lev), paired by a QR key from Lev (2026-10-16) | The game is played on desktop; the phone gives owners a reason to look in while away |
 | No deep offline simulation | Costly, adds little |
 
 
@@ -71,17 +71,17 @@ The whole plan of `docs/project/build-plan.md` is **built and tested locally** (
 3. Measure performance on real hardware (shadow map size, supersampling, big rooms with many lights) and fix what is slow.
 4. Owner corrections to the culture content after seeing it in the game.
 
-Demo video, submission text and promotion are the owner's call. Later: mobile companion.
+Demo video, submission text and promotion are the owner's call. Later: phone notifications (web push) for the companion.
 
 ## Open questions
 
 - **Do non-holders pay?** The economy assumes free players spend $CHOG or MON in the shop. Test after the deploy.
 - **Long-term goals without combat:** collection, venue upgrades, reputation. Undecided.
-- **Security camera on mobile** needs a phone performance test.
+- **Phone companion** needs a test on a real phone (frame rate, battery, QR scan from a PC screen).
 - **Moderation:** filter, report, who reviews.
 - **NFT frames:** which indexer lists a wallet's NFTs on Monad.
 - Submission/video logistics (face or voice on video) are the owner's call.
 - Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.
 
-- **2026-10-16:** mobile companion concepts on a design canvas (owner liked F, a live pocket room, merged with Lev's message tab; not built yet); Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth (the white shirt sleeves read as bare arms). Guko is the only other body whose sleeves differ from the torso (blue undershirt under the orange gi, on purpose). Neither change is deployed.
+- **2026-10-16:** the phone companion is built locally (`m.html`, `js/mobile.js`, `css/mobile.css`, `server/phone.js`, decided by the owner from the design canvas: the live pocket room with Lev's message tab, QR key from Lev on the PC, live guests only with the security camera, a plain page for phones without a key, notifications later). Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth; wizard cloaks open in front. None of it is deployed: deploy the server first (new frames, `phone.js` in the Dockerfile), then the site.
 - Playtest fixes (2026-10-15): spawn at the plaza's north edge with the camera leaning to the Hotel, waypoint over the Hotel door, First steps checklist, working "Show me around" walk, walk speed 3.4 m/s (server `CFG.speed` too), big map on M (Shop is now K). `server/test/shop.js` fails on an old assertion (`shop: null`) since the shop went live; not touched.

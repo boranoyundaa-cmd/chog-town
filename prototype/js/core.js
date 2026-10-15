@@ -7,10 +7,10 @@ function viewSize() {
   let cw, ch;
   if (QS.has('res')) [cw, ch] = QS.get('res').split('x').map(Number);
   else {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2); cw = Math.round(innerWidth * dpr); ch = Math.round(innerHeight * dpr);
+    const dpr = Math.min(window.devicePixelRatio || 1, window.LITE ? 1.5 : 2); cw = Math.round(innerWidth * dpr); ch = Math.round(innerHeight * dpr);          // LITE: the phone companion (m.html)
     const m = Math.max(cw, ch); if (m > 1920) { const k = 1920 / m; cw = Math.round(cw * k); ch = Math.round(ch * k); }
   }
-  const ss = Math.min(cw, ch) >= 1000 ? 2 : 1.5;          // cheaper supersampling on phones
+  const ss = window.LITE ? 1 : Math.min(cw, ch) >= 1000 ? 2 : 1.5;          // cheaper supersampling on phones, none in the companion
   return { cw, ch, sw: Math.round(cw * ss), sh: Math.round(ch * ss) };
 }
 let VS = viewSize(), W = VS.sw, H = VS.sh, OUT = VS.cw / VS.sw, SS = VS.sh / VS.ch, ASPECT = VS.cw / VS.ch;

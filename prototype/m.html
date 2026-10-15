@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0620">
+<title>Chog Hotel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/mobile.css">
+</head>
+<body>
+<!-- The phone companion (js/mobile.js). Chog Hotel is played on a PC; this page shows your room as a live diorama and lets Lev answer questions about it. -->
+<main id="landing" class="m-land" hidden>
+  <div class="m-land-art"><img src="data/portraits/guest.webp" alt=""></div>
+  <div class="m-brand">CHOG HOTEL</div>
+  <h1>A whole hotel of Chogs. On your computer.</h1>
+  <p>Chog Hotel is played with a keyboard and mouse. Open the same link on a PC and walk in, free, as a purple Chog.</p>
+  <button id="copy" class="m-btn" type="button">Copy the link for my PC</button>
+  <div class="m-card glass">
+    <b>Have a room?</b>
+    <p>On your computer, ask Lev at the front desk for a key for your phone, then scan it with this phone's camera. Or type the code here:</p>
+    <form id="codeForm"><input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="ABCD-EFGH" aria-label="Key code"><button class="m-btn small" type="submit">Open</button></form>
+    <p id="codeErr" class="m-err" hidden></p>
+  </div>
+  <a class="m-pc" href="index.html?pc=1">Open the game on this device anyway</a>
+</main>
+
+<main id="app" hidden>
+  <header class="m-top">
+    <div><div id="clock" class="m-clock">--:--</div><div id="rname" class="m-name"></div><div id="rsub" class="m-sub"></div></div>
+    <svg id="sky" viewBox="0 0 24 24" aria-hidden="true"><path id="skyPath" d="" fill="#ffe39a"></path></svg>
+  </header>
+  <div id="pills"></div>
+  <div id="empty" class="m-empty" hidden></div>
+  <div id="status" class="m-status glass" hidden><i></i><span></span></div>
+  <nav class="m-dock glass" aria-label="Main">
+    <button id="tabLev" type="button"><img src="data/portraits/lev.webp" alt=""><span>Lev</span><i id="levDot"></i></button>
+    <button id="tabRoom" type="button" class="on"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10l8-6 8 6v10H4z"></path><path d="M10 20v-6h4v6"></path></svg><span>My room</span></button>
+  </nav>
+  <section id="lev" class="m-lev" hidden aria-label="Lev">
+    <header>
+      <img src="data/portraits/lev.webp" alt="Lev" class="av">
+      <div><b>Lev</b><small>Reception · night shift</small></div>
+      <button id="levClose" class="glass" type="button" aria-label="Back to my room"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+    </header>
+    <div id="msgs" class="m-msgs" aria-live="polite"></div>
+    <div id="chips" class="m-chips glass"></div>
+    <button id="unpair" class="m-unpair" type="button">Forget this phone</button>
+  </section>
+</main>
+<div id="boot" class="m-boot">Chog Hotel</div>
+<script src="js/mobile.js"></script>
+</body>
+</html>

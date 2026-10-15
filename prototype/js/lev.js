@@ -118,12 +118,14 @@ const LEV = { st: { met: false, guest: false }, busy: false, pending: null, skip
       const m = has() ? VENUE.mine : null, opts = [{ id: 'list', label: M.list }];
       if (!m) opts.push({ id: 'checkin', label: M.checkin }); else opts.push({ id: 'upgrade', label: M.upgrade });
       if (m && m.basement) opts.push({ id: 'up', label: M.up });
+      if (m && NET.authed) opts.push({ id: 'phone', label: M.phone });
       opts.push({ id: 'bye', label: M.bye, ghost: true });
       const id = await speak(beats, opts);
       if (id === null) return;
       if (id === 'bye') { await speak(pick(C().bye, 'bye'), null, { auto: 1100 }); return; }
       if (id === 'list') { await listFlow(); return; }
       if (id === 'checkin') { const r = await checkInFlow(); if (r === 'done') return; beats = r; continue; }
+      if (id === 'phone') { const r = await phoneFlow(); if (r === 'done') return; beats = r; continue; }
       if (id === 'upgrade') {
         await speak(beatsOf(C().upgrade.ask), null, { auto: 500 });
         const r = await VENUE.upgrade(); if (r && r.ok) { await cutscene(r.mine || VENUE.mine, r.moved ? 'moved' : 'grown'); return; }
@@ -134,6 +136,27 @@ const LEV = { st: { met: false, guest: false }, busy: false, pending: null, skip
         beats = r && r.ok ? beatsOf(B.back, dOf(r.mine || VENUE.mine)) : !r || r.code === 'busy' ? [B.busy] : B[r.code] ? beatsOf(B[r.code]) : beatsOf(B.failed, { reason: (r && r.reason) || 'that did not work.' });
       }
     }
+  }
+  // a key for the phone companion (m.html, mobile.js): a one-time code shown as a QR code (qrcodejs from cdnjs, loaded on first use); the phone trades it for a key of its own
+  const loadQR = () => window.QRCode ? Promise.resolve() : new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+  let keyEl = null, keyTimer = 0;
+  function showKeyCard(url, code, exp) {
+    hideKeyCard(); keyEl = document.createElement('div'); keyEl.id = 'levkey';
+    keyEl.innerHTML = '<b>Room key for your phone</b><div class="qr"></div><p>Scan it with your phone camera, or open <u></u> on the phone and type the code.</p><code></code><small></small>';
+    keyEl.querySelector('u').textContent = new URL('m.html', location.href).host + '/m.html'; keyEl.querySelector('code').textContent = code.slice(0, 4) + '-' + code.slice(4);
+    document.body.appendChild(keyEl);
+    loadQR().then(() => { if (keyEl) new QRCode(keyEl.querySelector('.qr'), { text: url, width: 184, height: 184, colorDark: '#2b2140', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M }); }).catch(() => { if (keyEl) keyEl.querySelector('.qr').textContent = url; });
+    const tick = () => { if (!keyEl) return; const s = Math.max(0, Math.round((exp - Date.now()) / 1000)); keyEl.querySelector('small').textContent = s ? 'Expires in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') : 'Expired. Ask Lev for a new one.'; };
+    tick(); keyTimer = setInterval(tick, 1000);
+  }
+  function hideKeyCard() { clearInterval(keyTimer); if (keyEl) keyEl.remove(); keyEl = null; }
+  async function phoneFlow() {
+    const P = C().phone; if (!NET.authed) return [P.noWallet];
+    NET.send({ t: 'phonekey' }); const r = await NET.waitFor(['phonekey', 'roomfail'], 6000);
+    if (!r || r.t !== 'phonekey') return beatsOf(P.failed, { reason: r ? r.reason : 'the hotel did not answer.' });
+    showKeyCard(new URL('m.html#k=' + r.code, location.href).href, r.code, r.exp);
+    try { await speak(P.give, [{ id: 'ok', label: 'Done' }]); } finally { hideKeyCard(); }
+    return 'done';
   }
   // the room list: the directory opens; closed without a room chosen, Lev says one of his barks
   async function listFlow() {
@@ -284,4 +307,5 @@ const LEV = { st: { met: false, guest: false }, busy: false, pending: null, skip
     if (GAME.keys && Object.values(GAME.keys).some(Boolean)) { LEV.pending = null; return; }               // you took over with the keys
     p.idle = walking ? 0 : p.idle + dt; if (p.idle > 0.8) LEV.pending = null;
   });
+  LEV.test = { showKeyCard, hideKeyCard };                                                          // test hooks: the phone key card without a wallet
 })();

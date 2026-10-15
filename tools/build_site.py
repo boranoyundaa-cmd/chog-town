@@ -7,7 +7,7 @@ SRC, OUT = os.path.join(ROOT, 'prototype'), os.path.join(ROOT, 'dist')
 
 shutil.rmtree(OUT, ignore_errors=True)
 os.makedirs(os.path.join(OUT, 'data'))
-for f in ('index.html', 'gallery.html', 'space.html'):
+for f in ('index.html', 'm.html', 'gallery.html', 'space.html'):
     shutil.copy(os.path.join(SRC, f), OUT)
 for d in ('css', 'js'):
     shutil.copytree(os.path.join(SRC, d), os.path.join(OUT, d), ignore=shutil.ignore_patterns('lineup.js'))
@@ -23,7 +23,7 @@ if os.path.isdir(os.path.join(SRC, 'items')): shutil.copytree(os.path.join(SRC, 
 else: print('warning: no prototype/data/portraits, holders will see the 3D head in the frame')
 import re, time                                                                      # stamp local css/js links with the build time, so a returning player never mixes cached old files with new ones
 STAMP = str(int(time.time()))
-for f in ('index.html', 'gallery.html', 'space.html'):
+for f in ('index.html', 'm.html', 'gallery.html', 'space.html'):
     p = os.path.join(OUT, f); s = open(p, encoding='utf-8').read()
     open(p, 'w', encoding='utf-8').write(re.sub(r'((?:src|href)="(?:js|css)/[^"?]+\.(?:js|css))"', r'\1?v=' + STAMP + '"', s))
 with open(os.path.join(OUT, '_headers'), 'w') as h:                                  # short cache so a redeploy shows up quickly

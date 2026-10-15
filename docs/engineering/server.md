@@ -66,6 +66,12 @@ Saving (`venueprep {doc, level?}` returns the cleaned document's hash message an
 - Messages: see the header comment of `server/index.js` (the receptionist's client calls are also in `prototype/js/venue.js`: `VENUE.checkIn()`, `upgrade()`, `reactivate()`, `setLock()`, `loadInventory()`).
 - Not built: an anti-rental holding period (decided against by the owner); `server/invites.js` is dead code (nothing requires it any more).
 
+## Phone companion (`phone.js`, 2026-10-16)
+
+- **Pairing:** a signed-in PC sends `phonekey {}` and gets `phonekey {code, exp}` (8 letters, one use, 10 minutes; Lev shows it as a QR code for `m.html#k=CODE`). The phone connects with `?phone=1` in the socket URL and sends `phonepair {code}` -> `phoneok {key, addr, name}`; later visits send `phoneauth {key}`. Keys last 30 days, a wallet keeps 3 (the oldest goes), stored hashed in `DATA_DIR/phone_keys.json`.
+- **A phone is never a player:** its space is `phone:<id>` (nobody else's), the town never gets a `join`, and it may only send `phonepair`, `phoneauth`, `m_room` and `roomlock`; everything else is ignored.
+- **Data:** `m_room {}` -> `m_room {room, doc, doc2, camera, inside, today:{visitors, tips}, events}` (`room` null without a room). With the security camera the phone gets the camera frames every second (players now carry `token` and `ry`, so it can draw the right Chog); without it `m_count {inside, today}` when the numbers change. Today's distinct visitors (the owner does not count) and tips are kept in memory per room and reset at 00:00 UTC or on a restart.
+
 ## Identity
 
 1. Everyone is a **guest** on connect (default Chog, name `Guest-NNNN`).

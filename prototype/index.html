@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Chog Hotel</title>
+<script>/* phones get the companion (m.html): the hotel is played on a PC. ?pc=1 opens the game anyway */ (function () { try { if (new URLSearchParams(location.search).has('pc')) return; var touch = matchMedia('(pointer: coarse)').matches && !matchMedia('(any-pointer: fine)').matches; if (touch && Math.min(screen.width, screen.height) < 820) location.replace('m.html' + location.search + location.hash); } catch (e) { } })();</script>
 <style>
   html,body{margin:0;height:100%;background:#1a0f2e;overflow:hidden}
   body{display:flex;align-items:center;justify-content:center}

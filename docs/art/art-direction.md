@@ -40,7 +40,7 @@ Chosen by the owner 2026-10-08 from three concepts. **Warm cards is the default*
 - **Venue license UI (2026-10-08):** a small coloured pill "Tier N" (no name) under the player frame, only for holders; a license card in My Chog (holders only: points per rarity, a progress bar with the tier marks, what the next tier needs); the Venues window shows the four-tier ladder with how many wallets hold each tier (and a "snapshot of <date>" note), a star on yours, ticks below, locks above. Free players get no pill and no card, only the ladder with "Get a Chog". Tier colours: grey, blue, purple, gold (Tier 2 to 4 follow Rare, Epic, Legendary). Styles in `ui.css` use `currentColor` tints, so all three skins work.
 - **Nameplates:** a small tag with a tier-coloured dot floats above every Chog (`js/plates.js`); the player's own tag has a gold ring; chat lines appear as speech bubbles above the speaker. Tags hide behind buildings.
 - **Icons:** simple 2px line icons (inline SVG, `ICONS` in `ui.js`). A proper hand-drawn set is a later task.
-- **Mobile:** not styled yet; it is a later companion (see `docs/game/design.md`).
+- **Mobile (the phone companion, `css/mobile.css`):** night gradient and frosted glass over the live room diorama, big clock top-left, a two-button glass dock (Lev, My room), cream name tags and reply bubbles, Lev's lines with the pink APPROVED stamp. Same fonts and colours as Warm cards; no new render style (the room is the game's own renderer at a smaller size).
 
 ## Chog design rules
 
@@ -68,4 +68,4 @@ Chogs must always read smaller than doors and houses.
 
 - Chog is still polygonal compared with the smooth official illustrations.
 - Buildings and trees fade to nearly invisible when they hide the player (`game.js`); the fade is abrupt and shop interiors flicker through. Crowd Chogs behind buildings are not faded.
-- Supersampling (2x) is expensive and untested on weaker GPUs. The shipping pipeline may need a render-scale setting. The mobile companion needs no full scene, only a low-resolution security-camera view of an owner's venue (noise and scanlines by design; see `docs/game/design.md`).
+- Supersampling (2x) is expensive and untested on weaker GPUs. The shipping pipeline may need a render-scale setting. The phone companion renders only the room, with `window.LITE` (device pixel ratio at most 1.5, no supersampling, 1024 shadow map); its frame rate on a real phone is not measured yet. Old note: the companion was planned as a low-resolution security-camera view of an owner's venue (noise and scanlines by design; see `docs/game/design.md`).

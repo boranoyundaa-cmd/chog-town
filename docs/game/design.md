@@ -15,7 +15,8 @@ Ideas that **solve several problems at once, live inside the world, and are fun*
 ## Audience and platform
 
 - **Crypto Twitter / crypto-native people first** (decided 2026-10-09, `docs/game/culture.md`), not Turkish-first, not "everyone". Holders are the supply side, non-holder crypto people the volume. Not nostalgia-led: nostalgia alone does not retain (Habbo Origins reviews) and that audience is not in web3.
-- **PC (desktop browser) first.** Mobile is a later companion (view the Chog, inventory, revenue and venue stats, notifications, and the security-camera view below). The game is not played on mobile; do not design play around touch.
+- **PC (desktop browser) first.** The game is not played on mobile; do not design play around touch.
+- **The phone companion (built 2026-10-16, owner):** a phone that opens the site gets `m.html` (`index.html` sends coarse-pointer small screens there; `?pc=1` opens the game anyway). It shows your room as a small diorama lit by the real clock, with Lev's message tab (fixed questions: who is inside, today's visitors and tips, tonight's events, lock the door). The phone signs in with a one-time QR key from Lev on the PC (no wallet on the phone). Guests inside show live only with the security camera from the shop; without it the phone shows the head count. A phone without a key sees a short page that points to the PC. Push notifications come later.
 
 ## Creator freedom (decided 2026-10-08)
 
@@ -27,7 +28,7 @@ The game has **one art style**; player freedom is in **assets**: themed kits (mo
 2. **Venues:** a place of your own, a wall with an editable facade in the **Hotel**, from **templates plus settings** (decor, music, entry rule, VIP area, shelves). Not free scripting: it fits 14 days and keeps the set of allowed venue types controllable. The permanent public address is what the license unlocks; free players keep a private Home and contests (`docs/game/world.md`).
 3. **Items:** an official shop only (owner, 2026-10-15): soulbound ERC-1155 items paid in $CHOG or MON, no player market, no creator publishing. `docs/project/build-plan.md`.
 
-Later: mini-games in venues, NPC daily events, mobile companion.
+Later: mini-games in venues, NPC daily events.
 
 ## NFT-essential rule
 
