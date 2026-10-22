@@ -20,7 +20,7 @@
   const toBlobSync = () => { const u = renderer.domElement.toDataURL('image/png'), bin = atob(u.slice(u.indexOf(',') + 1)), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], { type: 'image/png' }); };
   const save = async name => { const b = toBlobSync(); for (let i = 0; i < 12; i++) { if (await post(name, b)) return; await new Promise(r => setTimeout(r, 500 * (i + 1))); } throw new Error('could not save ' + name); };   // toDataURL is synchronous (toBlob never called back once on a hidden page); a POST that fails is sent again, waiting longer each time
   TR.have = new Set();                                                             // frames already on disk (TR.resume() reads shots/): rendered for continuity, not saved again
-  TR.resume = async () => { const h = await (await fetch('/shots/')).text(); TR.have = new Set([...h.matchAll(/href="(T\d_[^"]+\.png)"/g)].map(m => m[1])); return TR.have.size; };
+  TR.resume = async () => { const h = await (await fetch('/shots/')).text(); TR.have = new Set([...h.matchAll(/href="(T\d+_[^"]+\.png)"/g)].map(m => m[1])); return TR.have.size; };
   const ease = u => u * u * (3 - 2 * u);
   TR.ease = ease; TR.lerp = (a, b, u) => a + (b - a) * u;
   // shot(name, seconds, fn): fn(u, k) places the camera (u = 0..1 eased by the caller if wanted); o.hour0/o.hour1 sweep the time of day
@@ -53,10 +53,10 @@
     for (let k = 0; k < n; k++) {
       if (ks && !ks.includes(k)) { TR.t += dt * (o.timeScale || 1); clockT += dt; continue; }
       const u = n > 1 ? k / (n - 1) : 0;
-      if (o.hour0 !== undefined) DAY.fixedHour = TR.lerp(o.hour0, o.hour1, o.easeHour ? ease(u) : u);
+      if (o.hour0 !== undefined) DAY.fixedHour = TR.lerp(o.hour0, o.hour1, o.easeHour ? ease(u) : u) % 24;
       TR.t += dt * (o.timeScale || 1); NPC.override = TR.t % 86400;                     // time first, so a camera that follows a resident sees where it is in this frame
       fn(u, k); clockT += dt; for (const f of TR.ticks) f(clockT);
-      step(1, dt);
+      step(1, dt); if (o.after) o.after();
       virt += dt * 1000;
       const file = name + '_' + String(k + 1).padStart(4, '0') + '.png'; if (!o.dry && !TR.have.has(file)) await save(file);
     }
