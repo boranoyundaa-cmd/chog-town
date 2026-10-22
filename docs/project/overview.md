@@ -69,7 +69,7 @@ The whole plan of `docs/project/build-plan.md` plus the phone companion is **bui
 
 ## Next steps (in order)
 
-0. **Submit before the deadline (≈ 2026-10-23 evening):** fill the handles in `docs/project/submission.md`, record the video from its shot list, paste the answers into the form (owner signs in).
+0. **Submit before the deadline (≈ 2026-10-23 evening):** record the video from its shot list, paste the answers into the form (owner signs in).
 1. A small test purchase with $CHOG and with MON on the live site.
 2. Live checks with a real wallet (check in with Lev, the key scene, sign a room save, a tier upgrade, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
 3. The phone on a real device: ask Lev for "A key for my phone", scan the QR code, turn on "Ring my phone" (on an iPhone from the home screen icon) and have a second player walk into the room while the PC is closed.
