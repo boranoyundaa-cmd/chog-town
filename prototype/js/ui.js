@@ -129,7 +129,7 @@ function card(onClose) {
   if (typeof GAMES !== 'undefined') c.appendChild(GAMES.trophyRow());                       // trophies and badges from the mini-games (games.js)
   const lic = holder ? licenseCard() : null; if (lic) c.appendChild(lic);                // holders: the license card; free players see the venue ladder in Venues
   c.appendChild(el('div', 'perks', `<h3>${holder ? 'Holder perks' : 'Unlocked by holding a Chog'}</h3>` +
-    perk(holder, 'Play as your own Chog, with its traits') + (holder ? '' : perk(false, 'A venue license: run your own club, shop or gallery', true))));
+    perk(holder, 'Play as your own Chog, with its traits') + (holder ? '' : perk(false, 'A venue license: run your own club, shop or gallery'))));
   if (WALLET.scanning > 0) c.appendChild(el('div', 'scan', `<i style="width:${Math.round(WALLET.scanning * 100)}%"></i>`));
   if (WALLET.owned.length > 1) {
     const d = el('div', 'demo', 'Your Chogs'), row = el('div', 'row');

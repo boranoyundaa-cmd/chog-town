@@ -54,7 +54,7 @@ const DAY = { mode: 'real', fixedHour: 14, hour: 12, n: 0, lamp: 0, windowSets: 
   DAY.glow = (sprite, base) => { DAY.glows.push({ s: sprite, base }); };                 // opacity follows lamp/neon switching
   DAY.light = (light, base) => { DAY.lights.push({ l: light, base }); };
 
-  const clock = () => { const d = new Date(); return d.getHours() + d.getMinutes() / 60 + d.getSeconds() / 3600; };
+  const clock = () => { const d = new Date(); return d.getHours() + d.getMinutes() / 60 + (d.getSeconds() + d.getMilliseconds() / 1000) / 3600; };     // milliseconds too: residents walk on this clock (npc.js), whole seconds made them jump once a second
   DAY.setMode = (mode, hour) => { DAY.mode = mode; if (hour !== undefined) DAY.fixedHour = hour; DAY.dirty = true; };
   let lastSky = -99;
   DAY.tick = function () {

@@ -25,7 +25,7 @@ const ROOM = {
   // a wall piece hangs ON a back wall, whatever size the room had when it was saved (the server does the same when it stores a room)
   const snapWalls = (doc, W, D) => { for (const it of doc.pieces) { const d = SPACE.PIECES[it.p]; if (!d || !isWall(d)) continue; if (rotated(it)) { it.ry = 90; it.x = -W / 2; it.z = Math.max(-D / 2, Math.min(D / 2, it.z)); } else { delete it.ry; it.z = -D / 2; it.x = Math.max(-W / 2, Math.min(W / 2, it.x)); } } return doc; };
   const defOf = it => SPACE.PIECES[it.p];
-  const CATS = [['all', 'All'], ['seat', 'Seating'], ['table', 'Tables'], ['sleep', 'Beds'], ['storage', 'Storage'], ['light', 'Lights'], ['ceiling', 'Ceiling'], ['deco', 'Decor'], ['floor', 'Rugs'], ['wall', 'Wall'], ['media', 'Media'], ['tech', 'Tech'], ['work', 'Work'], ['kitchen', 'Kitchen'], ['venue', 'Stage & games']];
+  const CATS = [['all', 'All'], ['seat', 'Seating'], ['table', 'Tables'], ['sleep', 'Beds'], ['storage', 'Storage'], ['light', 'Lights'], ['deco', 'Decor'], ['floor', 'Rugs'], ['wall', 'Wall'], ['media', 'Media'], ['tech', 'Tech'], ['work', 'Work'], ['kitchen', 'Kitchen'], ['venue', 'Stage & games']];
   const TINTS = ['#7a3ac8', '#ff7aa8', '#6fbdb0', '#ffc23a', '#e8553a', '#3a8ad8', '#4aa84a', '#f4f0e8', '#2b2140'];
   const save$ = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* ignore */ } };
   const load$ = k => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch (e) { return null; } };
