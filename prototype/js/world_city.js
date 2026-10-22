@@ -157,29 +157,30 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
     { name: 'Chog Plaza', x0: -18.5, x1: 6.5, z0: -18.5, z1: 6.5 }, { name: 'Lantern Park', x0: -32, x1: 6.5, z0: 9.5, z1: 32 }, { name: 'Maple Row', x0: 9.5, x1: 32, z0: 9.5, z1: 32 },
     { name: 'Hotel Street', x0: -32, x1: 32, z0: -32, z1: -18.5 }, { name: 'Moka Lane', x0: -32, x1: -18.5, z0: -18.5, z1: 9.5 }, { name: 'Arcade Road', x0: 6.5, x1: 32, z0: -18.5, z1: 9.5 }];
   const PLZ = CITY.plaza = { x: -6, z: -6, r: 12.5 };
+  const GY = -0.08;   // the paving sits just under y = 0, where Chogs, benches and buildings stand (it used to sit 6-8 cm above it and hid their feet)
   {
     const curbM = tmat(P.curb);
-    const slab = cbox(HALF * 2, 1.3, HALF * 2, P.slab, 3); slab.position.y = -0.65; world.add(slab);
+    const slab = cbox(HALF * 2, 1.3, HALF * 2, P.slab, 3); slab.position.y = -0.65 + GY; world.add(slab);
     const under = M(new THREE.CylinderGeometry(HALF * 1.15, HALF * 0.35, 9, 4, 1), tmat(sh(P.slab, 0.55), { tex: TEX.rock, noCache: true }), 0, -5.6, 0); under.rotation.y = Math.PI / 4; world.add(under);
     const flat = (w, d, m, x, z, y) => { const f = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); f.rotation.x = -Math.PI / 2; f.position.set(x, y, z); f.receiveShadow = true; world.add(f); return f; };
-    flat(HALF * 2, HALF * 2, tmat(P.walk, { tex: reTex(TXT.tiles, HALF * 2 / 1.6, HALF * 2 / 1.6), noCache: true, em: 0.1 }), 0, 0, 0.06);
+    flat(HALF * 2, HALF * 2, tmat(P.walk, { tex: reTex(TXT.tiles, HALF * 2 / 1.6, HALF * 2 / 1.6), noCache: true, em: 0.1 }), 0, 0, 0.06 + GY);
     for (const r of ROADS) {
       const along = HALF * 2, m = tmat(P.road, { tex: reTex(TXT.asphalt, r.axis === 'z' ? along / 3 : 1, r.axis === 'z' ? 1 : along / 3), noCache: true });
-      if (r.axis === 'z') { flat(along, RW, m, 0, r.at, 0.065); for (const s of [-1, 1]) world.add(BOX(along, 0.08, 0.12, curbM, 0, 0.04, r.at + s * (RH + 0.04))); }
-      else { flat(RW, along, m, r.at, 0, 0.066); for (const s of [-1, 1]) world.add(BOX(0.12, 0.08, along, curbM, r.at + s * (RH + 0.04), 0.04, 0)); }
+      if (r.axis === 'z') { flat(along, RW, m, 0, r.at, 0.065 + GY); for (const s of [-1, 1]) world.add(BOX(along, 0.08, 0.12, curbM, 0, 0.04 + GY, r.at + s * (RH + 0.04))); }
+      else { flat(RW, along, m, r.at, 0, 0.066 + GY); for (const s of [-1, 1]) world.add(BOX(0.12, 0.08, along, curbM, r.at + s * (RH + 0.04), 0.04 + GY, 0)); }
     }
     const white = new THREE.MeshBasicMaterial({ color: 0xf4f0e8 }), yel = new THREE.MeshBasicMaterial({ color: 0xf2c84a });
-    const bar = (x, z, w, d, m = white) => { const b = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); b.rotation.x = -Math.PI / 2; b.position.set(x, 0.075, z); world.add(b); };
+    const bar = (x, z, w, d, m = white) => { const b = new THREE.Mesh(new THREE.PlaneGeometry(w, d), m); b.rotation.x = -Math.PI / 2; b.position.set(x, 0.075 + GY, z); world.add(b); };
     const xs = ROADS.filter(r => r.axis === 'x').map(r => r.at), zs = ROADS.filter(r => r.axis === 'z').map(r => r.at);
     const nearX = t => xs.some(a => Math.abs(t - a) < RH + 1.6), nearZ = t => zs.some(a => Math.abs(t - a) < RH + 1.6);
     for (let t = -HALF + 1; t < HALF - 0.5; t += 2.2) { for (const z of zs) if (!nearX(t)) bar(t, z, 1.0, 0.1, yel); for (const x of xs) if (!nearZ(t)) bar(x, t, 0.1, 1.0, yel); }
     for (const x of xs) for (const z of zs) for (let i = -4; i <= 4; i++) for (const s of [-1, 1]) { bar(x + i * 0.32, z + s * (RH + 0.9), 0.16, 0.8); bar(x + s * (RH + 0.9), z + i * 0.32, 0.8, 0.16); }
     // the plaza: lighter stone with a ring around the fountain
-    flat(21, 21, tmat(0xe6dccd, { tex: reTex(TXT.tiles, 9, 9), noCache: true, em: 0.12 }), PLZ.x, PLZ.z, 0.07);
-    const ring = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.6, 40), new THREE.MeshBasicMaterial({ color: 0xcdbfae })); ring.rotation.x = -Math.PI / 2; ring.position.set(PLZ.x, 0.075, PLZ.z); world.add(ring);
+    flat(21, 21, tmat(0xe6dccd, { tex: reTex(TXT.tiles, 9, 9), noCache: true, em: 0.12 }), PLZ.x, PLZ.z, 0.07 + GY);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(3.2, 3.6, 40), new THREE.MeshBasicMaterial({ color: 0xcdbfae })); ring.rotation.x = -Math.PI / 2; ring.position.set(PLZ.x, 0.075 + GY, PLZ.z); world.add(ring);
     // the park: lawn with two paths
-    flat(36.5, 20.5, tmat(0x8fcf7a, { noCache: true, em: 0.12 }), -12.75, 21.25, 0.07);
-    const pathM = tmat(0xe9d9bf, { noCache: true, em: 0.1 }); flat(2.2, 20.5, pathM, -6, 21.25, 0.075); flat(36.5, 2.2, pathM, -12.75, 18, 0.076);
+    flat(36.5, 20.5, tmat(0x8fcf7a, { noCache: true, em: 0.12 }), -12.75, 21.25, 0.07 + GY);
+    const pathM = tmat(0xe9d9bf, { noCache: true, em: 0.1 }); flat(2.2, 20.5, pathM, -6, 21.25, 0.075 + GY); flat(36.5, 2.2, pathM, -12.75, 18, 0.076 + GY);
   }
 
   // ---------- park and plaza kit
@@ -215,7 +216,7 @@ const HTOWER = { floors: 5, max: 600, fh: 1.7, w: 12, d: 8, x: -6, z: -28, base:
     const sg = sign(label, 1.6, 0.36, { fg: '#fff3da', bg: '#3a2f4a', px: 52, font: '"Fredoka", sans-serif' }); sg.position.set(0, 1.45, 0.72); g.add(sg);
     world.add(g); g.updateMatrixWorld(true); occluders.push({ g, min: 0.3 }); block(x, z, 1.05, 0.7);
   }
-  function parkingLines(x0, x1, z, n) { const m = new THREE.MeshBasicMaterial({ color: 0xf4f0e8 }); for (let i = 0; i <= n; i++) { const b = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 4.6), m); b.rotation.x = -Math.PI / 2; b.position.set(x0 + (x1 - x0) * i / n, 0.078, z); world.add(b); } }
+  function parkingLines(x0, x1, z, n) { const m = new THREE.MeshBasicMaterial({ color: 0xf4f0e8 }); for (let i = 0; i <= n; i++) { const b = new THREE.Mesh(new THREE.PlaneGeometry(0.1, 4.6), m); b.rotation.x = -Math.PI / 2; b.position.set(x0 + (x1 - x0) * i / n, 0.078 + GY, z); world.add(b); } }
   function fence(x0, z0, x1, z1) {
     const L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(2, Math.round(L / 1.2)), a = Math.atan2(z1 - z0, x1 - x0), m = tmat(0xf4efe6);
     for (let i = 0; i <= n; i++) world.add(BOX(0.08, 0.7, 0.08, m, x0 + (x1 - x0) * i / n, 0.35, z0 + (z1 - z0) * i / n));
