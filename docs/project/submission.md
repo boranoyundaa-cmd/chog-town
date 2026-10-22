@@ -5,9 +5,9 @@ Form answers (paste as they are) and the demo video plan. Deadline: the countdow
 ## 01 Your project
 
 - **Project name:** Chog Hotel
-- **Team:** <owner's name / handle> (solo)
-- **Discord:** <handle>
-- **X:** <handle>
+- **Team:** neos (solo)
+- **Discord:** neosmic
+- **X:** @cryptoneos
 
 ## 02 What you built
 
