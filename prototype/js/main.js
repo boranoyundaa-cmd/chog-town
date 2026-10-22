@@ -138,6 +138,7 @@ function update(dt) {
   sun.position.set(camTarget.x + SUN_OFF.x, SUN_OFF.y, camTarget.z + SUN_OFF.z); sun.target.position.set(camTarget.x, 0, camTarget.z);
 }
 function frame() {
+  if (window.__hold) { requestAnimationFrame(frame); return; }                    // an offline render (prototype/trailer.js) drives time itself through step()
   update(Math.min(clock.getDelta(), 0.05));
   renderFrame();
   requestAnimationFrame(frame);
