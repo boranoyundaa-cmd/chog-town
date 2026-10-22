@@ -803,6 +803,7 @@ const GAMES = { open: null, profile: { trophies: [], badges: [], best: {}, playe
       const clock = () => (usingAudio ? AUDIO.now() : actx ? actx.currentTime : performance.now() / 1000);
       const intro = el('div', 'gm-result rh-intro', '<h3>Hit the notes on the beat</h3><p>Four lanes: <kbd>D</kbd> <kbd>F</kbd> <kbd>J</kbd> <kbd>K</kbd> (or click the lanes). Press when a note reaches the line. About a minute and a half.</p>'); stage.appendChild(intro);
       const go = el('button', 'gm-btn', 'Start'); go.onclick = () => begin(); intro.appendChild(go);
+      GAMES.rhythmProbe = { state: () => state, now: () => clock() - t0, notes: () => notes || [], hit: l => hit(l) };   // lets the trailer capture play it (tools/trailer_capture.js)
       function begin() {
         intro.remove(); notes = chart(); P = G = M = 0; combo = maxCombo = score = 0; pops = []; tick = 0; usingAudio = false; actx = null;
         try { if (window.AUDIO && AUDIO.playTrack && AUDIO.now) { const tr = AUDIO.playTrack('club', BPM); if (tr && tr.startTime > 0) { usingAudio = true; t0 = tr.startTime; } } } catch (e) { usingAudio = false; }

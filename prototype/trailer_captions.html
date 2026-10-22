@@ -1,0 +1,62 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet">
+<style>html, body { margin: 0; background: transparent; }</style>
+</head><body>
+<script>
+// Draws the trailer's captions and title card in the game's font (tools/trailer_captions_job.js saves them; tools/edit_trailer3.py lays them over the frames).
+// A caption is words with *accents*; render(text, k, place) draws it with only the first k words showing, the layout fixed, so words can appear one by one.
+const W = 1920, H = 1080, INK = '#1a0a2e', ACC = '#ffd84a';
+function words(text) {
+  const out = []; let acc = false;
+  for (const raw of text.split(' ')) {
+    let w = raw, a = acc;
+    if (w.startsWith('*')) { a = true; w = w.slice(1); }
+    let end = false; if (w.includes('*')) { end = true; w = w.replace(/\*/g, ''); }
+    out.push({ w, a }); acc = a && !end;
+  }
+  return out;
+}
+function cv() { const c = document.createElement('canvas'); c.width = W; c.height = H; return c; }
+function render(text, k, place) {
+  const c = cv(), g = c.getContext('2d'), ws = words(text); let size = 96;
+  const measure = () => { g.font = `700 ${size}px Fredoka`; const sp = g.measureText(' ').width, widths = ws.map(o => g.measureText(o.w).width); return [sp, widths, widths.reduce((a, b) => a + b, 0) + sp * (ws.length - 1)]; };
+  let [sp, widths, total] = measure();
+  if (total > 1640) { size = Math.floor(size * 1640 / total); [sp, widths, total] = measure(); }   // long lines get smaller, never touch the edges
+  g.textBaseline = 'alphabetic'; g.lineJoin = 'round';
+  let x = (W - total) / 2; const y = place === 'top' ? 150 : H - 110;
+  ws.forEach((o, i) => {
+    if (i < k) {
+      g.save(); g.shadowColor = 'rgba(20,6,40,.55)'; g.shadowBlur = 24; g.shadowOffsetY = 8;
+      g.strokeStyle = INK; g.lineWidth = 20; g.strokeText(o.w, x, y); g.restore();
+      g.fillStyle = o.a ? ACC : '#ffffff'; g.fillText(o.w, x, y);
+    }
+    x += widths[i] + sp;
+  });
+  return c.toDataURL('image/png');
+}
+// 'left': one sentence per line (split at |), big, in the left half, the right half kept for the phone
+function renderLeft(text, k) {
+  const c = cv(), g = c.getContext('2d'), size = 112, lines = text.split('|').map(words), cx = 560; g.font = `700 ${size}px Fredoka`; g.lineJoin = 'round';
+  let n = 0; const y0 = H / 2 - (lines.length - 1) * size * 0.62;
+  lines.forEach((ws, li) => {
+    const sp = g.measureText(' ').width, widths = ws.map(o => g.measureText(o.w).width), total = widths.reduce((a, b) => a + b, 0) + sp * (ws.length - 1);
+    let x = cx - total / 2; const y = y0 + li * size * 1.24 + size * 0.35;
+    ws.forEach((o, i) => { if (n++ < k) { g.save(); g.shadowColor = 'rgba(20,6,40,.55)'; g.shadowBlur = 24; g.shadowOffsetY = 8; g.strokeStyle = INK; g.lineWidth = 22; g.strokeText(o.w, x, y); g.restore(); g.fillStyle = o.a ? ACC : '#ffffff'; g.fillText(o.w, x, y); } x += widths[i] + sp; });
+  });
+  return c.toDataURL('image/png');
+}
+function title() {
+  const c = cv(), g = c.getContext('2d'); g.lineJoin = 'round'; g.textAlign = 'center';
+  const line = (t, y, size, fill, stroke, weight = 700) => { g.font = `${weight} ${size}px Fredoka`;
+    g.save(); g.shadowColor = 'rgba(20,6,40,.6)'; g.shadowBlur = 40; g.shadowOffsetY = 12; g.strokeStyle = INK; g.lineWidth = stroke; g.strokeText(t, W / 2, y); g.restore();
+    g.fillStyle = fill; g.fillText(t, W / 2, y); };
+  const grd = g.createLinearGradient(0, 330, 0, 520); grd.addColorStop(0, '#ffe680'); grd.addColorStop(1, '#ff9ad0');
+  line('CHOG HOTEL', 500, 210, grd, 34);
+  line('Check in. Never check out.', 630, 78, '#ffffff', 18, 600);
+  line('Free to play  ·  chog-hotel.pages.dev', 760, 54, ACC, 14, 600);
+  return c.toDataURL('image/png');
+}
+window.CAP = { render, renderLeft, title, words, ready: document.fonts.load('700 96px Fredoka').then(() => document.fonts.load('600 78px Fredoka')).then(() => true) };
+</script>
+</body></html>
