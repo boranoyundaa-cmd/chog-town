@@ -11,7 +11,7 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 
 ## Status (update every session)
 
-The whole plan of `docs/project/build-plan.md` plus the phone companion is **built and deployed** (server `chog-town-ws.fly.dev`, site `https://chog-hotel.pages.dev`, last site deploy 2026-10-22 with the mesh merge). Both repos are **public** with READMEs for the judges (2026-10-22). Submission answers and the video plan are kept locally in `docs/project/submission.md` (ignored by git). Tested locally with a mock chain and wallet; the live checks with a real wallet, a second player and a real phone are what remains.
+The whole plan of `docs/project/build-plan.md` plus the phone companion is **built and deployed** (server `chog-town-ws.fly.dev`, site `https://chog-hotel.pages.dev`, last site deploy 2026-10-22 with the town paving lowered under y = 0, so feet no longer sink into it). Both repos are **public** with READMEs for the judges (2026-10-22). Submission answers and the video plan are kept locally in `docs/project/submission.md` (ignored by git). Tested locally with a mock chain and wallet; the live checks with a real wallet, a second player and a real phone are what remains.
 
 - **Name and tiers:** Chog Hotel; tiers Ser / Fren / Whale / Legend with venues Room / Suite / Floor / Penthouse (`ui.js`). Guest portrait = the collection's purple Chog (`data/portraits/guest.webp`).
 - **Town:** 64 x 64 m (`HALF` 32, server `CFG.half` 32): plaza with a fountain at (-6,-6), Hotel Street north (Gallery, Books, Chog Hotel, NOVA, Pizza), Moka Lane west (Moka & Co, Bakery, Florist), Arcade Road east (Arcade, Laundry, parking), Lantern Park south-west (pond, gazebo), Maple Row south-east (Home and neighbours). The camera follows the player everywhere; zoom is capped at 24 m of visible width outdoors and indoors (owner), rooms open at 18 m and follow the player; there is no whole-room view. Layout and sizes: `docs/game/world.md`.
@@ -67,7 +67,7 @@ The whole plan of `docs/project/build-plan.md` plus the phone companion is **bui
 
 ## Next steps (in order)
 
-0. **Submit before the deadline (≈ 2026-10-23 evening):** record the video from its shot list, paste the answers into the form (owner signs in).
+0. **Submit before the deadline (≈ 2026-10-23 evening):** the 60 s trailer is cut (`video/chog_hotel_trailer.mp4`, not in git; tools `tools/trailer_capture.js` -> `tools/edit_trailer3.py`, narrator from ElevenLabs in `video/vo/`). The owner records the 2 minute walkthrough, the two are joined (walkthrough, then the trailer), uploaded, and the answers pasted into the form (owner signs in).
 1. A small test purchase with $CHOG and with MON on the live site.
 2. Live checks with a real wallet (check in with Lev, the key scene, sign a room save, a tier upgrade, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
 3. The phone on a real device: ask Lev for "A key for my phone", scan the QR code, turn on "Ring my phone" (on an iPhone from the home screen icon) and have a second player walk into the room while the PC is closed.
