@@ -11,7 +11,9 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 
 ## Status (update every session)
 
-The whole plan of `docs/project/build-plan.md` plus the phone companion is **built and deployed** (2026-10-16: server `chog-town-ws.fly.dev`, site `https://chog-hotel.pages.dev`; the old chog-town address redirects there). Tested locally with a mock chain and wallet; the live checks with a real wallet, a second player and a real phone are what remains.
+The whole plan of `docs/project/build-plan.md` plus the phone companion is **built and deployed** (server `chog-town-ws.fly.dev`, site `https://chog-hotel.pages.dev`, last site deploy 2026-10-22 with the mesh merge). Both repos are **public** with READMEs for the judges (2026-10-22). Submission answers and the video plan: `docs/project/submission.md`. Tested locally with a mock chain and wallet; the live checks with a real wallet, a second player and a real phone are what remains.
+
+- **Reachability:** `*.pages.dev` does not open from the owner's connection in Turkey without WARP (TLS reset, any pages.dev site); `fly.dev` does. Judges abroad are not affected.
 
 - **Name and tiers:** Chog Hotel; tiers Ser / Fren / Whale / Legend with venues Room / Suite / Floor / Penthouse (`ui.js`). Guest portrait = the collection's purple Chog (`data/portraits/guest.webp`).
 - **Town:** 64 x 64 m (`HALF` 32, server `CFG.half` 32): plaza with a fountain at (-6,-6), Hotel Street north (Gallery, Books, Chog Hotel, NOVA, Pizza), Moka Lane west (Moka & Co, Bakery, Florist), Arcade Road east (Arcade, Laundry, parking), Lantern Park south-west (pond, gazebo), Maple Row south-east (Home and neighbours). The camera follows the player everywhere; zoom is capped at 24 m of visible width outdoors and indoors (owner), rooms open at 18 m and follow the player; there is no whole-room view. Layout and sizes: `docs/game/world.md`.
@@ -28,7 +30,7 @@ The whole plan of `docs/project/build-plan.md` plus the phone companion is **bui
 - **Data:** 1,969 tokens in 1,012 wallets (`prototype/data/owners.json`); all traits in `tokens.json`, no IPFS calls at runtime. Collection `Tier` trait: Common 1,279, Uncommon 590, Rare 60, Epic 30, Legendary 10.
 - **Backups (private GitHub):** the game, docs and tools in `boranoyundaa-cmd/chog-town`, the server in `boranoyundaa-cmd/chog-town-server`. Commit and push both at the end of a session.
 - **Live accounts:** Fly and Cloudflare under neoboranaybek@gmail.com.
-- **Performance (2026-10-16):** static meshes of the town and of every Chog are merged at build time; draw calls per frame halved (plaza 4,119 → 2,103), CPU per frame ~25 → ~15 ms. Not yet deployed. Details and the `noMerge` rule: `docs/engineering/prototype.md` (Performance notes).
+- **Performance (2026-10-16):** static meshes of the town and of every Chog are merged at build time; draw calls per frame halved (plaza 4,119 → 2,103), CPU per frame ~25 → ~15 ms. A full frame took ~8 ms on an RTX 3060 laptop (2026-10-22). Details and the `noMerge` rule: `docs/engineering/prototype.md` (Performance notes).
 - **Never tried:** a real wallet signing on the live site, a second real player in the hotel, performance on weaker hardware (integrated GPU, big rooms with many pieces and lights, 4096 shadow map, 2x supersampling).
 - **Known limits:** rooms have no stacking and turn in 90 degree steps; NFT frames and the Part Lab are not offered (no Monad NFT indexer chosen); the Chog is polygonal next to the smooth official art.
 
@@ -67,13 +69,14 @@ The whole plan of `docs/project/build-plan.md` plus the phone companion is **bui
 
 ## Next steps (in order)
 
+0. **Submit before the deadline (≈ 2026-10-23 evening):** fill the handles in `docs/project/submission.md`, record the video from its shot list, paste the answers into the form (owner signs in).
 1. A small test purchase with $CHOG and with MON on the live site.
 2. Live checks with a real wallet (check in with Lev, the key scene, sign a room save, a tier upgrade, activate a venue) and with a second player (hotel head counts, challenges, Exhibition votes).
 3. The phone on a real device: ask Lev for "A key for my phone", scan the QR code, turn on "Ring my phone" (on an iPhone from the home screen icon) and have a second player walk into the room while the PC is closed.
-4. Performance: deploy the merge (site), then a quality setting (render scale, shadow map size, `preserveDrawingBuffer` off) and a check on a laptop with an integrated GPU; hotel rooms with many pieces are not merged yet (pieces are editable).
+4. Performance: a quality setting (render scale, shadow map size, `preserveDrawingBuffer` off) and a check on a laptop with an integrated GPU; hotel rooms with many pieces are not merged yet (pieces are editable).
 5. Owner corrections to the culture content after seeing it in the game.
 
-Demo video, submission text and promotion are the owner's call.
+Promotion is the owner's call.
 
 ## Open questions
 
@@ -82,7 +85,6 @@ Demo video, submission text and promotion are the owner's call.
 - **Phone companion** needs a test on a real phone (frame rate, battery, QR scan from a PC screen, a notification on Android and from the iPhone home screen icon).
 - **Moderation:** filter, report, who reviews.
 - **NFT frames:** which indexer lists a wallet's NFTs on Monad.
-- Submission/video logistics (face or voice on video) are the owner's call.
 - Real-data testing: the owner holds token #1700 (Epic); trait art layers are not available, the character is rebuilt procedurally from trait values.
 
 - **2026-10-16:** the phone companion is built locally (`m.html`, `js/mobile.js`, `css/mobile.css`, `server/phone.js`, decided by the owner from the design canvas: the live pocket room with Lev's message tab, QR key from Lev on the PC, live guests only with the security camera, a plain page for phones without a key) and Lev's phone notifications (`server/push.js`, `prototype/sw.js`: a visit while you are away, a tip, a 21:00 reminder). Chog face ink line thinned to the body outline's width; Lev's uniform is a jacket with sleeves of its own cloth; wizard cloaks open in front. Deployed the same night (server, then site); checked live: the phone page reaches the live server, desktop still connects.

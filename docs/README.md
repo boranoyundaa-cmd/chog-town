@@ -5,6 +5,7 @@
 | Project | [overview.md](project/overview.md) | Vision, status, decisions, next steps |
 | Project | [build-plan.md](project/build-plan.md) | Owner decisions of 2026-10-15, what is built and what is left |
 | Project | [hackathon.md](project/hackathon.md) | Chogathon rules, prizes, judging criteria |
+| Project | [submission.md](project/submission.md) | Form answers and the demo video plan |
 | Game | [design.md](game/design.md) | Venue-based social sandbox, NFT license tiers, economy rules, architecture |
 | Game | [core-loop-research.md](game/core-loop-research.md) | Why web3 games and MMOs fail, what worked, candidate core loops |
 | Game | [world.md](game/world.md) | World structure: town, Home, Hotel (venues), NPCs, light rule, mini-games |
