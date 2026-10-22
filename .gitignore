@@ -11,3 +11,6 @@ dist/
 
 # the realtime server has its own private repo (boranoyundaa-cmd/chog-town-server)
 server/
+
+# form answers for the hackathon, kept locally
+docs/project/submission.md

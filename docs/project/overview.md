@@ -11,7 +11,7 @@ Pitch (draft): *a town where the Chog you own is who you are, and the place you 
 
 ## Status (update every session)
 
-The whole plan of `docs/project/build-plan.md` plus the phone companion is **built and deployed** (server `chog-town-ws.fly.dev`, site `https://chog-hotel.pages.dev`, last site deploy 2026-10-22 with the mesh merge). Both repos are **public** with READMEs for the judges (2026-10-22). Submission answers and the video plan: `docs/project/submission.md`. Tested locally with a mock chain and wallet; the live checks with a real wallet, a second player and a real phone are what remains.
+The whole plan of `docs/project/build-plan.md` plus the phone companion is **built and deployed** (server `chog-town-ws.fly.dev`, site `https://chog-hotel.pages.dev`, last site deploy 2026-10-22 with the mesh merge). Both repos are **public** with READMEs for the judges (2026-10-22). Submission answers and the video plan are kept locally in `docs/project/submission.md` (ignored by git). Tested locally with a mock chain and wallet; the live checks with a real wallet, a second player and a real phone are what remains.
 
 - **Reachability:** `*.pages.dev` does not open from the owner's connection in Turkey without WARP (TLS reset, any pages.dev site); `fly.dev` does. Judges abroad are not affected.
 
