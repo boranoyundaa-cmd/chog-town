@@ -32,7 +32,7 @@ const SHOTS = [
   ['V14_hodler', 1.96, 'say', 0.3, [], { id: 'hodler', place: 'parkA', hour: 15, text: 'I AM HODLING.' }],
   ['V15_jeet', 1.96, 'say', 0.3, [], { id: 'jeet', place: 'c5', hour: 13, text: 'Up 2x? Sold.' }],
   ['V16_doom', 1.96, 'say', 0.3, [], { id: 'doombear', place: 'pz1', hour: 21.5, text: "It's over." }],
-  ['V17_timelapse', 4.9, 'timelapse'],
+  ['V17_timelapse', 8.2, 'timelapse', 0, [], { span: 8.2 }],          // runs on behind the phone shot
   ['V18_finale', 4.88 + 3.0, 'finale'],
 ];
 

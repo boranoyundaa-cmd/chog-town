@@ -20,7 +20,13 @@
   const addChog = (traits, x, z, ry, mode = 'idle') => { const c = chogFromTraits(traits, { scale: CHOG_SCALE }); c.position.set(x, 0, z); c.rotation.y = ry; scene.add(c); crowd.push({ c, mode, ry, ph: crowd.length * 1.7 }); return c; };
   const animCrowd = t => { for (const k of crowd) { const u = k.c.userData, ph = t * (k.mode === 'dance' ? 7.5 : 2) + k.ph, sw = Math.sin(ph);
     if (k.mode === 'dance') { u.body.position.y = Math.abs(sw) * 0.08; u.head.position.y = 1.0 + Math.abs(sw) * 0.1; u.arms[0].rotation.z = -2.4 - sw * 0.5; u.arms[1].rotation.z = 2.4 + sw * 0.5; u.legs[0].rotation.x = sw * 0.3; u.legs[1].rotation.x = -sw * 0.3; k.c.rotation.y = k.ry + Math.sin(t * 1.3 + k.ph) * 0.5; }
+    else if (k.mode === 'walk') {                        // along a closed path at k.v m/s, legs and arms swinging with the stride
+      const P = k.path, d = ((k.s0 + t * k.v) % k.len + k.len) % k.len; let i = 0, acc = 0; while (acc + k.seg[i] < d) acc += k.seg[i++];
+      const a = P[i], b = P[(i + 1) % P.length], f = (d - acc) / k.seg[i]; k.c.position.set(a[0] + (b[0] - a[0]) * f, 0, a[1] + (b[1] - a[1]) * f); k.c.rotation.y = Math.atan2(b[0] - a[0], b[1] - a[1]);
+      const w = Math.sin(d * 2.6 + k.ph); u.legs[0].rotation.x = w * 0.65; u.legs[1].rotation.x = -w * 0.65; u.arms[0].rotation.x = -w * 0.7; u.arms[1].rotation.x = w * 0.7; u.body.position.y = Math.abs(w) * 0.05; u.head.position.y = 1.0 + Math.abs(w) * 0.05; }
     else { const b = Math.sin(ph) * 0.015; u.body.position.y = b; u.head.position.y = 1.0 + b * 1.4; } } };
+  const walker = (traits, path, s0, v) => { const c = addChog(traits, path[0][0], path[0][1], 0, 'walk'), k = crowd[crowd.length - 1]; k.path = path; k.s0 = s0; k.v = v;
+    k.seg = path.map((p, i) => { const q = path[(i + 1) % path.length]; return Math.hypot(q[0] - p[0], q[1] - p[1]) || 1e-3; }); k.len = k.seg.reduce((a, b) => a + b, 0); return c; };
   const pick = (n, seed) => { const out = []; let s = seed; while (out.length < n) { s = (s * 16807) % 2147483647; const id = 1 + (s % 1969); if (!out.includes(id)) out.push(id); } return out; };
   let hour0 = 18, npc0 = 0, frameFn = null, tStart = null, extra = null;
   // the scene's camera runs inside the game's own loop (game.js asks GAME.cine first)
@@ -97,7 +103,7 @@
     const ids = [1700, 561, 212, 1337, 77, 999, 1514, 420, 1234, 808, 1881, 69, 1969, 333, 1111, 404];
     let k = 0; for (const dx of [-1.3, 0, 1.3]) for (const dz of [-1.3, 0, 1.3]) addChog(traitsFor(ids[k++]), -3 + dx + Math.sin(dx * 7 + dz) * 0.2, -4.5 + dz + Math.cos(dz * 5 + dx) * 0.2, Math.PI / 4, 'dance');
     for (const [x, z] of [[-6.5, -2], [-1, -7.2], [-5.2, -6.6], [1.6, -6.0], [0.4, -2.4], [-6.8, -4.4], [1.8, -3.6]]) addChog(traitsFor(ids[k++]), x, z, Math.PI / 4, 'dance');
-    install(t => { const a = E(C(0, 1, t / 0.9)), b = Math.max(0, t - 0.9) * 0.32; cam3(L(-1, -2.9, a), L(-2.6, -4.3, a), L(18, 9.5, a) - b * 0.6, L(-0.1, 0, a) + b, 1.0); }, { hour: 23 }); };
+    install(t => { const u = E(C(0, 1, t / 4.4)); cam3(L(-1, -2.9, u), L(-2.6, -4.3, u), L(17, 9.5, u), L(-0.3, 0.75, u), 1.0); }, { hour: 23 }); };   // one move: pushing in while it circles
   // 10 mini-games: each opened by the game itself, played by the scene (TRV.game(id, t) is called every frame)
   S.games = async () => { TRV.ui(['#gm']); meHide(); stopEvents(); NPC.target = 30;
     install(t => cam3(-6, -6, 22, 0), { hour: 16 }); };
@@ -108,8 +114,16 @@
   S.shop = async () => { TRV.ui(['#shop']); meHide(); stopEvents(); SHOP.open();
     install(t => cam3(-6, -6, 22, 0), { hour: 16 }); };
   // 12 day to night over Hotel Street, residents rushing (time-lapse)
-  S.timelapse = async () => { TRV.ui(); meHide(); NPC.target = 40; stopEvents();
-    install(t => { const u = t / 4.9; cam3(L(-9, -3, u), -17, 30, L(-0.35, -0.2, u)); }, { hour: 15, hour0: 15, hour1: 23.5, span: 4.9, timeScale: 420 }); };
+  // 12 the town at time-lapse speed, afternoon to night: a crowd of its own hurrying along the pavements, across the plaza and round the fountain (the town's own
+  // residents jump between their stops at this speed); it also runs on behind the phone shot, so it is long (o.span seconds)
+  S.timelapse = async (o = {}) => { TRV.ui(); meHide(); NPC.target = 60; stopEvents();
+    const span = o.span || 8.2, ids = pick(44, 4242), lane = (z, x0, x1) => [[x0, z], [x1, z]], ring = (cx, cz, r, n = 12) => Array.from({ length: n }, (_, i) => [cx + Math.cos(i / n * 6.283) * r, cz + Math.sin(i / n * 6.283) * r]);
+    const paths = [lane(-21.7, -24, 12), lane(-21.1, 12, -24), lane(-17.4, -24, 12), lane(-16.9, 12, -24), [[-17, -15.5], [3.5, -11]], [[4, -14.5], [-16.5, -9.5]], ring(-6, -6, 5.2), [[-6, -16.5], [-6, -12]]];
+    let n = 0; for (const [pi, cnt, v] of [[0, 7, 4.6], [1, 7, 5.0], [2, 7, 4.4], [3, 6, 4.8], [4, 4, 3.8], [5, 4, 4.0], [6, 6, 2.6], [7, 3, 3.4]]) {
+      const P = paths[pi].length === 2 ? [paths[pi][0], paths[pi][1], paths[pi][0]] : paths[pi];
+      for (let i = 0; i < cnt; i++) { const c = walker(traitsFor(ids[n % ids.length]), P, i * 997 % 41 + i * 4.3, v * (0.85 + (i * 37 % 10) / 30)); n++; }
+    }
+    install(t => { const u = t / span; cam3(L(-10, -1.5, u), -17, 30, L(-0.4, -0.12, u)); }, { hour: 15, hour0: 15, hour1: 23.8, span, timeScale: 420 }); };
   // 13 the finale: from the door back over the whole hotel
   S.finale = async () => { TRV.ui(); meHide(); NPC.target = 40; stopEvents();
     install(t => { const u = E(C(0, 1, t / 5.4)), v = Math.max(0, t - 5.4); cam3(-6, L(-23, -24, u), L(12, 76, u) + v * 2.5, L(0.05, -0.12, u) - v * 0.03, L(1.1, 8, u)); }, { hour: 19.3 }); };

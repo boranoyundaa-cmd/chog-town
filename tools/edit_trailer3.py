@@ -34,7 +34,7 @@ LINES = [
     ('vo_08', 30.15, 'Some are *not.*', 'bottom', 31.97),
     ('vo_09', 32.3, 'Host the *party.*', 'bottom', 35.88),
     ('vo_10', 36.0, 'Seven games. Daily boards. *Bragging rights.*', 'top', 41.4),
-    ('vo_11', 41.6, '*Crypto Twitter*... as a town.', 'bottom', 47.28),
+    ('vo_11', 41.6, '*Crypto Twitter*... as a town.', 'bottom', 45.32),
     ('vo_12', 45.5, 'Open 24/7. *Just like the market.*', 'bottom', 49.88),
     ('vo_15', 49.95, "Logged off?|*Your room isn't.*", 'left', 53.48),     # the phone companion (m.html): the game is on the PC, the phone keeps you in it
     ('vo_13', 57.25, None, None, None),            # "Chog Hotel. Check in." over the title card
@@ -125,19 +125,19 @@ PHONE = {}
 def phone_frame(idx, t):
     from PIL import ImageDraw, ImageFilter
     if not PHONE:
-        last = sorted(f for f in os.listdir(SH) if f.startswith('V17_timelapse_') and f.endswith('.png'))[-1]
-        PHONE['bg0'] = Image.open(os.path.join(SH, last)).convert('RGBA')
-        PHONE['bg1'] = Image.blend(PHONE['bg0'].filter(ImageFilter.GaussianBlur(18)), Image.new('RGBA', (W, H), (22, 10, 40, 255)), 0.4)
+        PHONE['shade'] = Image.new('RGBA', (W, H), (22, 10, 40, 255))
+        PHONE['off'] = round(49.88 * FPS) - round(45.32 * FPS)                          # the time-lapse runs on underneath: its frame for the phone's first
         sh_ = 940; sw_ = round(sh_ * 860 / 1864); PHONE['size'] = (sw_, sh_)
         m = Image.new('L', (sw_, sh_), 0); ImageDraw.Draw(m).rounded_rectangle((0, 0, sw_ - 1, sh_ - 1), 54, fill=255); PHONE['mask'] = m
         b = 14; body = Image.new('RGBA', (sw_ + 2 * b, sh_ + 2 * b), (0, 0, 0, 0)); d = ImageDraw.Draw(body)
         d.rounded_rectangle((0, 0, body.width - 1, body.height - 1), 66, fill=(16, 9, 30, 255), outline=(150, 120, 210, 255), width=3)
         sha = Image.new('RGBA', (body.width + 160, body.height + 160), (0, 0, 0, 0)); ImageDraw.Draw(sha).rounded_rectangle((80, 110, 80 + body.width, 110 + body.height), 66, fill=(8, 3, 18, 170))
         PHONE['body'], PHONE['shadow'], PHONE['b'] = body, sha.filter(ImageFilter.GaussianBlur(36)), b
-    k = min(1, t / 0.35); k = k * k * (3 - 2 * k)                       # the town blurs out as the phone comes in
-    bg = Image.blend(PHONE['bg0'], PHONE['bg1'], k) if k < 1 else PHONE['bg1']
-    z = 1.0 + 0.025 * t; bw, bh = int(W * z), int(H * z)
-    frame = bg.resize((bw, bh), Image.BILINEAR).crop(((bw - W) // 2, (bh - H) // 2, (bw - W) // 2 + W, (bh - H) // 2 + H))
+    n_tl = len([f for f in os.listdir(SH) if f.startswith('V17_timelapse_') and f.endswith('.png')]) if 'ntl' not in PHONE else PHONE['ntl']; PHONE['ntl'] = n_tl
+    sharp = Image.open(os.path.join(SH, f'V17_timelapse_{min(PHONE["off"] + idx, n_tl - 1) + 1:04d}.png')).convert('RGBA')
+    k = min(1, t / 0.4); k = k * k * (3 - 2 * k)                        # the town keeps moving and blurs out as the phone comes in
+    soft = Image.blend(sharp.resize((480, 270), Image.BILINEAR).filter(ImageFilter.GaussianBlur(4.5)).resize((W, H), Image.BILINEAR), PHONE['shade'], 0.4)
+    frame = Image.blend(sharp, soft, k) if k < 1 else soft
     u = min(1, t / 0.6); e = 1 - (1 - u) ** 3                          # ease out, no bounce
     sc = 0.94 + 0.06 * e + 0.012 * t                                   # and it keeps drifting closer
     scr = Image.open(os.path.join(SH, f'V17b_phone_{idx + 1:04d}.png')).convert('RGBA').resize(PHONE['size'], Image.LANCZOS); scr.putalpha(PHONE['mask'])
