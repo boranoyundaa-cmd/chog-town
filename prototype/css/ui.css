@@ -315,3 +315,13 @@ body.neon #levbox { background: rgba(20, 10, 44, .94); color: #f2eaff; border-co
 #levchip { position: fixed; left: 50%; bottom: 190px; transform: translate(-50%, 16px); z-index: 8; display: flex; align-items: center; gap: 9px; padding: 9px 20px 9px 14px; border-radius: 999px; background: #fff4cf; color: #5a3a08; border: 2px solid #e8b83a; box-shadow: 0 8px 22px rgba(40, 20, 70, .35); font: 600 17px "Fredoka", "Nunito", sans-serif; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; }
 #levchip.on { opacity: 1; transform: translate(-50%, 0); }
 body.levcut canvas { cursor: default !important; }
+/* start screen: connect a wallet or enter as a guest; the town keeps moving behind it */
+#ui .start { position: fixed; inset: 0; z-index: 8; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(20, 6, 40, .25), rgba(20, 6, 40, .7)); backdrop-filter: blur(3px); transition: opacity .25s; }
+#ui .start.out { opacity: 0; }
+#ui .start .card { width: 420px; padding: 26px 28px 24px; text-align: center; animation: startIn .45s cubic-bezier(.2, 1.4, .4, 1) both; }
+#ui .start h1 { margin: 0; font-family: var(--hf); font-weight: var(--hw); font-size: 46px; color: var(--wood0); letter-spacing: .01em; }
+#ui .start .tag { margin: 2px 0 14px; font-size: 15px; opacity: .75; }
+#ui .start .wnote { margin: 0 4px 18px; font-size: 14px; line-height: 1.45; font-weight: 600; }
+#ui .start .acts { display: flex; flex-direction: column; gap: 10px; }
+#ui .start .btn { font-size: 17px; padding: 12px 20px; } #ui .start .btn small { font-size: 13px; opacity: .75; }
+@keyframes startIn { from { transform: translateY(14px) scale(.96); opacity: 0; } }

@@ -119,9 +119,10 @@ async function ensureMonad(provider) {
   }
 }
 async function adopt(provider, account) {
-  WALLET.provider = provider; WALLET.account = account; WALLET.error = null; emit('account', account);
+  WALLET.provider = provider; WALLET.account = account; WALLET.error = null;
+  try { localStorage.setItem('chog_wallet', WALLET.chosen || '1'); } catch (e) { /* ignore */ }     // saved first, so a reload resumes even if the scan below fails
+  emit('account', account);
   WALLET.owned = await WALLET.findOwned(account); emit('owned', WALLET.owned);
-  try { localStorage.setItem('chog_wallet', WALLET.chosen || '1'); } catch (e) { /* ignore */ }
 }
 WALLET.connect = async function (entry) {
   try {
@@ -135,9 +136,12 @@ WALLET.connect = async function (entry) {
 WALLET.disconnect = function () { WALLET.provider = null; WALLET.account = null; WALLET.owned = []; try { localStorage.removeItem('chog_wallet'); } catch (e) { /* ignore */ } emit('account', null); emit('owned', []); };
 // silently resume a previous session (eth_accounts shows no popup)
 WALLET.resume = async function () {
-  try { if (localStorage.getItem('chog_wallet') !== '1') return; } catch (e) { return; }
-  await new Promise(r => setTimeout(r, 400));
-  const want = localStorage.getItem('chog_wallet'), list = WALLET.available(), e = list.find(x => x.info.name === want) || list[0]; if (!e) return;      // the wallet you picked last time
+  let want; try { want = localStorage.getItem('chog_wallet'); } catch (e) { return false; }
+  if (!want) return false;                                                                          // holds the name of the wallet picked last time ('1' when it had none)
+  let list = [], e;
+  for (let k = 0; k < 6 && !e; k++) { list = await WALLET.refresh(); e = list.find(x => x.info.name === want) || (want === '1' && list[0]); }   // wallet extensions can announce themselves late
+  e = e || list[0]; if (!e) return false;
   WALLET.chosen = e.info.name;
-  const accs = await e.provider.request({ method: 'eth_accounts' }); if (accs[0]) { e.provider.on && e.provider.on('accountsChanged', a => { if (a[0]) adopt(e.provider, a[0]); else WALLET.disconnect(); }); await adopt(e.provider, accs[0]); }
+  const accs = await e.provider.request({ method: 'eth_accounts' }); if (accs[0]) { e.provider.on && e.provider.on('accountsChanged', a => { if (a[0]) adopt(e.provider, a[0]); else WALLET.disconnect(); }); await adopt(e.provider, accs[0]); return true; }
+  return false;
 };

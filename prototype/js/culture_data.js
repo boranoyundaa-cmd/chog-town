@@ -406,7 +406,7 @@ const CULTURE = (() => {
       "Gas: 0. We pay it.", "Buying the dip... please wait.", "Reticulating liquidity pools..."
     ],
     buttons: {
-      connect: "Connect wallet (we won't rug you)", save: "Sign and save (your keys, your room)", delete: "Rug it",
+      connect: "Connect wallet", save: "Sign and save (your keys, your room)", delete: "Rug it",
       deleteConfirm: "Are you sure? This one is a real rug pull.", report: "Report (receipts attached)",
       mute: "Touch grass for this one", settings: "Settings (financial advice not included)"
     },

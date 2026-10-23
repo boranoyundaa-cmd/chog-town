@@ -75,6 +75,8 @@ const artOf = id => (id && TOKENS[id] ? 'data/portraits/' + id + '.webp' : GUEST
 
 // ---- state -> Chog
 const traitsFor = id => (id && TOKENS[id] ? TOKENS[id].traits : null);
+// the number people know their Chog by is in its name, not its token id (the contract shifts ids: token 239 is "CHOG #1700")
+const chogNo = id => { const m = /#(\d+)/.exec((TOKENS[id] && TOKENS[id].name) || ''); return m ? m[1] : String(id); };
 async function chooseChog(id, demo = false) {
   UI.sel = id; UI.demo = !!demo;
   const tr = id ? await WALLET.traitsOf(id).catch(() => null) : null;
@@ -84,7 +86,7 @@ async function chooseChog(id, demo = false) {
 }
 const curTraits = () => (UI.sel && traitsFor(UI.sel)) || DEFAULT_TRAITS;
 const isHolder = () => !!UI.sel;
-const playerName = () => (typeof NET !== 'undefined' && NET.authed && NET.username ? NET.username : isHolder() ? 'Chog #' + UI.sel : (typeof NET !== 'undefined' && NET.status === 'online' && NET.name) || 'Guest Chog');
+const playerName = () => (typeof NET !== 'undefined' && NET.authed && NET.username ? NET.username : isHolder() ? 'Chog #' + chogNo(UI.sel) : (typeof NET !== 'undefined' && NET.status === 'online' && NET.name) || 'Guest Chog');
 GAME.nameFn = () => playerName();
 const playerSub = () => (isHolder() ? (UI.demo ? 'Demo preview' : curTraits().Tier || 'Chog') : 'Free to play');
 // the venue license counts every Chog of the connected wallet (not only the selected one); a demo preview counts just that one token
@@ -96,7 +98,7 @@ function licenseCard() {
   const nx = L.next ? (L.next.need === 1 ? `<b>1 more point</b> to ${aOrAn(TIER_NAME[L.next.tier])}: any other Chog in this wallet.` : `<b>${L.next.need} more points</b> to ${aOrAn(TIER_NAME[L.next.tier])}: ${aOrAn(L.next.rarity)} Chog, or ${L.next.need} more Chogs in this wallet.`) : 'Top tier reached.';
   c.innerHTML = `<div class="lh"><h3>Venue license</h3>${tierPill(t, 'Tier ' + t + ' · ' + TIER_NAME[t])}</div>
     <div class="pts"><b>${L.points}</b>points from ${n} Chog${n > 1 ? 's' : ''}${UI.demo ? ' (demo preview)' : ''}</div>
-    ${L.rows.map(r => `<div class="lr"><span class="d" style="--tc:${RARITY_COL[r.rarity] || '#8a8497'}"></span><span>${r.tokens.length === 1 ? 'Chog #' + r.tokens[0] + ' · ' + r.rarity : r.tokens.length + ' × ' + r.rarity}</span><b>+${r.points}</b></div>`).join('')}
+    ${L.rows.map(r => `<div class="lr"><span class="d" style="--tc:${RARITY_COL[r.rarity] || '#8a8497'}"></span><span>${r.tokens.length === 1 ? 'Chog #' + chogNo(r.tokens[0]) + ' · ' + r.rarity : r.tokens.length + ' × ' + r.rarity}</span><b>+${r.points}</b></div>`).join('')}
     <div class="bar" style="--tc:${TIER_COL[t]}"><i style="width:${Math.min(L.points, maxP) / maxP * 100}%"></i>${ticks}</div><div class="next">${nx}</div>`;
   return c;
 }
@@ -133,13 +135,13 @@ function card(onClose) {
   if (WALLET.scanning > 0) c.appendChild(el('div', 'scan', `<i style="width:${Math.round(WALLET.scanning * 100)}%"></i>`));
   if (WALLET.owned.length > 1) {
     const d = el('div', 'demo', 'Your Chogs'), row = el('div', 'row');
-    for (const id of WALLET.owned) { const b = el('button', 'mini' + (UI.sel === id && !UI.demo ? ' on' : '')); const t = traitsFor(id); if (t) b.style.backgroundImage = `url(${artOf(id)}), url(${portrait(t)})`; b.title = '#' + id; b.onclick = () => chooseChog(id); row.appendChild(b); }
+    for (const id of WALLET.owned) { const b = el('button', 'mini' + (UI.sel === id && !UI.demo ? ' on' : '')); const t = traitsFor(id); if (t) b.style.backgroundImage = `url(${artOf(id)}), url(${portrait(t)})`; b.title = 'Chog #' + chogNo(id); b.onclick = () => chooseChog(id); row.appendChild(b); }
     d.appendChild(row); c.appendChild(d);
   }
   if (!WALLET.owned.length) {
     const d = el('div', 'demo', 'No Chog? Preview what holders get'), row = el('div', 'row');
     const g = el('button', 'mini guest' + (!UI.sel ? ' on' : ''), 'Guest'); g.onclick = () => chooseChog(null); row.appendChild(g);
-    for (const id of DEMO_IDS) { const t = traitsFor(id); if (!t) continue; const b = el('button', 'mini' + (UI.sel === id && UI.demo ? ' on' : '')); b.style.backgroundImage = `url(${artOf(id)}), url(${portrait(t)})`; b.title = '#' + id; b.onclick = () => chooseChog(id, true); row.appendChild(b); }
+    for (const id of DEMO_IDS) { const t = traitsFor(id); if (!t) continue; const b = el('button', 'mini' + (UI.sel === id && UI.demo ? ' on' : '')); b.style.backgroundImage = `url(${artOf(id)}), url(${portrait(t)})`; b.title = 'Chog #' + chogNo(id); b.onclick = () => chooseChog(id, true); row.appendChild(b); }
     d.appendChild(row); c.appendChild(d);
   }
   const act = el('div', 'actions');
@@ -310,7 +312,7 @@ function chatBox() {
 function playerCard() {
   const r = NET.remotes.get(NET.card); if (!r) return null;
   const c = el('div', 'pcard paper hit', '<button class="x" aria-label="Close">×</button><h3></h3><small></small><div class="acts"></div>');
-  c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = r.token ? 'Chog holder · #' + r.token : 'Free Chog';
+  c.querySelector('h3').textContent = r.name; c.querySelector('small').textContent = r.token ? 'Chog holder · #' + chogNo(r.token) : 'Free Chog';
   const im = el('img', 'art'); im.alt = ''; im.src = artOf(r.token); im.onerror = () => { im.onerror = null; im.src = GUEST_ART; }; c.insertBefore(im, c.firstChild.nextSibling);      // their NFT (or the guest drawing) beside the name
   c.querySelector('.x').onclick = () => NET.closeCard();
   const acts = c.querySelector('.acts'), muted = NET.isMuted(r);
@@ -346,6 +348,7 @@ function meBadge() {
 }
 function render() {
   const root = document.getElementById('ui'); root.innerHTML = ''; applySkin();
+  if (UI.startEl) root.appendChild(UI.startEl);
   root.appendChild(meBadge());
   const tr = el('div', 'topright'), mm = el('div', 'mmwrap'); mm.appendChild(minimap(176)); mm.appendChild(el('div', 'loc', '<span class="locname">Chog Plaza</span>')); tr.appendChild(mm); tr.appendChild(walletButton('btn')); root.appendChild(tr);
   root.appendChild(chatBox()); root.appendChild(dock('dock', true)); root.appendChild(hint());
@@ -364,6 +367,21 @@ addEventListener('resize', fitUI);
 addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'KeyK' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[2]); if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[6]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (typeof NPC !== 'undefined' && NPC.card) NPC.closeCard(); else if (UI.open) { UI.open = null; render(); } }
   if ((e.code === 'Enter' || e.code === 'NumpadEnter') && _chat) { const i = _chat.querySelector('input'); if (!i.disabled) { e.preventDefault(); i.focus(); } } });
 
+// ---- the start screen: connect a wallet or walk in as a guest (the town runs behind it)
+function startScreen() {
+  if (UI.startEl) return;
+  const m = el('div', 'start hit'), box = el('div', 'card');
+  box.innerHTML = `<h1>Chog Hotel</h1><p class="tag">Check in. Never check out.</p>
+    <p class="wnote">Hold a Chog Genesis NFT? Connect and play as your own Chog. No NFT? Walk in as a guest: everything is free.</p><div class="acts"></div>`;
+  const close = () => { m.classList.add('out'); setTimeout(() => { UI.startEl = null; render(); }, 250); };
+  const c = el('button', 'btn', "Connect wallet <small>(we won't rug you)</small>");
+  c.onclick = connectFlow;                                                                 // the screen closes itself once an account connects (below)
+  const g = el('button', 'btn ghost', 'Play as a guest'); g.onclick = close;
+  box.querySelector('.acts').appendChild(c); box.querySelector('.acts').appendChild(g);
+  m.appendChild(box); UI.startEl = m; render();
+}
+WALLET.on('account', a => { if (a && UI.startEl) { UI.startEl.classList.add('out'); setTimeout(() => { UI.startEl = null; render(); }, 250); } });
+
 (async function initUI() {
   const root = el('div'); root.id = 'ui'; document.body.appendChild(root);
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'css/ui.css'; document.head.appendChild(css);
@@ -375,10 +393,14 @@ addEventListener('keydown', e => { if (e.target.matches && e.target.matches('inp
   WALLET.on('error', m => { if (!document.querySelector('#ui .modal.walletm')) toast(/gas/i.test(m) ? cx('errors', 'gas', m) : /not found|no wallet|install/i.test(m) ? cx('errors', 'walletNotFound', m) : /rate.?limit|too many/i.test(m) ? cx('errors', 'rateLimited', m) : m); });
   WALLET.on('owned', async ids => {
     if (!ids.length) { if (WALLET.account) toast('No Chog found in this wallet. You can still play as a Guest Chog.'); render(); return; }
-    let want = ids[0]; try { const s = +localStorage.getItem('chog_sel'); if (ids.includes(s)) want = s; } catch (e) { /* ignore */ }
-    toast(ids.length > 1 ? `You hold ${ids.length} Chogs` : `Welcome back, Chog #${want}`); await chooseChog(want);
+    let want = ids[0], saved = false; try { const s = +localStorage.getItem('chog_sel'); if (ids.includes(s)) { want = s; saved = true; } } catch (e) { /* ignore */ }
+    await chooseChog(want);
+    if (ids.length > 1 && !saved) { toast(`You hold ${ids.length} Chogs. Pick the one you want to be.`); UI.open = 'chog'; render(); }
+    else toast(`Welcome back, Chog #${chogNo(want)}`);
   });
-  WALLET.resume();
-  const as = QS.get('as'); if (as) await chooseChog(+as, true);                        // ?as=1700 previews a token without a wallet
+  const as = QS.get('as');
+  let resumed = null; try { resumed = localStorage.getItem('chog_wallet'); } catch (e) { /* ignore */ }
+  if (!as && !QS.has('room') && !resumed) startScreen();                                   // first visit, or played as a guest last time: choose how to enter
+  WALLET.resume().then(ok => { if (!ok && resumed && !as) startScreen(); }).catch(() => { if (resumed && !as) startScreen(); }); if (as) await chooseChog(+as, true);                        // ?as=1700 previews a token without a wallet
   if (QS.has('open')) { UI.open = ['venues', 'settings'].includes(QS.get('open')) ? QS.get('open') : 'chog'; render(); }   // ?open=venues|settings|1
 })();
