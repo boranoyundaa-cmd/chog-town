@@ -35,6 +35,9 @@ async function main() {
     eval: async expr => { const r = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception ? r.exceptionDetails.exception.description : r.exceptionDetails.text); return r.result.value; },
     shot: async name => { const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false, optimizeForSpeed: true }); fs.writeFileSync(path.join(SHOTS, name), Buffer.from(r.data, 'base64')); },
   };
-  try { await require(path.resolve(process.argv[2]))(api); } finally { ws.close(); edge.kill(); }
+  try { await require(path.resolve(process.argv[2]))(api); } finally {
+    await send('Browser.close').catch(() => {}); ws.close(); edge.kill();
+    if (process.platform === 'win32') try { require('child_process').execSync(`taskkill /F /T /PID ${edge.pid}`, { stdio: 'ignore' }); } catch (e) { /* already gone */ }   // Edge outlives its launcher on Windows and keeps rendering the page
+  }
 }
 main().catch(e => { console.error(e); process.exit(1); });
