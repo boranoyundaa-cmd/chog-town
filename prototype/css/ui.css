@@ -315,21 +315,34 @@ body.neon #levbox { background: rgba(20, 10, 44, .94); color: #f2eaff; border-co
 #levchip { position: fixed; left: 50%; bottom: 190px; transform: translate(-50%, 16px); z-index: 8; display: flex; align-items: center; gap: 9px; padding: 9px 20px 9px 14px; border-radius: 999px; background: #fff4cf; color: #5a3a08; border: 2px solid #e8b83a; box-shadow: 0 8px 22px rgba(40, 20, 70, .35); font: 600 17px "Fredoka", "Nunito", sans-serif; opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; }
 #levchip.on { opacity: 1; transform: translate(-50%, 0); }
 body.levcut canvas { cursor: default !important; }
-/* start screen: connect a wallet or enter as a guest; the town keeps moving behind it */
-#ui .start { position: fixed; inset: 0; z-index: 60; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(20, 6, 40, .25), rgba(20, 6, 40, .7)); backdrop-filter: blur(3px); transition: opacity .25s; }
+/* start screen: a title screen over the living town, not a window. Left: the name and the way in; right: your Chog. */
+#ui .start { position: fixed; inset: 0; z-index: 60; pointer-events: auto; display: flex; align-items: center; justify-content: space-between; padding: 0 9vw; gap: 4vw;
+  background: linear-gradient(90deg, rgba(24, 8, 48, .92) 0%, rgba(24, 8, 48, .78) 38%, rgba(24, 8, 48, .25) 75%, rgba(24, 8, 48, .45) 100%); backdrop-filter: blur(2px); transition: opacity .3s; color: #fff; }
 #ui .start.out { opacity: 0; }
-#ui .start .card { width: 420px; padding: 26px 28px 24px; text-align: center; animation: startIn .45s cubic-bezier(.2, 1.4, .4, 1) both; }
-#ui .start h1 { margin: 0; font-family: var(--hf); font-weight: var(--hw); font-size: 46px; color: var(--wood0); letter-spacing: .01em; }
-#ui .start .tag { margin: 2px 0 14px; font-size: 15px; opacity: .75; }
-#ui .start .wnote { margin: 0 4px 18px; font-size: 14px; line-height: 1.45; font-weight: 600; }
-#ui .start .acts { display: flex; flex-direction: column; gap: 10px; }
-#ui .start .btn { font-size: 17px; padding: 12px 20px; } #ui .start .btn small { font-size: 13px; opacity: .75; }
-@keyframes startIn { from { transform: translateY(14px) scale(.96); opacity: 0; } }
-#ui .start .who { display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; text-align: left; justify-content: center; }
-#ui .start .who .av { width: 84px; height: 84px; border-radius: 16px; border: 4px solid var(--wood0); background-size: cover; background-position: center; flex: none; }
-#ui .start .who b { display: block; font-family: var(--hf); font-weight: var(--hw); font-size: 26px; color: var(--wood0); } #ui .start .who small { display: block; opacity: .7; font-size: 13px; }
-#ui .start .pl { display: block; margin: 0 0 6px; opacity: .75; } #ui .start .pick { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
-#ui .start .pick .mini { width: 58px; height: 58px; border-radius: 12px; border: 3px solid var(--wood2); background-size: cover; background-position: center; cursor: pointer; opacity: .7; }
-#ui .start .pick .mini.on { border-color: var(--gold); opacity: 1; box-shadow: 0 0 0 3px var(--wood0); }
-#ui .start .link { background: none; border: 0; margin-top: 4px; font: inherit; font-size: 13px; color: var(--ink); opacity: .65; text-decoration: underline; cursor: pointer; }
-#ui .start .btn[disabled] { opacity: .5; }
+#ui .start .sl { max-width: 520px; animation: stIn .6s cubic-bezier(.2, 1.2, .4, 1) both; }
+#ui .start h1 { margin: 0; font: 700 112px/0.92 "Fredoka", sans-serif; letter-spacing: -.01em; background: linear-gradient(180deg, #ffe680, #ff9ad0); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 5px 0 #1a0a2e) drop-shadow(0 14px 24px rgba(10, 0, 30, .6)); }
+#ui .start .tag { margin: 18px 0 26px; font: 600 26px "Fredoka", sans-serif; color: #fff; opacity: .95; }
+#ui .start .msg { margin: 0 0 26px; font: 600 17px/1.45 "Nunito", sans-serif; color: #e8dcff; max-width: 440px; }
+#ui .start .acts { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; }
+#ui .start .big { min-width: 320px; padding: 16px 30px; border-radius: 16px; border: 0; cursor: pointer; font: 700 22px "Fredoka", sans-serif; color: #1a0a2e; background: linear-gradient(180deg, #ffe680, #ffc23a); box-shadow: 0 5px 0 #a8651a, 0 12px 24px rgba(10, 0, 30, .5); text-align: left; transition: transform .1s, box-shadow .1s; }
+#ui .start .big:hover { transform: translateY(-2px); } #ui .start .big:active { transform: translateY(3px); box-shadow: 0 2px 0 #a8651a; }
+#ui .start .big small { display: block; font: 600 13px "Nunito", sans-serif; opacity: .7; }
+#ui .start .big.ghost { background: rgba(255, 255, 255, .1); color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .45); }
+#ui .start .big[disabled] { opacity: .5; cursor: default; }
+#ui .start .link { background: none; border: 0; padding: 4px 2px; font: 600 14px "Nunito", sans-serif; color: #cbb8f0; text-decoration: underline; cursor: pointer; }
+#ui .start .sr { display: flex; flex-direction: column; align-items: center; animation: stIn .7s .1s cubic-bezier(.2, 1.2, .4, 1) both; }
+#ui .start .sr .art { width: min(34vw, 420px); aspect-ratio: 1; border-radius: 28px; background-size: cover; background-position: center; border: 6px solid #fff; box-shadow: 0 0 0 6px #1a0a2e, 0 24px 50px rgba(10, 0, 30, .6); transform: rotate(2deg); }
+#ui .start .sr b { margin-top: 24px; font: 700 40px "Fredoka", sans-serif; color: #fff; text-shadow: 0 3px 0 #1a0a2e; } #ui .start .sr small { font: 700 15px "Nunito", sans-serif; color: #ffd84a; text-transform: uppercase; letter-spacing: .12em; }
+#ui .start .pick { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; max-width: 440px; margin-top: 18px; }
+#ui .start .pick .mini { width: 56px; height: 56px; border-radius: 12px; border: 3px solid rgba(255, 255, 255, .35); background-size: cover; background-position: center; cursor: pointer; opacity: .75; transition: transform .1s, opacity .1s; }
+#ui .start .pick .mini:hover { opacity: 1; transform: translateY(-2px); } #ui .start .pick .mini.on { border-color: #ffd84a; opacity: 1; box-shadow: 0 0 0 3px #1a0a2e; }
+#ui .start .foot { position: absolute; left: 9vw; bottom: 28px; font: 700 13px "Nunito", sans-serif; color: rgba(255, 255, 255, .55); letter-spacing: .04em; }
+@keyframes stIn { from { transform: translateY(18px); opacity: 0; } }
+/* username: claim a name in My Chog */
+#ui .unrow { margin: 10px 16px 4px; } #ui .unrow small { display: block; margin-bottom: 6px; font-size: 12.5px; opacity: .75; }
+#ui .unin { display: flex; gap: 8px; }
+#ui .unin input { flex: 1; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 3px solid var(--wood2); background: #fffaf0; color: var(--ink); font: 700 15px "Nunito", sans-serif; outline: none; box-shadow: inset 0 2px 4px rgba(58, 32, 18, .15); }
+#ui .unin input:focus { border-color: var(--gold); } #ui .unin input::placeholder { color: rgba(58, 36, 24, .45); }
+#ui .unin .btn { padding: 8px 16px; font-size: 14px; }
+#ui .modal.walletm { z-index: 70; }
+body.starting #cbanner, body.starting #ctip, body.starting #fswp, body.starting #tourpin, body.starting #doorp, body.starting #hotelp, body.starting #tonight, body.starting #hlcap, body.starting #hlgo, body.starting #plates { visibility: hidden; }

@@ -41,13 +41,13 @@ const HAT = {
     for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) { const t = i / 3, a = t * 1.8, r = 0.24 - t * 0.12; const seg = cm(new THREE.CylinderGeometry(0.075 - t * 0.04, 0.09 - t * 0.04, 0.17, 7), i % 2 ? new THREE.Color(s.c).multiplyScalar(0.85).getHex() : s.c, sx * (0.32 + Math.sin(a) * 0.2), 0.48 + t * 0.2 - Math.cos(a) * 0.05, -0.05); seg.rotation.z = -sx * (0.5 + a * 0.7); head.add(seg); }
   },
   spikes(head, o, s) { for (const [x, y, r, h, rz] of s.list) { const c = cm(new THREE.ConeGeometry(r, h, 7), s.c, x, y, -0.06); c.rotation.z = rz; head.add(c); head.add(cm(new THREE.CylinderGeometry(r * 1.02, r * 1.25, 0.04, 7), new THREE.Color(s.c).multiplyScalar(0.7).getHex(), x - Math.sin(rz) * h * -0.45 * 0 + 0, y - h * 0.5 * Math.cos(rz), -0.06)); } },
-  band(head, o, s) {                                                                    // a headband / bandana around the forehead with a knot and tails
-    if (o && o.radio) {                                                                 // on a radioactive head the wrap is see-through red across the forehead, above the eyes, as in the art
-      const w = cm(new THREE.CylinderGeometry(0.5, 0.5, 0.2, 20, 1, true), s.c, 0, 0.27, -0.1, true); w.material = w.material.clone(); Object.assign(w.material, { transparent: true, opacity: 0.6, depthWrite: false }); w.userData.noOutline = true; w.scale.set(1, 1, 1.02); head.add(w);
-      HAT.ring(head, 0.5, 0.02, 0.37, s.c, -0.1, 1.02); HAT.ring(head, 0.51, 0.02, 0.17, s.c, -0.1, 1.02);
+  band(head, o, s) {                                                                    // a headband / bandana around the forehead
+    if (s.knot) {                                                                       // a cloth bandana: a wide band hugging the forehead, a bow knot on top, as in the art
+      const b = cm(new THREE.CylinderGeometry(0.43, 0.465, 0.16, 22, 1, true), s.c, 0, 0.27, -0.04, true); b.scale.set(1, 1, 1.04); b.userData.noOutline = true; head.add(b); HAT.ring(head, 0.465, 0.011, 0.19, INK, -0.04, 1.04); HAT.ring(head, 0.43, 0.011, 0.35, INK, -0.04, 1.04);
+      const k = cm(new THREE.SphereGeometry(0.07, 8, 6), s.c, 0.06, 0.4, 0.12); k.scale.set(1, 0.8, 0.9); head.add(k);
+      for (const sx of [-1, 1]) { const l = cm(new THREE.ConeGeometry(0.09, 0.22, 4), s.c, 0.06 + sx * 0.11, 0.47, 0.1); l.rotation.z = -sx * 0.9; l.scale.set(1, 1, 0.45); head.add(l); }
     } else HAT.ring(head, 0.5, 0.045, 0.2, s.c, -0.1, 1.05);
     if (s.dot) head.add(decal(new THREE.CircleGeometry(0.06, 14), s.dot, 0, 0.2, 0.43));
-    if (s.knot) { head.add(cm(new THREE.SphereGeometry(0.075, 7, 6), s.c, -0.5, 0.2, -0.1)); for (const dy of [-0.07, -0.16]) { const t = cm(new THREE.BoxGeometry(0.07, 0.17, 0.03), s.c, -0.55, 0.18 + dy, -0.16); t.rotation.z = 0.2; head.add(t); } }
   },
   afro(head, o, s) { for (const [x, y, z, r, c] of s.puffs) head.add(cm(new THREE.IcosahedronGeometry(r, 1), c, x, y, z)); },
   gem(head, o, s) { const g = cm(new THREE.OctahedronGeometry(0.075), s.c, 0, 0.17, 0.4); g.scale.set(1, 1.3, 0.7); head.add(g); },
