@@ -82,9 +82,12 @@ const ROOM = {
     } finally { ROOM.busy = false; ROOM.refreshUI(); }
   }
   // a hotel venue: a room document the server serves to anyone who walks in (not editable, not a Home). Returns true when it opened.
+  // the size of a room before the server says it (the hotel list has no sizes): the server places you where you say you entered, so this must be the door, not the middle,
+  // or the first steps look too fast to it and it pulls you back to the middle
+  const guessSize = v => v.size || (typeof VENUE !== 'undefined' && VENUE.mine && VENUE.mine.id === v.id && VENUE.mine.size) || ([[14, 10], [22, 16], [27, 20], [27, 20], [33, 22]][v.tier] || [22, 16]);      // server/hotel.js TEMPLATES; the game's own venues (no tier) are 22 x 16
   ROOM.enterVenue = async function (v, lv) {
     if (ROOM.busy) return false; ROOM.busy = true;
-    const level = lv === 2 ? 2 : 1, arrive = ROOM.active ? 'stairs' : null, SPAWN_AT = ROOM.active && ROOM.venue ? scatter(spawnIn(ROOM.venue.size, arrive)) : { x: 0, z: 0, ry: 0 };          // (from the hotel the size is not known yet: the server answers with it)
+    const level = lv === 2 ? 2 : 1, arrive = ROOM.active ? 'stairs' : null, SPAWN_AT = scatter(spawnIn(ROOM.active && ROOM.venue ? ROOM.venue.size : guessSize(v), arrive));          // (from the hotel the size is not known yet: the server answers with it)
     try {
       const r = await NET.enter(Object.assign({ space: 'venue', id: v.id, level }, SPAWN_AT)); if (!r || r.t !== 'entered') return false;
       if (typeof HOTEL !== 'undefined' && HOTEL.active) { HOTEL.hideScene(true); HOTEL.away = true; }
