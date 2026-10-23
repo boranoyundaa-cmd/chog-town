@@ -51,7 +51,7 @@ function auraTexture(name, s) {
 function chogAuraLook(root, o) {
   const s = AURA_LOOK[o.auraName]; if (!s) return false;
   const g = new THREE.Group(), sc = s.c, bits = []; root.add(g);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: auraTexture(o.auraName, s), transparent: true, opacity: s.soft ? 0.45 : 0.55, depthWrite: false })); sp.scale.set(2.3, 2.3, 1); sp.position.set(0, 0.95, -0.55); sp.userData.noNormal = true; g.add(sp);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: auraTexture(o.auraName, s), transparent: true, opacity: s.soft ? 0.45 : 0.55, depthWrite: false })); sp.scale.set(2.2, 2.2, 1); sp.position.set(0, 1.2, -0.55); sp.userData.noNormal = true; g.add(sp);
   // no ground ring: it read as a big circle around the player (owner, 2026-10-23)
   const st = s.st;
   if (st === 'flame') for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, f = glowM(new THREE.ConeGeometry(0.07, 0.4, 4), i % 2 ? sc[2] : sc[0], 0.8); f.position.set(Math.cos(a) * 0.5, 0.2, Math.sin(a) * 0.5); g.add(f); bits.push([f, i]); }
