@@ -82,7 +82,7 @@ async function chooseChog(id, demo = false) {
   const tr = id ? await WALLET.traitsOf(id).catch(() => null) : null;
   GAME.setTraits(tr || DEFAULT_TRAITS); if (!tr) UI.sel = null;
   try { localStorage.setItem('chog_sel', UI.sel && !demo ? String(UI.sel) : ''); } catch (e) { /* ignore */ }
-  render(); NET.appear(UI.sel && !demo ? UI.sel : null);
+  render(); if (UI.fillStart) UI.fillStart(); NET.appear(UI.sel && !demo ? UI.sel : null);
 }
 const curTraits = () => (UI.sel && traitsFor(UI.sel)) || DEFAULT_TRAITS;
 const isHolder = () => !!UI.sel;
@@ -236,8 +236,15 @@ async function connectFlow() {
     for (const p of list) { const b = el('button', 'btn ghost wal', (p.info.icon ? `<img src="${p.info.icon}" width="22" height="22" style="vertical-align:middle;margin-right:8px;border-radius:6px">` : '') + p.info.name); b.onclick = () => { close(); go(p); }; box.appendChild(b); }
   });
 }
+function walletMenu() {
+  walletModal(shortAddr(WALLET.account), (box, close) => {
+    box.appendChild(note(WALLET.owned.length ? `Connected. ${WALLET.owned.length} Chog${WALLET.owned.length > 1 ? 's' : ''} in this wallet.` : 'Connected. No Chog in this wallet.'));
+    const a = el('button', 'btn ghost wal', 'My Chog'); a.onclick = () => { close(); menuClick(MENU[0]); }; box.appendChild(a);
+    const d = el('button', 'btn wal', 'Disconnect'); d.onclick = () => { close(); WALLET.disconnect(); chooseChog(null); }; box.appendChild(d);
+  });
+}
 function walletButton(cls = 'btn') {
-  if (WALLET.account) { const p = el('button', cls + ' ghost wallet hit', `<span class="dot"></span>${shortAddr(WALLET.account)}`); p.onclick = () => menuClick(MENU[0]); return p; }
+  if (WALLET.account) { const p = el('button', cls + ' ghost wallet hit', `<span class="dot"></span>${shortAddr(WALLET.account)}`); p.onclick = walletMenu; return p; }
   const b = el('button', cls + ' wallet hit', cx('buttons', 'connect', 'Connect wallet')); b.onclick = connectFlow; return b;
 }
 
@@ -367,20 +374,39 @@ addEventListener('resize', fitUI);
 addEventListener('keydown', e => { if (e.target.matches && e.target.matches('input,textarea')) return; if (e.code === 'KeyC') menuClick(MENU[0]); if (e.code === 'KeyV') menuClick(MENU[3]); if (e.code === 'KeyR' && typeof ROOM !== 'undefined' && !ROOM.editing()) menuClick(MENU[1]); if (e.code === 'KeyO') menuClick(MENU[4]); if (e.code === 'KeyK' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[2]); if (e.code === 'KeyM' && !e.ctrlKey && !e.metaKey && !e.altKey) menuClick(MENU[6]); if (e.code === 'Escape') { if (NET.card) NET.closeCard(); else if (typeof NPC !== 'undefined' && NPC.card) NPC.closeCard(); else if (UI.open) { UI.open = null; render(); } }
   if ((e.code === 'Enter' || e.code === 'NumpadEnter') && _chat) { const i = _chat.querySelector('input'); if (!i.disabled) { e.preventDefault(); i.focus(); } } });
 
-// ---- the start screen: connect a wallet or walk in as a guest (the town runs behind it)
+// ---- the start screen: every visit opens on it, the town running behind. Without a wallet: connect, or walk in as a guest.
+// With one: welcome back, pick which Chog to be (when the wallet holds several), Play.
 function startScreen() {
   if (UI.startEl) return;
-  const m = el('div', 'start hit'), box = el('div', 'card');
-  box.innerHTML = `<h1>Chog Hotel</h1><p class="tag">Check in. Never check out.</p>
-    <p class="wnote">Hold a Chog Genesis NFT? Connect and play as your own Chog. No NFT? Walk in as a guest: everything is free.</p><div class="acts"></div>`;
-  const close = () => { m.classList.add('out'); setTimeout(() => { UI.startEl = null; render(); }, 250); };
-  const c = el('button', 'btn', "Connect wallet <small>(we won't rug you)</small>");
-  c.onclick = connectFlow;                                                                 // the screen closes itself once an account connects (below)
-  const g = el('button', 'btn ghost', 'Play as a guest'); g.onclick = close;
-  box.querySelector('.acts').appendChild(c); box.querySelector('.acts').appendChild(g);
-  m.appendChild(box); UI.startEl = m; render();
+  const m = el('div', 'start hit'), box = el('div', 'card'); m.appendChild(box); UI.startEl = m;
+  UI.fillStart = () => {
+    if (!UI.startEl) return;
+    const acc = WALLET.account, ids = WALLET.owned || [];
+    box.innerHTML = `<h1>Chog Hotel</h1><p class="tag">Check in. Never check out.</p><div class="body"></div><div class="acts"></div>`;
+    const body = box.querySelector('.body'), acts = box.querySelector('.acts');
+    if (!acc && UI.resuming) body.appendChild(el('p', 'wnote', 'Reconnecting your wallet…'));
+    else if (!acc) body.appendChild(el('p', 'wnote', 'Hold a Chog Genesis NFT? Connect and play as your own Chog. No NFT? Walk in as a guest: everything is free.'));
+    else if (!ids.length) body.appendChild(el('p', 'wnote', WALLET.scanning > 0 || !UI.ownedSeen ? 'Looking for your Chogs…' : 'Welcome! No Chog in this wallet, so you play as a guest Chog. Everything is still free.'));
+    else {
+      const tr = curTraits(); body.innerHTML = `<div class="who"><span class="av" style="background-image:url(${artOf(UI.sel)}), url(${portrait(tr)})"></span><div><small>Welcome back</small><b>${playerName()}</b><small>${tr.Tier || ''}</small></div></div>`;
+      if (ids.length > 1) {
+        const row = el('div', 'pick'); body.appendChild(el('small', 'pl', 'Which Chog do you want to be?'));
+        for (const id of ids) { const b = el('button', 'mini' + (UI.sel === id ? ' on' : '')); b.style.backgroundImage = `url(${artOf(id)}), url(${portrait(traitsFor(id))})`; b.title = 'Chog #' + chogNo(id); b.onclick = async () => { await chooseChog(id); UI.fillStart(); }; row.appendChild(b); }
+        body.appendChild(row);
+      }
+    }
+    if (acc) {
+      const p = el('button', 'btn', 'Play'); p.onclick = closeStart; acts.appendChild(p);
+      const d = el('button', 'link', 'Not you? Disconnect ' + shortAddr(acc)); d.onclick = () => { WALLET.disconnect(); chooseChog(null); }; acts.appendChild(d);
+    } else {
+      const c = el('button', 'btn', "Connect wallet <small>(we won't rug you)</small>"); c.onclick = connectFlow; if (UI.resuming) c.disabled = true; acts.appendChild(c);
+      const g = el('button', 'btn ghost', 'Play as a guest'); g.onclick = closeStart; acts.appendChild(g);
+    }
+  };
+  UI.fillStart(); render();
 }
-WALLET.on('account', a => { if (a && UI.startEl) { UI.startEl.classList.add('out'); setTimeout(() => { UI.startEl = null; render(); }, 250); } });
+function closeStart() { if (!UI.startEl) return; UI.startEl.classList.add('out'); if (typeof AUDIO !== 'undefined' && AUDIO.sfx) try { AUDIO.sfx('click'); } catch (e) { /* ignore */ } setTimeout(() => { UI.startEl = null; render(); }, 250); }
+for (const ev of ['account', 'owned', 'scan']) WALLET.on(ev, () => { if (ev === 'owned') UI.ownedSeen = true; if (ev === 'account') UI.ownedSeen = false; if (UI.fillStart) setTimeout(() => UI.fillStart(), 0); });
 
 (async function initUI() {
   const root = el('div'); root.id = 'ui'; document.body.appendChild(root);
@@ -395,12 +421,14 @@ WALLET.on('account', a => { if (a && UI.startEl) { UI.startEl.classList.add('out
     if (!ids.length) { if (WALLET.account) toast('No Chog found in this wallet. You can still play as a Guest Chog.'); render(); return; }
     let want = ids[0], saved = false; try { const s = +localStorage.getItem('chog_sel'); if (ids.includes(s)) { want = s; saved = true; } } catch (e) { /* ignore */ }
     await chooseChog(want);
+    if (UI.startEl) return;                                                                 // the start screen greets and offers the pick
     if (ids.length > 1 && !saved) { toast(`You hold ${ids.length} Chogs. Pick the one you want to be.`); UI.open = 'chog'; render(); }
     else toast(`Welcome back, Chog #${chogNo(want)}`);
   });
   const as = QS.get('as');
-  let resumed = null; try { resumed = localStorage.getItem('chog_wallet'); } catch (e) { /* ignore */ }
-  if (!as && !QS.has('room') && !resumed) startScreen();                                   // first visit, or played as a guest last time: choose how to enter
-  WALLET.resume().then(ok => { if (!ok && resumed && !as) startScreen(); }).catch(() => { if (resumed && !as) startScreen(); }); if (as) await chooseChog(+as, true);                        // ?as=1700 previews a token without a wallet
+  try { UI.resuming = !!localStorage.getItem('chog_wallet'); } catch (e) { /* ignore */ }
+  if (!as && !QS.has('room')) startScreen();                                                // every visit opens on the start screen
+  const doneResume = () => { UI.resuming = false; if (UI.fillStart) UI.fillStart(); };
+  WALLET.resume().then(doneResume, doneResume); if (as) await chooseChog(+as, true);                        // ?as=1700 previews a token without a wallet
   if (QS.has('open')) { UI.open = ['venues', 'settings'].includes(QS.get('open')) ? QS.get('open') : 'chog'; render(); }   // ?open=venues|settings|1
 })();

@@ -152,8 +152,9 @@ function chogOptionsFromTraits(t) {
   Object.assign(o, MOUTHS[(t.Mouth || 'smile').toLowerCase()] || { mouth: 'smile' });
   if (t.Aura) Object.assign(o, auraOptions(t.Aura));
   if (t.Accessory) Object.assign(o, ACCESSORIES[t.Accessory.toLowerCase()] || { acc: 'badge' }, { accName: t.Accessory, cigar: false });          // chog_items.js models every value; the older single shapes stay as the fallback
-  if (radio) {  o.radio = true;                                   // a glowing head in the Skin colour, spikes and face the same colour, bare jaw
-    const tone = RADIO_TONE[t.Skin] ?? 0xa0e060; Object.assign(o, { faceC: tone, hair: tone, mouth: 'teeth' }); if (t.Skin === 'Multi Colored') { o.hairMulti = true; o.faceGrad = [0xff6ad0, 0xffa8a0, 0xffd070, 0x78e040]; }
+  if (radio) {  o.radio = true; o.noCheeks = true; o.noseC = 0x7a3050;   // a glowing skull: no blush, a dark nose hole
+                                     // a glowing head in the Skin colour, spikes and face the same colour, bare jaw
+    const tone = RADIO_TONE[t.Skin] ?? 0xa0e060; Object.assign(o, { faceC: tone, hair: tone, mouth: 'teeth' }); if (t.Skin === 'Multi Colored') { o.hairMulti = false; o.hairPalette = [0xff6ad0, 0x48b8f0, 0xff8ad8, 0x8a7af0]; o.faceGrad = [0xff6ad0, 0xffa8a0, 0xffd070, 0x78e040]; }     // spikes in the head's own pink and blue, as in the art
     if (o.aura === undefined || t.Skin === 'Multi Colored') Object.assign(o, { aura: 0x60ff40, auraStyle: 'glow' });
   }
   if (skull) {                                                    // a bald skull in the Skin colour, the eyes of the Eyes trait in dark sockets

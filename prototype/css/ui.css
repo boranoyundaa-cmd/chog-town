@@ -316,7 +316,7 @@ body.neon #levbox { background: rgba(20, 10, 44, .94); color: #f2eaff; border-co
 #levchip.on { opacity: 1; transform: translate(-50%, 0); }
 body.levcut canvas { cursor: default !important; }
 /* start screen: connect a wallet or enter as a guest; the town keeps moving behind it */
-#ui .start { position: fixed; inset: 0; z-index: 8; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(20, 6, 40, .25), rgba(20, 6, 40, .7)); backdrop-filter: blur(3px); transition: opacity .25s; }
+#ui .start { position: fixed; inset: 0; z-index: 60; pointer-events: auto; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(20, 6, 40, .25), rgba(20, 6, 40, .7)); backdrop-filter: blur(3px); transition: opacity .25s; }
 #ui .start.out { opacity: 0; }
 #ui .start .card { width: 420px; padding: 26px 28px 24px; text-align: center; animation: startIn .45s cubic-bezier(.2, 1.4, .4, 1) both; }
 #ui .start h1 { margin: 0; font-family: var(--hf); font-weight: var(--hw); font-size: 46px; color: var(--wood0); letter-spacing: .01em; }
@@ -325,3 +325,11 @@ body.levcut canvas { cursor: default !important; }
 #ui .start .acts { display: flex; flex-direction: column; gap: 10px; }
 #ui .start .btn { font-size: 17px; padding: 12px 20px; } #ui .start .btn small { font-size: 13px; opacity: .75; }
 @keyframes startIn { from { transform: translateY(14px) scale(.96); opacity: 0; } }
+#ui .start .who { display: flex; align-items: center; gap: 14px; margin: 4px 0 14px; text-align: left; justify-content: center; }
+#ui .start .who .av { width: 84px; height: 84px; border-radius: 16px; border: 4px solid var(--wood0); background-size: cover; background-position: center; flex: none; }
+#ui .start .who b { display: block; font-family: var(--hf); font-weight: var(--hw); font-size: 26px; color: var(--wood0); } #ui .start .who small { display: block; opacity: .7; font-size: 13px; }
+#ui .start .pl { display: block; margin: 0 0 6px; opacity: .75; } #ui .start .pick { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+#ui .start .pick .mini { width: 58px; height: 58px; border-radius: 12px; border: 3px solid var(--wood2); background-size: cover; background-position: center; cursor: pointer; opacity: .7; }
+#ui .start .pick .mini.on { border-color: var(--gold); opacity: 1; box-shadow: 0 0 0 3px var(--wood0); }
+#ui .start .link { background: none; border: 0; margin-top: 4px; font: inherit; font-size: 13px; color: var(--ink); opacity: .65; text-decoration: underline; cursor: pointer; }
+#ui .start .btn[disabled] { opacity: .5; }

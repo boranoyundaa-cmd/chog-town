@@ -51,11 +51,11 @@ function auraTexture(name, s) {
 function chogAuraLook(root, o) {
   const s = AURA_LOOK[o.auraName]; if (!s) return false;
   const g = new THREE.Group(), sc = s.c, bits = []; root.add(g);
-  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: auraTexture(o.auraName, s), transparent: true, opacity: s.soft ? 0.7 : 0.88, depthWrite: false })); sp.scale.set(3.0, 3.0, 1); sp.position.set(0, 0.95, -0.55); sp.userData.noNormal = true; g.add(sp);
-  const ringM = glowM(new THREE.RingGeometry(0.44, 0.58, 24), sc[0], 0.5); ringM.rotation.x = -Math.PI / 2; ringM.position.y = 0.02; g.add(ringM);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: auraTexture(o.auraName, s), transparent: true, opacity: s.soft ? 0.45 : 0.55, depthWrite: false })); sp.scale.set(2.3, 2.3, 1); sp.position.set(0, 0.95, -0.55); sp.userData.noNormal = true; g.add(sp);
+  const ringM = glowM(new THREE.RingGeometry(0.44, 0.58, 24), sc[0], 0.3); ringM.rotation.x = -Math.PI / 2; ringM.position.y = 0.02; g.add(ringM);
   const st = s.st;
   if (st === 'flame') for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, f = glowM(new THREE.ConeGeometry(0.07, 0.4, 4), i % 2 ? sc[2] : sc[0], 0.8); f.position.set(Math.cos(a) * 0.5, 0.2, Math.sin(a) * 0.5); g.add(f); bits.push([f, i]); }
-  if (st === 'swirl') for (let i = 0; i < 3; i++) { const w = glowM(new THREE.TorusGeometry(0.55 + i * 0.08, 0.012, 4, 24, 4.4), sc[i % 2], 0.7); w.rotation.x = Math.PI / 2; w.position.y = 0.35 + i * 0.4; g.add(w); bits.push([w, i]); }
+  if (st === 'swirl') for (let i = 0; i < 3; i++) { const w = glowM(new THREE.TorusGeometry(0.55 + i * 0.08, 0.012, 4, 24, 4.4), sc[i % 2], 0.4); w.rotation.x = Math.PI / 2; w.position.y = 0.35 + i * 0.4; g.add(w); bits.push([w, i]); }
   if (st === 'smoke') for (let i = 0; i < 6; i++) { const b = glowM(new THREE.SphereGeometry(0.1, 6, 5), sc[i % 2], 0.35); g.add(b); bits.push([b, i]); }
   if (st === 'petal') for (let i = 0; i < 7; i++) { const b = glowM(new THREE.CircleGeometry(0.07, 5), sc[i % 2], 0.8); b.scale.set(1, 0.55, 1); g.add(b); bits.push([b, i]); }
   root.userData.tick = t => {
