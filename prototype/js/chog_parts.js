@@ -47,7 +47,7 @@ function chogEyes(face, o) {
     case 'flat': for (const sx of [-1, 1]) { const e = decal(new THREE.CircleGeometry(1, 18), ec, sx * 0.125, 0.02, 0.036, 0.07, 0.095); e.userData.by = 0.095; face.add(e); blink.push(e); } brows(0.1); break;
     case 'clown': for (const sx of [-1, 1]) { face.add(decal(new THREE.CircleGeometry(1, 18), ec, sx * 0.125, 0.02, 0.035, 0.09, 0.115)); const e = decal(new THREE.CircleGeometry(1, 18), 0xffffff, sx * 0.125, 0.02, 0.037, 0.065, 0.088); face.add(e); face.add(decal(new THREE.CircleGeometry(0.03, 10), DARK, sx * 0.125, 0.02, 0.04)); } brows(0.1); break;
     case 'laser':
-      for (const sx of [-1, 1]) { round(sx); const b = glowM(new THREE.CylinderGeometry(0.02, 0.03, 0.7, 6), ec, 0.9); b.rotation.set(Math.PI / 2, 0, 0); const g = new THREE.Group(); g.add(b); b.position.z = 0.36; g.position.set(sx * 0.125, 0.02, 0.05); g.rotation.y = sx * 0.55; face.add(g); }
+      for (const sx of [-1, 1]) { round(sx); const b = glowM(new THREE.CylinderGeometry(0.024, 0.03, 0.34, 6), ec, 0.9); b.rotation.set(Math.PI / 2, 0, 0); const g = new THREE.Group(); g.add(b); b.position.z = 0.18; g.position.set(sx * 0.125, 0.02, 0.05); face.add(g); }
       brows(0.3); break;
     case 'visor': {
       const m = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.15), new THREE.MeshBasicMaterial({ map: gradTex(ec, o.eyeColor2 ?? ec) })); m.position.set(0, 0.03, 0.046); m.userData.noOutline = true; face.add(m);

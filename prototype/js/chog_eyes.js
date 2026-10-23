@@ -23,9 +23,9 @@ function eyeBuilder(face, o) {
     lid(x, y, w, h, c) { return b.line(x, y, w, h, 0, c || o.faceC || 0xfdf3cc); },
     tears(sx, long = 0.2) { b.line(sx * 0.155, -0.09, 0.04, long, 0, 0xa8d8f0); b.oval(sx * 0.155, -0.09 - long / 2, 0.022, 0.022, 0xa8d8f0); },
     beam(sx, c, core) {                                                                    // a laser leaving the eye (glow objects, not drawn in portraits)
-      const g = new THREE.Group(), m = glowM(new THREE.CylinderGeometry(0.022, 0.034, 0.7, 6), c, 0.9); m.rotation.x = Math.PI / 2; m.position.z = 0.36; g.add(m);
-      if (core) { const k = glowM(new THREE.CylinderGeometry(0.01, 0.016, 0.7, 5), core, 1); k.rotation.x = Math.PI / 2; k.position.z = 0.36; g.add(k); }
-      g.position.set(sx * EYE_X, EYE_Y, 0.05); g.rotation.y = sx * 0.55; face.add(g);
+      const g = new THREE.Group(), m = glowM(new THREE.CylinderGeometry(0.024, 0.03, 0.34, 6), c, 0.9); m.rotation.x = Math.PI / 2; m.position.z = 0.18; g.add(m);    // straight ahead and parallel, short (angled beams looked cross-eyed)
+      if (core) { const k = glowM(new THREE.CylinderGeometry(0.01, 0.014, 0.34, 5), core, 1); k.rotation.x = Math.PI / 2; k.position.z = 0.18; g.add(k); }
+      g.position.set(sx * EYE_X, EYE_Y, 0.05); face.add(g);
     },
     visor(stops, w = 0.62, h = 0.16, y = 0.03, frame = 0x20182c) {                         // a wide strip over both eyes with a colour gradient
       const m = add(new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: gradStops(stops) }))); m.position.set(0, y, z() + 0.01); m.userData.noOutline = true;
