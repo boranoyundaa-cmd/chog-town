@@ -48,6 +48,7 @@ function auraTexture(name, s) {
   }
   const t = new THREE.CanvasTexture(cv); t.anisotropy = 4; return AURA_TEX[name] = t;
 }
+const AURA_V = new THREE.Vector3(), AURA_Q = new THREE.Quaternion();
 function chogAuraLook(root, o) {
   const s = AURA_LOOK[o.auraName]; if (!s) return false;
   const g = new THREE.Group(), sc = s.c, bits = []; root.add(g);
@@ -55,11 +56,12 @@ function chogAuraLook(root, o) {
   // no ground ring: it read as a big circle around the player (owner, 2026-10-23)
   const st = s.st;
   if (st === 'flame') for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2, f = glowM(new THREE.ConeGeometry(0.07, 0.4, 4), i % 2 ? sc[2] : sc[0], 0.8); f.position.set(Math.cos(a) * 0.5, 0.2, Math.sin(a) * 0.5); g.add(f); bits.push([f, i]); }
-  if (st === 'swirl' && false) for (let i = 0; i < 3; i++) {                                        // the rings around the body read as a big yellow circle: off const w = glowM(new THREE.TorusGeometry(0.55 + i * 0.08, 0.012, 4, 24, 4.4), sc[i % 2], 0.4); w.rotation.x = Math.PI / 2; w.position.y = 0.35 + i * 0.4; g.add(w); bits.push([w, i]); }
   if (st === 'smoke') for (let i = 0; i < 6; i++) { const b = glowM(new THREE.SphereGeometry(0.1, 6, 5), sc[i % 2], 0.35); g.add(b); bits.push([b, i]); }
   if (st === 'petal') for (let i = 0; i < 7; i++) { const b = glowM(new THREE.CircleGeometry(0.07, 5), sc[i % 2], 0.8); b.scale.set(1, 0.55, 1); g.add(b); bits.push([b, i]); }
   root.userData.tick = t => {
-    sp.material.rotation = Math.sin(t * 0.35) * 0.05; const k = 1 + 0.025 * Math.sin(t * 1.7); sp.scale.set(3.0 * k, 3.0 * k, 1);
+    sp.material.rotation = Math.sin(t * 0.35) * 0.05; const k = 1 + 0.025 * Math.sin(t * 1.7); sp.scale.set(2.2 * k, 2.2 * k, 1);
+    // centred on the Chog and always straight behind it as the camera sees it, whichever way it faces (it used to swing round with the body)
+    if (typeof cam !== 'undefined') { cam.getWorldDirection(AURA_V); AURA_V.y = 0; AURA_V.normalize().multiplyScalar(0.5); AURA_V.y = 0; root.getWorldQuaternion(AURA_Q).invert(); AURA_V.applyQuaternion(AURA_Q); sp.position.set(AURA_V.x, 1.2, AURA_V.z); }
     if (st === 'bolt') sp.material.opacity = 0.55 + 0.4 * Math.abs(Math.sin(t * 9) * Math.sin(t * 3.1));
     for (const [b, i] of bits) {
       if (st === 'flame') { b.scale.y = 0.75 + 0.45 * Math.abs(Math.sin(t * 6 + i * 1.7)); b.position.y = 0.05 + 0.2 * b.scale.y; }
