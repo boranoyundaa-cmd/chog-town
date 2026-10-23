@@ -51,6 +51,7 @@ function auraTexture(name, s) {
 const AURA_V = new THREE.Vector3(), AURA_Q = new THREE.Quaternion();
 function chogAuraLook(root, o) {
   const s = AURA_LOOK[o.auraName]; if (!s) return false;
+  if (s.st === 'swirl') return true;                                                     // Wind: its rings read as circles round the head (owner, 2026-10-23); no effect at all
   const g = new THREE.Group(), sc = s.c, bits = []; root.add(g);
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: auraTexture(o.auraName, s), transparent: true, opacity: s.soft ? 0.45 : 0.55, depthWrite: false })); sp.scale.set(2.2, 2.2, 1); sp.position.set(0, 1.2, -0.55); sp.userData.noNormal = true; g.add(sp);
   // no ground ring: it read as a big circle around the player (owner, 2026-10-23)
